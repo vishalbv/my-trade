@@ -4,7 +4,8 @@
   "private": true,
   "exports": {
     "./button": "./components/ui/button.tsx",
-    "./card": "./components/ui/card.tsx"
+    "./card": "./components/ui/card.tsx",
+    "./input": "./components/ui/input.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -22,6 +23,11 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "react": "^18.2.0"
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "react": "^18.2.0",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7"
   }
 }

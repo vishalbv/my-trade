@@ -3,11 +3,13 @@ import Image from "next/image";
 import styles from "./page.module.css";
 import { Button } from "@repo/ui/button";
 import { Card, CardHeader, CardTitle } from "@repo/ui/card";
+import { Input } from "@repo/ui/input";
 
 export default function Home() {
   return (
     <div className={styles.page}>
       <div className="flex">test</div>
+      <Input />
       <Card>
         <CardHeader>
           <CardTitle>Card Title</CardTitle>

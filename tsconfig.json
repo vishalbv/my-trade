@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    // ... other options ...
+  },
+  "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"]
+}
