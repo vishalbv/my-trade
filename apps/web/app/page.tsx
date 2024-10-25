@@ -1,10 +1,18 @@
 import Image from "next/image";
-import { Button } from "@repo/ui/button";
+
 import styles from "./page.module.css";
+import { Button } from "@repo/ui/button";
+import { Card, CardHeader, CardTitle } from "@repo/ui/card";
 
 export default function Home() {
   return (
     <div className={styles.page}>
+      <div className="flex">test</div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Card Title</CardTitle>
+        </CardHeader>
+      </Card>
       <main className={styles.main}>
         <Image
           className={styles.logo}
@@ -46,9 +54,7 @@ export default function Home() {
             Read our docs
           </a>
         </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
+        <Button variant={"ghost"}>Open alert</Button>
       </main>
       <footer className={styles.footer}>
         <a
