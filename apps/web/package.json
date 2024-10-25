@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "PORT=2301 next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
