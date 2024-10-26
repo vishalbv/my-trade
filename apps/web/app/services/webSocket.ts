@@ -9,6 +9,9 @@ export function initializeWebSocket() {
     socket.onopen = () => {
       console.log("WebSocket Connected");
       notify.success("WebSocket Connected");
+      setTimeout(() => {
+        notify.speak("WebSocket Connected", "error");
+      }, 3000);
     };
 
     socket.onclose = () => {
