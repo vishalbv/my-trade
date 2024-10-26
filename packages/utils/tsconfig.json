@@ -3,6 +3,6 @@
   "compilerOptions": {
     "outDir": "dist"
   },
-  "include": ["components/ui", "lib"],
+  "include": ["server", "ui"],
   "exclude": ["node_modules", "dist"]
 }

@@ -4,11 +4,13 @@ import styles from "./page.module.css";
 import { Button } from "@repo/ui/button";
 import { Card, CardHeader, CardTitle } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
+import { DrawerDemo } from "./components/drawer";
 
 export default function Home() {
   return (
     <div className={styles.page}>
       <div className="flex">test</div>
+      <DrawerDemo />
       <Input />
       <Card>
         <CardHeader>
