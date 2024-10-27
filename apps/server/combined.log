@@ -1,0 +1,28 @@
+{"level":"error","message":"Failed to start the application: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)","originalColumn":13,"originalLine":20,"service":"trade-app-server","stack":"TypeError: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)\n    at <anonymous> (/Users/vishal/Documents/my-projects/my-trade/apps/server/services/db.ts:33:7)\n    at processTicksAndRejections (:7:39)","timestamp":"2024-10-26 17:05:19"}
+{"level":"error","message":"Failed to start the application: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)","originalColumn":13,"originalLine":20,"service":"trade-app-server","stack":"TypeError: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)\n    at <anonymous> (/Users/vishal/Documents/my-projects/my-trade/apps/server/services/db.ts:33:7)\n    at processTicksAndRejections (:7:39)","timestamp":"2024-10-26 17:06:40"}
+{"level":"error","message":"Failed to start the application: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)","originalColumn":13,"originalLine":20,"service":"trade-app-server","stack":"TypeError: logger is not a function. (In 'logger(\"Error connecting to database:\", error)', 'logger' is an instance of DerivedLogger)\n    at <anonymous> (/Users/vishal/Documents/my-projects/my-trade/apps/server/services/db.ts:33:7)\n    at processTicksAndRejections (:7:39)","timestamp":"2024-10-26 17:07:41"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:08:58"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:09:58"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:10:00"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:12:31"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:12:33"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:13:57"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:13:58"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:14:47"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:14:49"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:15:10"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:15:11"}
+{"level":"info","message":"ss","service":"trade-app-server","timestamp":"2024-10-26 17:15:22"}
+{"level":"info","message":"ss","service":"trade-app-server","timestamp":"2024-10-26 17:15:23"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:15:44"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:15:46"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:15:55"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:15:56"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:16:04"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:16:05"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:16:08"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:16:08"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:16:30"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:16:31"}
+{"level":"info","message":"Starting DB service...","service":"trade-app-server","timestamp":"2024-10-26 17:17:57"}
+{"level":"info","message":"DB connected","service":"trade-app-server","timestamp":"2024-10-26 17:17:58"}

@@ -1,0 +1,40 @@
+.pulseDot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  .circle {
+    background-color: #62bd19;
+    border-radius: 50%;
+    position: absolute;
+    inset: 0.8em;
+    // width: 4em;
+    // h  eight: 4em;
+  }
+
+  .ringring {
+    border: 0.07em solid #62bd19;
+    border-radius: 30px;
+    inset: 0.5em;
+    position: absolute;
+    animation: pulsate 1s ease-out;
+    animation-iteration-count: infinite;
+    opacity: 0;
+  }
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(0.1, 0.1);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2, 1.2);
+    opacity: 0;
+  }
+}

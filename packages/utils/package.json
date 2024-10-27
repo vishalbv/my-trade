@@ -8,7 +8,8 @@
     "./server/constants": "./server/constants.ts",
     "./server/helpers": "./server/helpers.ts",
     "./constants": "./constants.ts",
-    "./helpers": "./helpers.ts"
+    "./helpers": "./helpers.ts",
+    "./cred": "./server/cred.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

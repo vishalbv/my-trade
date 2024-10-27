@@ -1,34 +1,27 @@
 import express from "express";
 import http from "http";
-import {
-  initializeWebSocket,
-  broadcastMessage,
-  sendMessage,
-  sendState,
-} from "./services/webSocket";
+import cors from "cors";
+import { initializeWebSocket, sendState } from "./services/webSocket";
+
+import { startDbService } from "./services/db";
+import { declareApis } from "./apis";
 
 const app = express();
 const server = http.createServer(app);
-import { APP_ENV } from "@repo/utils/constants";
+
+// Add CORS middleware
+app.use(cors());
+// app.use(cors({
+//   origin: 'http://example.com',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
+app.use(express.json());
 
 initializeWebSocket(server);
-console.log(APP_ENV);
-setInterval(() => {
-  console.log("Sending state");
-  sendState("1", { name: "John", age: 30 });
-}, 3000);
 
-app.get("/", (req, res) => {
-  res.send("Hello from Bun Express in Turborepo");
-});
-
-// Example of sending a message from the server
-app.get("/send-message", (req, res) => {
-  const message = req.query.message as string;
-  sendMessage(`Server: ${message}`);
-  res.send("Message sent");
-});
-
+declareApis(app);
+startDbService();
 const port = process.env.PORT || 2300;
 server.listen(port, () => {
   console.log(`Server at http://localhost:${port}`);

@@ -15,7 +15,15 @@ export function Provider({ children, ...props }: any) {
 
   return (
     <div id="app">
-      <NextThemesProvider {...props}>{children}</NextThemesProvider>
+      <NextThemesProvider
+        {...props.theme}
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+      </NextThemesProvider>
       <Toaster />
     </div>
   );

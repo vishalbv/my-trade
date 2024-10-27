@@ -1,0 +1,56 @@
+.clock {
+  font-size: 1em;
+  color: hsl(var(--foreground));
+  > div:first-child {
+    letter-spacing: -0.15em;
+    > span::first-letter {
+      font-size: 130%;
+      color: hsl(var(--primary));
+    }
+    span {
+      margin: 0.1em;
+      display: inline-block;
+    }
+
+    > span:nth-child(3) {
+      width: 0.8em;
+    }
+
+    > span:last-child {
+      font-size: 50%;
+      margin-left: 0.3em;
+    }
+  }
+  > div:nth-child(2) {
+    font-size: 40%;
+    // margin-top: -0.6em;
+    margin-left: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    > span:nth-child(2) {
+      font-size: 95%;
+      margin-right: 1em;
+      margin-left: 1em;
+      font-family: var(--font-lato), sans-serif;
+    }
+  }
+  > div:nth-child(3) {
+    font-size: 45%;
+    // margin-top: -0.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1em;
+    margin-left: -1em;
+
+    > span:nth-child(2) {
+      font-size: 80%;
+      margin-right: 1em;
+
+      margin-top: -0.2em;
+      font-family: var(--font-lato), sans-serif;
+    }
+  }
+}

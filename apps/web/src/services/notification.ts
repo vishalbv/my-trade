@@ -1,5 +1,4 @@
 import { toast } from "@repo/ui/use-toast";
-import { sendMessage } from "./webSocket";
 
 type NotifyType = "success" | "error" | "info";
 

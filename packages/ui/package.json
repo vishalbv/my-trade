@@ -9,7 +9,8 @@
     "./drawer": "./components/ui/drawer.tsx",
     "./toast": "./components/ui/toast.tsx",
     "./toaster": "./components/ui/toaster.tsx",
-    "./use-toast": "./hooks/use-toast.ts"
+    "./use-toast": "./hooks/use-toast.ts",
+    "./switch": "./components/ui/switch.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -29,12 +30,14 @@
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "react": "^18.2.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "url-loader": "^4.1.1",
     "vaul": "^1.1.0"
   }
 }

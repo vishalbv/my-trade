@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "./globalStyles/toggleLogin.scss";
+
+/* :root {
+  --background: #ffffff;
+  --foreground: #171717;
+} */
+
+/* @media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+} */
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-lato), sans-serif;
+}
+.font-oleo-script {
+  font-family: var(--font-oleo-script), cursive;
+}
+.font-sura {
+  font-family: var(--font-sura), sans-serif;
+}
+
+// body {
+//   color: var(--foreground);
+//   background: var(--background);
+// }
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 225 25% 95%;
+    --foreground: 225 25% 10%;
+    --card: 225 25% 98%;
+    --card-foreground: 225 25% 10%;
+    --popover: 225 25% 98%;
+    --popover-foreground: 225 25% 10%;
+    --primary: 172 15% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 225 25% 10%;
+    --muted: 220 14% 90%;
+    --muted-foreground: 225 25% 40%;
+    --accent: 170 78% 50%;
+    --accent-foreground: 225 25% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 262 83% 58%;
+    --radius: 0.5rem;
+    /* Light theme nav colors */
+    --nav: 225 25% 90%;
+    --nav-foreground: 225 25% 20%;
+    --nav-hover: 225 25% 85%;
+  }
+
+  .dark {
+    --background: 225 25% 9%;
+    --foreground: 225 25% 98%;
+    --card: 225 25% 13%;
+    --card-foreground: 225 25% 98%;
+    --popover: 225 25% 13%;
+    --popover-foreground: 225 25% 98%;
+    --primary: 172 46% 77%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 225 25% 98%;
+    --muted: 220 14% 18%;
+    --muted-foreground: 225 25% 60%;
+    --accent: 170 78% 50%;
+    --accent-foreground: 225 25% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 20%;
+    --input: 220 13% 20%;
+    --ring: 262 83% 58%;
+    /* Dark theme nav colors */
+    --nav: 240 19% 15%;
+    --nav-foreground: 225 25% 98%;
+    --nav-hover: 240 19% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}

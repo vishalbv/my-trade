@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "lib": ["dom", "es2015"]
     // ... other options ...
   },
   "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"]
