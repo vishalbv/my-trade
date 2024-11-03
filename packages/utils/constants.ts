@@ -18,3 +18,6 @@ export const API_URL =
 export const REDIRECT_URL = "http://127.0.0.1:2301/login/";
 
 export const _allStates = ["app", "shoonya", "fyers"];
+
+//date formats
+export const DDMMYYYY = "DD-MM-YYYY";

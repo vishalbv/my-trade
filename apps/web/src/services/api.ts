@@ -37,9 +37,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const data: ApiResponse<T> = await response.json();
 
   if (data.message) {
-    data.status === 200
-      ? notify.success(data.message)
-      : notify.error(data.message);
+    data.status !== 200 && notify.error(data.message);
   }
 
   return data.data as T;

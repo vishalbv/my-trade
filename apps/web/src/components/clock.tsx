@@ -23,6 +23,7 @@ interface TimeState {
   minutes: string;
   seconds: string;
   aa: string;
+  _date: moment.Moment;
 }
 
 const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
@@ -33,6 +34,7 @@ const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
     minutes: "",
     seconds: "",
     aa: "",
+    _date: moment(),
   });
   // const { marketStatus = {} } = useSelector((s) => s.app);
   useEffect(() => {
@@ -45,15 +47,15 @@ const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
     };
   }, []);
 
-  if (simpleClock)
+  if (simpleClock) {
     return (
-      <div>
-        <span>{time.hours}</span> : <span>{time.minutes}</span> :{" "}
-        <span>{time.seconds}</span>
-        <span>{" " + time.aa}</span>
-        <span>{time.date}</span>
+      <div className="!text-sm items-center justify-between text-muted-foreground text-center">
+        <div className="scale-105">{time._date.format("HH:mm:ss")}</div>
+        <div>{time._date.format("ddd D MMM")} </div>
       </div>
     );
+  }
+
   return (
     <div className={`${styles.clock} font-sura`}>
       <div>
@@ -97,5 +99,6 @@ const getTimeAndDate = () => {
     minutes: arr[3] || "",
     seconds: arr[4] || "",
     aa: arr[5] || "",
+    _date: moment(),
   };
 };

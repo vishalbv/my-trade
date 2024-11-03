@@ -1,20 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { preLogin } from "../store/reducerActions/appActions";
+import { logout, preLogin } from "../store/reducerActions/appActions";
+import { sendMessage } from "../services/webSocket";
+import { useRouter } from "next/navigation";
 
 const LoginButton = () => {
   const [value, setValue] = useState(false);
   const loggedIn = false;
+  const router = useRouter();
 
   const loginLogout = (e: any) => {
     if (e.target.checked) {
       if (!e.nativeEvent.metaKey) return;
-      // getSocketRef().emit("app", { loggingIn: true });
-      preLogin({ broker: "fyers" });
+      sendMessage("app", { loggingIn: true });
+      const autoLoginCallback = () => {
+        router.push("/login");
+      };
+      preLogin({ broker: "fyers" }, autoLoginCallback);
     } else {
-      // getSocketRef().emit("app", { loggingIn: false });
-      // logout({});
+      logout({});
+      sendMessage("app", { loggingIn: false });
     }
     setValue(e.target.checked);
   };

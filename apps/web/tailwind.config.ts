@@ -11,6 +11,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        "2xs": "0.625rem", // 10px
+      },
       colors: {
         sidebar: {
           bg: "hsl(var(--sidebar-bg))",
@@ -62,6 +65,18 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "diagonal-slide-out": {
+          "0%": {
+            clipPath: "polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)",
+          },
+          // "55%": {
+          //   // Start expanding quickly
+          //   clipPath: "polygon(80% 80%, 100% 80%, 100% 100%, 80% 100%)",
+          // },
+          "100%": {
+            clipPath: "polygon(-50% -50%, 150% -50%, 150% 150%, -50% 150%)",
+          },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -82,6 +97,8 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "diagonal-slide-out":
+          "diagonal-slide-out 8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
       },
     },
   },

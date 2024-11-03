@@ -148,7 +148,17 @@ const dbService = new DatabaseService();
 export const startDbService = async () => {
   logger.info("Starting DB service...");
   try {
-    await dbService.connect();
+    // Create a promise that rejects after 30 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Database connection timeout after 30s")),
+        30000
+      );
+    });
+
+    // Race between connection and timeout
+    await Promise.race([dbService.connect(), timeoutPromise]);
+
     // Handle graceful shutdown
     process.on("SIGINT", async () => {
       try {

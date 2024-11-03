@@ -1,20 +1,22 @@
 // @ts-nocheck
-import { fyersAuthParams } from "@repo/utils/cred";
+import { fyersAuthParams, shoonyaAuthParams } from "@repo/utils/cred";
 import State from "../state.js";
-import { fyersModel } from "fyers-api-v3";
+import { authenticator } from "otplib";
 
 // import { checkAllLoginStatus } from "../app/functions.js";
-import { REDIRECT_URL } from "@repo/utils/constants";
+
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
 import logger from "../../services/logger.js";
+import NorenRestApi from "../../services/shoonyaApi/RestApi";
+import dbService from "../../services/db";
+import { checkAllLoginStatus } from "../../utils/helpers";
 
-const fyers = new fyersModel();
-fyers.setAppId(fyersAuthParams.app_id);
-fyers.setRedirectUrl(REDIRECT_URL);
+let api = new NorenRestApi({});
+const secret = "5GY64JV73GK3A676S6GC63463L33I535";
 
-const initialState = { id: "fyers" };
+const initialState = { id: "shoonya" };
 
-class Fyers extends State {
+class Shoonya extends State {
   constructor() {
     super(initialState);
   }
@@ -28,90 +30,96 @@ class Fyers extends State {
     }
   };
 
-  preLogin = () => {
+  getFundInfo = async () => {
+    console.log("getFundInfo");
     try {
-      const authCodeURL = fyers.generateAuthCode();
-      return { authCodeURL };
+      const res = await api.getLimits();
+
+      console.log("res", res);
+      if (res.statusText === "OK") {
+        this.setState({
+          fundInfo: {
+            brokerage: 0,
+            ...res.data,
+            openBalance: +res.data.payin + +res.data.cash + +res.data.payout,
+            pl: -1 * +res.data.premium,
+            marginAvailable:
+              +res.data.payin +
+              +res.data.cash +
+              +res.data.payout -
+              +(res.data.marginused || 0),
+          },
+        });
+      }
     } catch (error) {
-      throw new Error(`Failed to generate auth code: ${error.message}`);
+      logger.error("error in getting fundinfo shoonya", error);
     }
   };
 
+  initializeShoonya = () => {
+    // this.getPositions();
+
+    console.log("initializing shoonya");
+    this.getFundInfo();
+    // this.getOrderBook();
+  };
+
   setAccessToken = (access_token) => {
-    fyers.setAccessToken(access_token);
+    // fyers.setAccessToken(access_token);
     this.setState({ access_token });
-    // checkAllLoginStatus();
-    _ticksFyersService.setAccessToken(access_token);
+    checkAllLoginStatus();
+
+    api.setSessionDetails({
+      actid: shoonyaAuthParams.userid,
+      susertoken: access_token,
+    });
+
+    if (access_token) {
+      this.initializeShoonya();
+    }
+
+    // _ticksFyersService.setAccessToken(access_token);
   };
 
   getAccessToken = () => this.state.access_token;
 
-  login = async (body) => {
-    logger.info("logging to fyers", fyersAuthParams);
-
+  login = async () => {
+    logger.info("logging to shoonya");
     try {
-      const response = await fyers.generate_access_token({
-        client_id: fyersAuthParams.app_id,
-        secret_key: fyersAuthParams.secret_key,
-        auth_code: body.auth_code,
-      });
+      const otp = await authenticator.generate(secret);
+      const res = await api.login({ ...shoonyaAuthParams, twoFA: otp });
 
-      if (response.s === "ok") {
-        const { access_token } = response;
-        // await postToStatesDB(this.state.id, { access_token });
+      if (res.status == 200) {
+        if (res?.data?.stat == "Not_Ok") {
+          throw new Error(res?.data?.emsg || "Login failed");
+        }
+        const access_token = res.data.susertoken;
+        await dbService.postToStatesDB(this.state.id, { access_token });
         this.setAccessToken(access_token);
-        return _success({ access_token });
+
+        return { access_token };
       } else {
-        return _error(response);
+        throw new Error(res?.data?.emsg || "Login failed");
       }
     } catch (error) {
-      return _error(error);
+      throw new Error(`Failed to login: ${error.message}`);
     }
-  };
-
-  getParams = () => ({
-    token: this.getState().access_token,
-    app_id: fyersAuthParams.app_id,
-  });
-
-  placeOrder = (body = {}) => {
-    const params = {
-      ...this.getParams(),
-      data: {
-        qty: 1,
-        type: 2,
-        side: 1,
-        productType: "Intraday",
-        symbol: "NSE:INFY-EQ",
-        limitPrice: 0,
-        stopPrice: 0,
-        disclosedQty: 0,
-        validity: "DAY",
-        offlineOrder: "false",
-        stopPriceshould: 0,
-        ...body,
-      },
-    };
-
-    return fyers
-      .place_order(params)
-      .then((response) => {
-        return { status: 200, data: response };
-      })
-      .catch((error) => {
-        _error(error);
-      });
   };
 
   closeAllPositions = () => {};
 
-  logout = () => {
-    this.setAccessToken(null);
-    postToStatesDB(this.state.id, { access_token: null });
-    return _success();
+  logout = async () => {
+    logger.info("logging out from shoonya");
+    try {
+      this.setAccessToken(null);
+      this.pushToDB({ access_token: null });
+      return true;
+    } catch (error: any) {
+      throw new Error(`Failed to logout: ${error.message}`);
+    }
   };
 }
 
-const _fyers = new Fyers();
+const _shoonya = new Shoonya();
 
-export default _fyers;
+export default _shoonya;

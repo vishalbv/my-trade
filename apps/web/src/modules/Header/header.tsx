@@ -1,40 +1,184 @@
 "use client";
-import React from "react";
-import Link from "next/link";
-
-import { Bell, Menu } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Bell, Menu, LogOut } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { sidebarIgnorePaths } from "../../utils/constants";
+import { cn } from "@repo/utils/ui/helpers";
+import { useTheme } from "next-themes";
+import { logout } from "../../store/reducerActions/appActions";
 
+import { PnL } from "../../components/p&l";
+import { PRICECOLOR } from "../../utils/helpers";
+import { useSelector } from "react-redux";
+
+const logoutTimerDuration = 4;
 const Header: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [timer, setTimer] = useState(logoutTimerDuration);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { theme } = useTheme();
+  const { fundInfo = {}, moneyManage = {} } = useSelector(
+    (s) => s.shoonya || {}
+  );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const checkTimerAndLogout = async () => {
+    if (isLoggingOut && timer > 0) {
+      const id = setTimeout(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+      setTimeoutId(id);
+    }
+
+    if (timer === 0) {
+      await logout();
+      setTimer(logoutTimerDuration);
+      router.push("/");
+      setTimeout(() => {
+        setIsLoggingOut(false);
+      }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    checkTimerAndLogout();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isLoggingOut, timer, router]);
+
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+  };
+
+  const cancelLogout = () => {
+    setIsLoggingOut(false);
+    setTimer(logoutTimerDuration);
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+
   if (sidebarIgnorePaths.includes(pathname)) return null;
+
+  const overlayStyle = mounted
+    ? {
+        background:
+          theme === "dark"
+            ? "linear-gradient(135deg, #000, #000)"
+            : "linear-gradient(135deg, #fff, #fff)",
+        clipPath: "polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)",
+        transition: "opacity 0.3s ease",
+      }
+    : {};
+
+  const marketIndices = [
+    { name: "BANKEX", value: 57971.49, prevValue: 57871.49 },
+    { name: "FIN-NIFTY", value: 23732.7, prevValue: 23932.7 },
+    { name: "NIFTY-BANK", value: 50787.45, prevValue: 50787.45 },
+  ];
+
   return (
-    <header className="bg-background text-foreground p-2 flex justify-between items-center h-12">
-      <div className="flex items-center">
-        <span className="text-primary">P&L 0.00%</span>
-        <span className="ml-2 text-destructive">0.00%</span>
-      </div>
-      <div className="flex items-center space-x-2 text-sm">
-        <div>Margin left 1644.40</div>
-        <div>BANKEX 57971.49 (0.00%)</div>
-        <div>FIN-NIFTY 23732.7 (0.00%)</div>
-        <div>NIFTY-BANK 50787.45 (0.00%)</div>
-        <div>NIFTY-50 24180.8 (0.00%)</div>
-        <div>SENSEX 79402.29 (0.00%)</div>
-      </div>
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="icon">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-        </Button>
-        <ThemeSwitcher />
-      </div>
-    </header>
+    <>
+      <header className="bg-nav text-nav-foreground p-2 flex justify-between items-center h-14">
+        <div className="flex items-center">
+          <PnL />
+          <div className="text-center">
+            <div className="text-xs text-foreground/60 mb-1">Margin left</div>
+            <div className="text-foreground/90 text-sm">
+              {fundInfo.marginAvailable}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4 text-sm gap-2">
+          {marketIndices.map((index) => (
+            <MarketIndex
+              key={index.name}
+              name={index.name}
+              value={index.value}
+              prevValue={index.prevValue}
+            />
+          ))}
+        </div>
+        <div className="flex items-center space-x-2">
+          {/* <Button variant="ghost" size="icon">
+            <Menu className="h-5 w-5" />
+          </Button> */}
+          <ThemeSwitcher />
+
+          <Button variant="primary-hover" size="icon">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Button variant="primary-hover" size="icon" onClick={handleLogout}>
+            <LogOut className="h-5 w-5" />
+          </Button>
+          {/* <Clock simpleClock={true} /> */}
+        </div>
+      </header>
+
+      {/* Logout Overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 z-50",
+          isLoggingOut
+            ? "animate-diagonal-slide-out opacity-100"
+            : "opacity-0 pointer-events-none"
+        )}
+        style={overlayStyle}
+      />
+
+      {/* Cancel Button */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[51] flex items-center justify-center">
+          <div className="text-center space-y-4 animate-fade-in">
+            <div className="text-2xl font-bold">
+              Logging out in {timer} seconds...
+            </div>
+            <Button
+              variant="destructive"
+              onClick={cancelLogout}
+              className="animate-bounce"
+            >
+              Cancel Logout
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+interface MarketIndexProps {
+  name: string;
+  value: number;
+  prevValue: number;
+}
+
+export const MarketIndex = ({ name, value, prevValue }: MarketIndexProps) => {
+  const change = value - prevValue;
+  const percentageChange = ((change / prevValue) * 100).toFixed(2);
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-medium text-xs text-muted-foreground">{name}</span>
+      <span className="mx-1">{value.toFixed(2)}</span>
+
+      <span className={cn("text-xs", PRICECOLOR(change))}>
+        {change >= 0 ? "+" : ""}
+        {change.toFixed(2)}
+      </span>
+      <span className={cn("text-xs", PRICECOLOR(Number(percentageChange)))}>
+        ({percentageChange}%)
+      </span>
+    </div>
   );
 };
 

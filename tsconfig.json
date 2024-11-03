@@ -3,5 +3,6 @@
     "lib": ["dom", "es2015"]
     // ... other options ...
   },
-  "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"]
+  "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"],
+  "exclude": ["node_modules"]
 }

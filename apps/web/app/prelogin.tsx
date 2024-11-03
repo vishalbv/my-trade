@@ -1,11 +1,9 @@
 "use client";
 import styles from "./prelogin.module.css";
-import { useEffect } from "react";
-import { preLogin } from "../src/store/reducerActions/appActions";
 import Clock from "../src/components/clock";
 import AppLogo from "../src/components/appLogo";
 import { ThemeSwitcher } from "../src/components/ThemeSwitcher";
-import LoginButton from "../src/components/loginButton";
+
 import "../app/globalStyles/animatedBackground.scss";
 
 export default function PreLogin({

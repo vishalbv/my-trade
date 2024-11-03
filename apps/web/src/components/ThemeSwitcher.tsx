@@ -17,17 +17,17 @@ export function ThemeSwitcher() {
   }, []);
   if (!domLoaded) return null;
   return (
-    <button
+    <Button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="p-2"
-      aria-label="Toggle theme"
-      //   variant="default"
+      className="hover:bg-primary/10"
+      variant="primary-hover"
+      size="icon"
     >
       {theme === "dark" ? (
         <SunIcon className="w-5 h-5 text-yellow-500" />
       ) : (
         <MoonIcon className="w-5 h-5 text-gray-800" />
       )}
-    </button>
+    </Button>
   );
 }

@@ -36,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${oleoScript.variable} ${lato.variable} ${sura.variable} font-sans text-foreground animated-bg-dark`}
+        className={`${oleoScript.variable} ${lato.variable} ${sura.variable} font-sans font-lato text-foreground animated-bg-dark`}
       >
         <Provider theme={{ attribute: "class" }}>
           <div className="flex h-screen">

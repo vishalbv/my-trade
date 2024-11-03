@@ -4,12 +4,11 @@ import State from "../state.ts";
 // import { INDEX_DETAILS } from "../../utils/constants.js";
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
 
-// const initialState = { id: "app", indexDetails: INDEX_DETAILS };
+const initialState = { id: "app", loggedIn: false };
 
 class App extends State {
   constructor() {
-    // super(initialState);
-    super({});
+    super(initialState);
   }
 
   setState = (_new: any, fromDB?: boolean) => {

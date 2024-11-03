@@ -7,6 +7,13 @@
 // } from "../../utils/helpers.js";
 // import { logger } from "../../utils/logger.js";
 
+import logger from "../../services/logger";
+import { _allStates } from "../allstates";
+import { isDatesEqual } from "@repo/utils/helpers";
+import _app from "./index";
+import dbService from "../../services/db";
+import { checkAllLoginStatus } from "../../utils/helpers";
+
 // import { checkAllLoginStatus } from "./functions.js";
 // import fetch from "node-fetch";
 // import moment from "moment";
@@ -139,24 +146,24 @@
 // //   });
 // // };
 
-// const initializeStateFromDB = async (data) => {
-//   return Promise.all([
-//     ..._allStates.map(async (i) => {
-//       const data = await getStatesDBByID(i.id);
-//       i.setState(data, true);
-//     }),
-//   ]);
-//   // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
-// };
+const initializeStateFromDB = async () => {
+  return Promise.all([
+    ...Object.values(_allStates).map(async (i) => {
+      const data = await dbService.getStatesDBByID(i.id);
+      i.setState(data, true);
+    }),
+  ]);
+  // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
+};
 
-// const startingFunctionsAtInitialize = async () => {
-//   return Promise.all([
-//     ..._allStates.map(async (i) => {
-//       await i.startingFunctionsAtInitialize();
-//     }),
-//   ]);
-//   // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
-// };
+const startingFunctionsAtInitialize = async () => {
+  return Promise.all([
+    ...Object.values(_allStates).map((i: any) => {
+      i.startingFunctionsAtInitialize();
+    }),
+  ]);
+  // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
+};
 
 // // const _mapper1 = (data) => {
 // //   let obj = {};
@@ -267,52 +274,51 @@
 
 // // //calling all required fn to initialize app
 
-// // const updateDbAtInitOfDay = async () => {
-// //   // await postToStatesDB("app", {
-// //   //   dataUpdatedTime: moment().valueOf(),
-// //   // });
-// //   _app.setState({
-// //     dataUpdatedTime: moment().valueOf(),
-// //     _db: true,
-// //   });
-// //   _shoonya.setState({
-// //     positions: [],
-// //     tillLastTrade: 0,
-// //     noOfTrades: 0,
-// //     moneyManage: {
-// //       ..._shoonya.getState().moneyManage,
-// //       isExtendedMaxLossOfDay: false,
-// //     },
-// //     _db: true,
-// //   });
-// // };
-
 // const updateDbAtInitOfDay = async () => {
-//   return Promise.all([
-//     ..._allStates.map(async (i) => {
-//       await i.updateDbAtInitOfDay();
-//     }),
-//   ]);
-//   // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
+//   // await postToStatesDB("app", {
+//   //   dataUpdatedTime: moment().valueOf(),
+//   // });
+//   _app.setState({
+//     dataUpdatedTime: moment().valueOf(),
+//     _db: true,
+//   });
+//   _shoonya.setState({
+//     positions: [],
+//     tillLastTrade: 0,
+//     noOfTrades: 0,
+//     moneyManage: {
+//       ..._shoonya.getState().moneyManage,
+//       isExtendedMaxLossOfDay: false,
+//     },
+//     _db: true,
+//   });
 // };
 
-// const initializeApp = async () => {
-//   logger("initializing project state");
-//   NOTIFY.info("Server Restared and initializing Backend State");
-//   await initializeStateFromDB();
-//   await checkAllLoginStatus();
-//   await _ticksShoonyaService.startSocket();
-//   if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
-//     try {
-//       // await setOptionsNames();
-//       await setOptionsNamesUpdated();
-//     } catch (e) {
-//       logger("error in setOptionsNamesUpdated", e);
-//     }
-//     await updateDbAtInitOfDay();
-//   }
-//   await startingFunctionsAtInitialize();
-//   logger("initializing project state completed");
-// };
+const updateDbAtInitOfDay = async () => {
+  return Promise.all([
+    ...Object.values(_allStates).map((i) => i.updateDbAtInitOfDay()),
+  ]);
 
-// export default initializeApp;
+  // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
+};
+
+const initializeApp = async () => {
+  logger.info("initializing project state");
+  // NOTIFY.info("Server Restared and initializing Backend State");
+  await initializeStateFromDB();
+  await checkAllLoginStatus();
+  // await _ticksShoonyaService.startSocket();
+  if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
+    // try {
+    //   // await setOptionsNames();
+    // //   await setOptionsNamesUpdated();
+    // } catch (e) {
+    //   logger.info("error in setOptionsNamesUpdated", e);
+    // }
+    await updateDbAtInitOfDay();
+  }
+  await startingFunctionsAtInitialize();
+  logger.info("initializing project state completed");
+};
+
+export default initializeApp;

@@ -1,7 +1,7 @@
 import dbService from "../services/db.ts";
 import notify from "../services/notification";
 
-import { sendState } from "../services/webSocket.ts";
+import { sendMessage } from "../services/webSocket.ts";
 
 class State {
   private state: Record<string, any>;
@@ -43,7 +43,7 @@ class State {
   // };
 
   pushState = (newState?: Record<string, any>, clearAndSet?: boolean): void => {
-    sendState(
+    sendMessage(
       this.id,
       clearAndSet
         ? { ...this.getState(), _clearAndSet: true }

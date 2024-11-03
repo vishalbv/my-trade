@@ -38,13 +38,16 @@ const rootReducer = createSlice({
       return action.payload;
     },
     setStatesByID: (state, action: PayloadAction<SetStatesByIDPayload>) => {
+      console.log("setStatesByID", action.payload);
       const { id, data } = action.payload;
       const { _clearAndSet, ...restData } = data;
 
       if (_clearAndSet) {
         state[id] = restData;
       } else {
+        console.log("setting states", id, restData);
         state[id] = { ...state[id], ...restData };
+        console.log("state", state);
       }
     },
     setStatesByIDAndKey: (

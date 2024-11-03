@@ -4,9 +4,13 @@ import State from "../state.js";
 import { fyersModel } from "fyers-api-v3";
 
 // import { checkAllLoginStatus } from "../app/functions.js";
-import { REDIRECT_URL } from "@repo/utils/constants";
+import { DDMMYYYY, REDIRECT_URL } from "@repo/utils/constants";
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
 import logger from "../../services/logger";
+import { validateRefreshToken } from "./functions";
+import dbService from "../../services/db";
+import { checkAllLoginStatus } from "../../utils/helpers";
+import moment from "moment";
 
 const fyers = new fyersModel();
 fyers.setAppId(fyersAuthParams.app_id);
@@ -40,32 +44,57 @@ class Fyers extends State {
   setAccessToken = (access_token) => {
     fyers.setAccessToken(access_token);
     this.setState({ access_token });
-    // checkAllLoginStatus();
-    _ticksFyersService.setAccessToken(access_token);
+
+    checkAllLoginStatus();
+    // _ticksFyersService.setAccessToken(access_token);
   };
 
   getAccessToken = () => this.state.access_token;
 
   login = async (body) => {
-    logger.info("logging to fyers", fyersAuthParams);
+    logger.info("logging to fyers", fyersAuthParams, body);
 
     try {
-      const response = await fyers.generate_access_token({
-        client_id: fyersAuthParams.app_id,
-        secret_key: fyersAuthParams.secret_key,
-        auth_code: body.auth_code,
-      });
+      let response;
+      if (this.state.refresh_token) {
+        response = await validateRefreshToken({
+          appIdHash: fyersAuthParams.appIdHash,
+          refreshToken: this.state.refresh_token,
+          pin: fyersAuthParams.pin,
+        });
+        if (response.s === "ok") {
+          const { access_token } = response;
+          await dbService.postToStatesDB(this.state.id, {
+            access_token,
+          });
+        }
+      } else {
+        response = await fyers.generate_access_token({
+          client_id: fyersAuthParams.app_id,
+          secret_key: fyersAuthParams.secret_key,
+          auth_code: body.auth_code,
+        });
+        if (response.s === "ok") {
+          const { access_token, refresh_token } = response;
+          await dbService.postToStatesDB(this.state.id, {
+            access_token,
+            refresh_token,
+          });
+          await dbService.postToStatesDB("app", {
+            refreshTokenExpiry: moment().add(14, "day").format(DDMMYYYY),
+          });
+        }
+      }
 
       if (response.s === "ok") {
         const { access_token } = response;
-        // await postToStatesDB(this.state.id, { access_token });
         this.setAccessToken(access_token);
-        return _success({ access_token });
+        return { access_token };
       } else {
-        return _error(response);
+        throw new Error(`Login failed: ${JSON.stringify(response)}`);
       }
     } catch (error) {
-      return _error(error);
+      throw new Error(`Failed to login: ${error.message}`);
     }
   };
 
@@ -105,10 +134,15 @@ class Fyers extends State {
 
   closeAllPositions = () => {};
 
-  logout = () => {
-    this.setAccessToken(null);
-    postToStatesDB(this.state.id, { access_token: null });
-    return _success();
+  logout = async () => {
+    logger.info("logging out from fyers");
+    try {
+      this.setAccessToken(null);
+      this.pushToDB({ access_token: null });
+      return true;
+    } catch (error: any) {
+      throw new Error(`Failed to logout: ${error.message}`);
+    }
   };
 }
 

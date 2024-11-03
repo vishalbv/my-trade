@@ -7,11 +7,15 @@ interface ValidateRefreshTokenResponse {
   access_token: string;
 }
 
-export const validateRefreshToken = async (
-  appIdHash: string,
-  refreshToken: string,
-  pin: string
-): Promise<ValidateRefreshTokenResponse> => {
+export const validateRefreshToken = async ({
+  appIdHash,
+  refreshToken,
+  pin,
+}: {
+  appIdHash: string;
+  refreshToken: string;
+  pin: string;
+}): Promise<ValidateRefreshTokenResponse> => {
   const url = "https://api-t1.fyers.in/api/v3/validate-refresh-token";
   const data = {
     grant_type: "refresh_token",
