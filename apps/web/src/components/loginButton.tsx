@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { logout, preLogin } from "../store/reducerActions/appActions";
+import { logout, preLogin } from "../store/actions/appActions";
 import { sendMessage } from "../services/webSocket";
 import { useRouter } from "next/navigation";
 

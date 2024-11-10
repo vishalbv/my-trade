@@ -5,7 +5,7 @@ import { RootState } from "../store/store";
 
 export const PnL = () => {
   const { positions = {}, fundInfo = {} } = useSelector(
-    (s: RootState) => s.shoonya || {}
+    ({ state }: RootState) => state.shoonya || {}
   );
 
   //   const { _shoonyaPL } = useSelector((s: RootState) => s.ticks_shoonya);

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { fyersAuthParams } from "@repo/utils/cred";
 import State from "../state.js";
 import { fyersModel } from "fyers-api-v3";
@@ -8,9 +7,10 @@ import { DDMMYYYY, REDIRECT_URL } from "@repo/utils/constants";
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
 import logger from "../../services/logger";
 import { validateRefreshToken } from "./functions";
-import dbService from "../../services/db";
+
 import { checkAllLoginStatus } from "../../utils/helpers";
 import moment from "moment";
+import statesDbService from "../../services/statesDb";
 
 const fyers = new fyersModel();
 fyers.setAppId(fyersAuthParams.app_id);
@@ -23,8 +23,8 @@ class Fyers extends State {
     super(initialState);
   }
 
-  setState = (_new, fromDB) => {
-    const _old = this.state;
+  setState = (_new: any, fromDB?: boolean) => {
+    const _old = this.getState();
     console.log({ _old, _new });
     this.updateState(_new, fromDB);
     if (_new.access_token && _old.access_token !== _new.access_token) {
@@ -36,12 +36,12 @@ class Fyers extends State {
     try {
       const authCodeURL = fyers.generateAuthCode();
       return { authCodeURL };
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Failed to generate auth code: ${error.message}`);
     }
   };
 
-  setAccessToken = (access_token) => {
+  setAccessToken = (access_token: string | null) => {
     fyers.setAccessToken(access_token);
     this.setState({ access_token });
 
@@ -49,22 +49,22 @@ class Fyers extends State {
     // _ticksFyersService.setAccessToken(access_token);
   };
 
-  getAccessToken = () => this.state.access_token;
+  getAccessToken = () => this.getState().access_token;
 
-  login = async (body) => {
+  login = async (body: any) => {
     logger.info("logging to fyers", fyersAuthParams, body);
 
     try {
       let response;
-      if (this.state.refresh_token) {
+      if (this.getState().refresh_token) {
         response = await validateRefreshToken({
           appIdHash: fyersAuthParams.appIdHash,
-          refreshToken: this.state.refresh_token,
+          refreshToken: this.getState().refresh_token,
           pin: fyersAuthParams.pin,
         });
         if (response.s === "ok") {
           const { access_token } = response;
-          await dbService.postToStatesDB(this.state.id, {
+          await statesDbService.upsertState(this.getState().id, {
             access_token,
           });
         }
@@ -76,11 +76,11 @@ class Fyers extends State {
         });
         if (response.s === "ok") {
           const { access_token, refresh_token } = response;
-          await dbService.postToStatesDB(this.state.id, {
+          await statesDbService.upsertState(this.getState().id, {
             access_token,
             refresh_token,
           });
-          await dbService.postToStatesDB("app", {
+          await statesDbService.upsertState("app", {
             refreshTokenExpiry: moment().add(14, "day").format(DDMMYYYY),
           });
         }
@@ -93,7 +93,7 @@ class Fyers extends State {
       } else {
         throw new Error(`Login failed: ${JSON.stringify(response)}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Failed to login: ${error.message}`);
     }
   };
@@ -103,34 +103,34 @@ class Fyers extends State {
     app_id: fyersAuthParams.app_id,
   });
 
-  placeOrder = (body = {}) => {
-    const params = {
-      ...this.getParams(),
-      data: {
-        qty: 1,
-        type: 2,
-        side: 1,
-        productType: "Intraday",
-        symbol: "NSE:INFY-EQ",
-        limitPrice: 0,
-        stopPrice: 0,
-        disclosedQty: 0,
-        validity: "DAY",
-        offlineOrder: "false",
-        stopPriceshould: 0,
-        ...body,
-      },
-    };
+  // placeOrder = (body = {}) => {
+  //   const params = {
+  //     ...this.getParams(),
+  //     data: {
+  //       qty: 1,
+  //       type: 2,
+  //       side: 1,
+  //       productType: "Intraday",
+  //       symbol: "NSE:INFY-EQ",
+  //       limitPrice: 0,
+  //       stopPrice: 0,
+  //       disclosedQty: 0,
+  //       validity: "DAY",
+  //       offlineOrder: "false",
+  //       stopPriceshould: 0,
+  //       ...body,
+  //     },
+  //   };
 
-    return fyers
-      .place_order(params)
-      .then((response) => {
-        return { status: 200, data: response };
-      })
-      .catch((error) => {
-        _error(error);
-      });
-  };
+  //   return fyers
+  //     .place_order(params)
+  //     .then((response) => {
+  //       return { status: 200, data: response };
+  //     })
+  //     .catch((error) => {
+  //       _error(error);
+  //     });
+  // };
 
   closeAllPositions = () => {};
 

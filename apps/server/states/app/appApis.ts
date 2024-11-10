@@ -7,6 +7,7 @@ import dbService from "../../services/db";
 import { logoutAll } from "../../utils/helpers";
 import _fyers from "../fyers/index";
 import _shoonya from "../shoonya/index";
+import statesDbService from "../../services/statesDb";
 
 export const declareAppApis = (app: express.Application) => {
   app.post("/api/preLogin", async function (req, res) {
@@ -68,7 +69,9 @@ export const declareAppApis = (app: express.Application) => {
       if (_app.getState().loggedIn) {
         _app.setState({ loggingIn: false });
         initializeApp();
-        dbService.postToStatesDB("app", { lastLoginDate: moment().valueOf() });
+        statesDbService.upsertState("app", {
+          lastLoginDate: moment().valueOf(),
+        });
       }
     } catch (error) {
       sendResponse(res, {

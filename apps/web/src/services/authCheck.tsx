@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import React from "react";
 import notify from "./notification";
+import { RootState } from "../store/store";
 
 // Define paths that don't need authentication
 const IGNORE_PATHS = [
@@ -18,7 +19,7 @@ const IGNORE_PATHS = [
 function AuthCheckComponent(props: any) {
   const router = useRouter();
   const pathname = usePathname();
-  const loggedIn = useSelector((state) => state.app?.loggedIn);
+  const loggedIn = useSelector(({ state }: RootState) => state.app?.loggedIn);
 
   const handleClick = (e: MouseEvent) => {
     // Skip check if current path is in ignore list

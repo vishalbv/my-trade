@@ -1,8 +1,12 @@
 import { configureStore, ThunkAction, Action, Store } from "@reduxjs/toolkit";
-import rootReducer from "./reducerActions/rootReducer";
+import stateReducer from "./slices/stateSlice";
+import drawerReducer from "./slices/drawerSlice";
 
 export const store: Store = configureStore({
-  reducer: rootReducer,
+  reducer: {
+    state: stateReducer,
+    drawer: drawerReducer,
+  },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,

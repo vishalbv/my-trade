@@ -1,3 +1,4 @@
+// @ts-nocheck
 import axios from "axios";
 import sha256 from "crypto-js/sha256";
 import { API } from "./config.js";

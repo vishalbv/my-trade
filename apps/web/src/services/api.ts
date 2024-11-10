@@ -83,5 +83,24 @@ export async function postRequest<T>(endpoint: string, body: any): Promise<T> {
   });
 }
 
+export async function getRequest<T>(endpoint: string): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: "GET",
+  });
+}
+
+export async function putRequest<T>(endpoint: string, body: any): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteRequest<T>(endpoint: string): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: "DELETE",
+  });
+}
+
 // Example usage:
 // const data = await postRequest<YourDataType>('/your-endpoint', { key: 'value' });

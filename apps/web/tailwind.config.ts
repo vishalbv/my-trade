@@ -100,6 +100,9 @@ const config: Config = {
         "diagonal-slide-out":
           "diagonal-slide-out 8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
       },
+      borderWidth: {
+        "0.5": "0.5px", // Add custom border width
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

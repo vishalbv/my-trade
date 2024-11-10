@@ -6,24 +6,27 @@ import _fyers from "../states/fyers/index";
 import _shoonya from "../states/shoonya/index";
 import logger from "../services/logger";
 import { _allStates } from "../states/allstates";
+import statesDbService from "../services/statesDb";
 
 export const checkLoginSession = async (callback: () => void) => {
   try {
-    const { lastLoginDate, refreshTokenExpiry } =
-      await dbService.getStatesDBByID("app");
-    if (refreshTokenExpiry) {
-      if (moment().isAfter(moment(refreshTokenExpiry))) {
-        dbService.postToStatesDB("app", {
-          refreshTokenExpiry: null,
-        });
-        logoutAll();
+    const appState = await statesDbService.getStateById("app");
+    if (appState) {
+      const { lastLoginDate, refreshTokenExpiry } = appState;
+      if (refreshTokenExpiry) {
+        if (moment().isAfter(moment(refreshTokenExpiry))) {
+          statesDbService.upsertState("app", {
+            refreshTokenExpiry: null,
+          });
+          logoutAll();
+        }
       }
-    }
 
-    if (lastLoginDate && moment().diff(moment(lastLoginDate), "hours") <= 8) {
-      callback();
-    } else {
-      if (!_app.getState().loggingIn) logoutAll();
+      if (lastLoginDate && moment().diff(moment(lastLoginDate), "hours") <= 8) {
+        callback();
+      } else {
+        if (!_app.getState().loggingIn) logoutAll();
+      }
     }
   } catch (e: any) {
     logger.error(e);

@@ -13,6 +13,7 @@ import { isDatesEqual } from "@repo/utils/helpers";
 import _app from "./index";
 import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
+import statesDbService from "../../services/statesDb";
 
 // import { checkAllLoginStatus } from "./functions.js";
 // import fetch from "node-fetch";
@@ -149,7 +150,7 @@ import { checkAllLoginStatus } from "../../utils/helpers";
 const initializeStateFromDB = async () => {
   return Promise.all([
     ...Object.values(_allStates).map(async (i) => {
-      const data = await dbService.getStatesDBByID(i.id);
+      const data = await statesDbService.getStateById(i.id);
       i.setState(data, true);
     }),
   ]);

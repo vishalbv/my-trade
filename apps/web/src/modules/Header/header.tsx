@@ -7,11 +7,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { sidebarIgnorePaths } from "../../utils/constants";
 import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
-import { logout } from "../../store/reducerActions/appActions";
+import { logout } from "../../store/actions/appActions";
 
 import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
 import { useSelector } from "react-redux";
+import Clock from "../../components/clock";
+import { RootState } from "../../store/store";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -24,7 +26,7 @@ const Header: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const { fundInfo = {}, moneyManage = {} } = useSelector(
-    (s) => s.shoonya || {}
+    ({ state }: RootState) => state.shoonya || {}
   );
 
   useEffect(() => {
@@ -108,6 +110,7 @@ const Header: React.FC = () => {
             />
           ))}
         </div>
+
         <div className="flex items-center space-x-2">
           {/* <Button variant="ghost" size="icon">
             <Menu className="h-5 w-5" />
@@ -120,7 +123,6 @@ const Header: React.FC = () => {
           <Button variant="primary-hover" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
           </Button>
-          {/* <Clock simpleClock={true} /> */}
         </div>
       </header>
 

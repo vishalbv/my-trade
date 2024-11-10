@@ -38,6 +38,8 @@ const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
   });
   // const { marketStatus = {} } = useSelector((s) => s.app);
   useEffect(() => {
+    setTime({ ...getTimeAndDate() });
+
     intervalVal = _setInterval(() => {
       setTime({ ...getTimeAndDate() });
     }, 1000);
@@ -49,9 +51,13 @@ const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
 
   if (simpleClock) {
     return (
-      <div className="!text-sm items-center justify-between text-muted-foreground text-center">
-        <div className="scale-105">{time._date.format("HH:mm:ss")}</div>
-        <div>{time._date.format("ddd D MMM")} </div>
+      <div className="text-sm flex items-center justify-between text-muted-foreground text-center">
+        <span>{time._date?.format("ddd D MMM") || ""}</span>
+        <ActiveDot
+          status={marketStatus.activeStatus}
+          readyStatus={marketStatus.preMarketStatus}
+        />
+        <span>{time._date?.format("hh:mm:ss a") || ""}</span>
       </div>
     );
   }

@@ -30,8 +30,8 @@ interface SetStatesByIDAndKeyPayload {
   data: any;
 }
 
-const rootReducer = createSlice({
-  name: "_global",
+const stateReducer = createSlice({
+  name: "state",
   initialState: {} as State,
   reducers: {
     setAllStates: (state, action: PayloadAction<State>) => {
@@ -62,5 +62,5 @@ const rootReducer = createSlice({
 });
 
 export const { setAllStates, setStatesByID, setStatesByIDAndKey } =
-  rootReducer.actions;
-export default rootReducer.reducer;
+  stateReducer.actions;
+export default stateReducer.reducer;

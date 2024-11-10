@@ -1,5 +1,6 @@
 import dbService from "../services/db.ts";
 import notify from "../services/notification";
+import statesDbService from "../services/statesDb";
 
 import { sendMessage } from "../services/webSocket.ts";
 
@@ -52,7 +53,7 @@ class State {
   };
 
   pushToDB = (newState: Record<string, any>): void => {
-    dbService.postToStatesDB(this.id, newState);
+    statesDbService.upsertState(this.id, newState);
   };
 
   startingFunctionsAtInitialize = (): void => {};

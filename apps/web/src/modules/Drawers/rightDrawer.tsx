@@ -7,14 +7,20 @@ import {
 import { useEffect, useState } from "react";
 import { LINKS } from "../../utils/constants";
 import { ExternalLink } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../store/store";
+import { toggleDrawer } from "../../store/slices/drawerSlice";
 
 export function RightDrawer() {
-  const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
+  const isOpen = useSelector(
+    (state: RootState) => state.drawer.activeDrawer === "right"
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        setIsOpen((prev) => !prev);
+        dispatch(toggleDrawer("right"));
       }
     };
 
@@ -23,7 +29,12 @@ export function RightDrawer() {
   }, []);
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen} direction="right">
+    <Drawer
+      open={isOpen}
+      onOpenChange={() => dispatch(toggleDrawer("right"))}
+      direction="right"
+      noBodyStyles
+    >
       <DrawerContent className="h-full w-[220px] right-0">
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-lg font-bold">Quick Links</DrawerTitle>
@@ -39,6 +50,7 @@ export function RightDrawer() {
                   <a
                     key={linkIndex}
                     href={link.link}
+                    onClick={() => dispatch(toggleDrawer("right"))}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block p-2 rounded-lg duration-200 group hover:scale-105 hover:translate-x-1"

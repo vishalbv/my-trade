@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Ripple from "../src/components/ripple";
 
 export default function Home() {
-  const loggedIn = useSelector((state: any) => state.app?.loggedIn);
+  const loggedIn = useSelector(({ state }: any) => state.app?.loggedIn);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   useEffect(() => {

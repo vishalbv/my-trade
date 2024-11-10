@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@repo/ui/tooltip";
+import Clock from "../../components/clock";
 
 const leftbraItems = [
   {
@@ -164,11 +165,11 @@ const Sidebar: React.FC = () => {
 
           <div className="flex items-center justify-between">
             <span>DONE FOR THE DAY</span>
-            <Switch />
+            <Switch className="scale-90" />
           </div>
           <div className="flex items-center justify-between">
             <span>TEST MODE</span>
-            <Switch />
+            <Switch className="scale-90" />
           </div>
           <div className="flex items-center justify-between">
             <span>REFRESH BACKEND</span>
@@ -180,6 +181,7 @@ const Sidebar: React.FC = () => {
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
+          <Clock simpleClock={true} />
         </div>
       )}
     </aside>

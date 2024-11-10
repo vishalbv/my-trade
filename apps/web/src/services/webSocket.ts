@@ -1,4 +1,4 @@
-import { setStatesByID } from "../store/reducerActions/rootReducer";
+import { setStatesByID } from "../store/slices/stateSlice";
 import store from "../store/store";
 import { allStates } from "../utils/constants";
 import notify, { notifyServerSide } from "./notification";

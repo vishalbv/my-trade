@@ -11,7 +11,9 @@
     "./toaster": "./components/ui/toaster.tsx",
     "./use-toast": "./hooks/use-toast.ts",
     "./switch": "./components/ui/switch.tsx",
-    "./tooltip": "./components/ui/tooltip.tsx"
+    "./tooltip": "./components/ui/tooltip.tsx",
+    "./textarea": "./components/ui/textarea.tsx",
+    "./checkbox": "./components/ui/checkbox.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -29,6 +31,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",

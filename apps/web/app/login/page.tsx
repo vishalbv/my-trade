@@ -2,13 +2,13 @@
 import { useEffect } from "react";
 import Ripple from "../../src/components/ripple";
 import PreLogin from "../prelogin";
-import { login } from "../../src/store/reducerActions/appActions";
+import { login } from "../../src/store/actions/appActions";
 import { RootState } from "../../src/store/store";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 
 export default function Login() {
-  const { loggedIn } = useSelector((state: RootState) => state.app || {});
+  const { loggedIn } = useSelector(({ state }: RootState) => state.app || {});
   console.log("state2222222", loggedIn);
   const router = useRouter();
   const loginBorkers = async () => {

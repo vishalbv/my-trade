@@ -45,106 +45,45 @@ class DatabaseService {
     }
   }
 
-  private getCollection(name: keyof DBCollections): Collection {
+  getCollection(name: keyof DBCollections): Collection {
     if (!this.collections) {
       throw new Error("Database not connected");
     }
     return this.collections[name];
   }
 
-  async postToStatesDB(id: string, data: any): Promise<void> {
-    try {
-      logger.info("updating states db", data);
-      await this.getCollection("states").updateOne(
-        { id },
-        { $set: data },
-        { upsert: true }
-      );
-    } catch (error) {
-      logger.error("Error updating states db:", error);
-      throw error;
-    }
+  async createDocument(collectionName: keyof DBCollections, document: any) {
+    logger.info(`Creating document in ${collectionName}`, document);
+    return this.getCollection(collectionName).insertOne(document);
   }
 
-  async getAllStatesDB(): Promise<any[]> {
-    try {
-      return await this.getCollection("states").find().toArray();
-    } catch (error) {
-      logger.error("Error getting all states:", error);
-      throw error;
-    }
+  async getDocuments(collectionName: keyof DBCollections) {
+    return this.getCollection(collectionName)
+      .find()
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .toArray();
   }
 
-  async getStatesDBByID(id: string): Promise<any | null> {
-    try {
-      return await this.getCollection("states").findOne({ id });
-    } catch (error) {
-      logger.error("Error getting state by ID:", error);
-      throw error;
-    }
+  async updateDocument(
+    collectionName: keyof DBCollections,
+    id: string,
+    updates: any
+  ) {
+    const { _id, ...updatesToApply } = updates;
+    return this.getCollection(collectionName).updateOne(
+      { id },
+      { $set: updatesToApply }
+    );
   }
 
-  async postToReportsDB(id: string, data: any): Promise<void> {
-    try {
-      logger.info("updating reports db", data);
-      await this.getCollection("reports").updateOne(
-        { id },
-        { $set: data },
-        { upsert: true }
-      );
-    } catch (error) {
-      logger.error("Error updating reports db:", error);
-      throw error;
-    }
-  }
-
-  async postToTasksDB(id: string, data: any, isDelete: boolean): Promise<void> {
-    try {
-      logger.info("updating tasks db", data, id);
-      if (isDelete) {
-        await this.getCollection("tasks").deleteOne({ id });
-      } else {
-        await this.getCollection("tasks").updateOne(
-          { id },
-          { $set: data },
-          { upsert: true }
-        );
-      }
-    } catch (error) {
-      logger.error("Error updating tasks db:", error);
-      throw error;
-    }
-  }
-
-  async getReportsFromDB(): Promise<any[]> {
-    try {
-      return await this.getCollection("reports").find().toArray();
-    } catch (error) {
-      logger.error("Error getting reports:", error);
-      throw error;
-    }
-  }
-
-  async getTasksFromDB(): Promise<any[]> {
-    try {
-      return await this.getCollection("tasks").find().toArray();
-    } catch (error) {
-      logger.error("Error getting tasks:", error);
-      throw error;
-    }
-  }
-
-  async getNotesFromDB(): Promise<any[]> {
-    try {
-      return await this.getCollection("notes").find().toArray();
-    } catch (error) {
-      logger.error("Error getting notes:", error);
-      throw error;
-    }
+  async deleteDocument(collectionName: keyof DBCollections, id: string) {
+    logger.info(`Deleting document from ${collectionName}`, id);
+    return this.getCollection(collectionName).deleteOne({ id });
   }
 }
 
 const dbService = new DatabaseService();
+
 export const startDbService = async () => {
   logger.info("Starting DB service...");
   try {
