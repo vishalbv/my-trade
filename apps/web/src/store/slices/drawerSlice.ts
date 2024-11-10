@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-type DrawerType = "right" | "task" | "notes" | null;
+type DrawerType = "right" | "task" | "notes" | "timers" | null;
 
 interface DrawerState {
   activeDrawer: DrawerType;

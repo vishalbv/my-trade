@@ -12,7 +12,7 @@ import { logout } from "../../store/actions/appActions";
 import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
 import { useSelector } from "react-redux";
-import Clock from "../../components/clock";
+
 import { RootState } from "../../store/store";
 
 const logoutTimerDuration = 4;
@@ -26,7 +26,7 @@ const Header: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
   const { fundInfo = {}, moneyManage = {} } = useSelector(
-    ({ state }: RootState) => state.shoonya || {}
+    ({ states }: RootState) => states.shoonya || {}
   );
 
   useEffect(() => {
@@ -38,7 +38,7 @@ const Header: React.FC = () => {
       const id = setTimeout(() => {
         setTimer((prev) => prev - 1);
       }, 1000);
-      setTimeoutId(id);
+      setTimeoutId(id as NodeJS.Timeout);
     }
 
     if (timer === 0) {

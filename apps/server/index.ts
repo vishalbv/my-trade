@@ -5,7 +5,6 @@ import { initializeWebSocket } from "./services/webSocket";
 
 import { startDbService } from "./services/db";
 import { declareApis } from "./apis";
-import { checkAllLoginStatus } from "@repo/utils/server/helpers";
 import { checkLoginSession } from "./utils/helpers";
 import initializeApp from "./states/app/app-initialize";
 

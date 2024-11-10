@@ -4,18 +4,12 @@ import { useEffect } from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { initializeWebSocket } from "../services/webSocket";
 import { Toaster } from "@repo/ui/toaster";
-import store from "../store/store";
-import { Provider as StoreProvider } from "react-redux";
+import store, { RootState } from "../store/store";
+import { Provider as StoreProvider, useSelector } from "react-redux";
 import Drawer from "../modules/Drawers/drawer";
 import AuthCheckComponent from "../services/authCheck";
+import { fyersDataSocketService } from "../services/fyersDataSocket";
 export function Provider({ children, ...props }: any) {
-  useEffect(() => {
-    //for vaul drawer animation
-    document.getElementById("app")?.setAttribute("vaul-drawer-wrapper", "");
-    //initialize web socket
-    initializeWebSocket();
-  }, []);
-
   return (
     <div id="app">
       <StoreProvider store={store}>
@@ -28,6 +22,7 @@ export function Provider({ children, ...props }: any) {
           enableSystem
           disableTransitionOnChange
         >
+          <Initialize />
           {children}
         </NextThemesProvider>
         <Toaster />
@@ -35,4 +30,24 @@ export function Provider({ children, ...props }: any) {
       </StoreProvider>
     </div>
   );
+}
+
+function Initialize() {
+  const { access_token, app_id } = useSelector(
+    (state: RootState) => state.states.fyers
+  );
+  useEffect(() => {
+    //for vaul drawer animation
+    document.getElementById("app")?.setAttribute("vaul-drawer-wrapper", "");
+    //initialize web socket
+    initializeWebSocket();
+  }, []);
+
+  useEffect(() => {
+    if (access_token) {
+      fyersDataSocketService.connect(app_id + access_token);
+    }
+  }, [access_token, app_id]);
+
+  return null;
 }

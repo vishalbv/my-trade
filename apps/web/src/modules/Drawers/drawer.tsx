@@ -9,10 +9,12 @@ import {
   ExternalLink,
   ArrowUp,
   ArrowLeft,
+  Timer,
 } from "lucide-react";
 import { useEffect } from "react";
 import { TaskDrawer } from "./taskDrawer";
 import { NotesDrawer } from "./notesDrawer";
+import { TimersDrawer } from "./timersDrawer";
 import { Button } from "@repo/ui/button";
 
 const Drawer = () => {
@@ -21,6 +23,7 @@ const Drawer = () => {
       <RightDrawer />
       <TaskDrawer />
       <NotesDrawer />
+      <TimersDrawer />
       <DrawerIcons />
     </>
   );
@@ -48,6 +51,13 @@ const DrawerIcons = () => {
         label="Notes"
         isActive={activeDrawer === "notes"}
         onClick={() => dispatch(toggleDrawer("notes"))}
+        directionIcon={<ArrowUp className="h-3 w-3" />}
+      />
+      <IconButton
+        icon={<Timer />}
+        label="Timers"
+        isActive={activeDrawer === "timers"}
+        onClick={() => dispatch(toggleDrawer("timers"))}
         directionIcon={<ArrowUp className="h-3 w-3" />}
       />
       <IconButton

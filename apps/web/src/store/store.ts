@@ -4,7 +4,7 @@ import drawerReducer from "./slices/drawerSlice";
 
 export const store: Store = configureStore({
   reducer: {
-    state: stateReducer,
+    states: stateReducer,
     drawer: drawerReducer,
   },
   middleware: (getDefaultMiddleware) =>

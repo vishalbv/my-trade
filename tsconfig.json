@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "es2015"]
+    "lib": ["dom", "es2015"],
+    "typeRoots": ["./types", "./node_modules/@types"]
     // ... other options ...
   },
   "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"],

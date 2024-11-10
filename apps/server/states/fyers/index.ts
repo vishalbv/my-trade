@@ -16,7 +16,7 @@ const fyers = new fyersModel();
 fyers.setAppId(fyersAuthParams.app_id);
 fyers.setRedirectUrl(REDIRECT_URL);
 
-const initialState = { id: "fyers" };
+const initialState = { id: "fyers", app_id: fyersAuthParams.app_id };
 
 class Fyers extends State {
   constructor() {

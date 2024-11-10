@@ -19,7 +19,7 @@ const IGNORE_PATHS = [
 function AuthCheckComponent(props: any) {
   const router = useRouter();
   const pathname = usePathname();
-  const loggedIn = useSelector(({ state }: RootState) => state.app?.loggedIn);
+  const loggedIn = useSelector(({ states }: RootState) => states.app?.loggedIn);
 
   const handleClick = (e: MouseEvent) => {
     // Skip check if current path is in ignore list

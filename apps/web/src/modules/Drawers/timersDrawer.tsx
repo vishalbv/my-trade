@@ -8,25 +8,26 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { RootState } from "../../store/store";
 import { toggleDrawer } from "../../store/slices/drawerSlice";
-import { NoteList } from "../../components/Notes/NoteList";
+// import { TimerList } from "../../components/Timers/TimerList";
 
-export function NotesDrawer() {
+export function TimersDrawer() {
   const dispatch = useDispatch();
   const isOpen = useSelector(
-    (state: RootState) => state.drawer.activeDrawer === "notes"
+    (state: RootState) => state.drawer.activeDrawer === "timers"
   );
 
   return (
     <Drawer
       open={isOpen}
-      onOpenChange={() => dispatch(toggleDrawer("notes"))}
+      onOpenChange={() => dispatch(toggleDrawer("timers"))}
       direction="bottom"
     >
       <DrawerContent className="h-[95vh] right-0">
         <DrawerHeader>
-          <DrawerTitle>Notes</DrawerTitle>
+          <DrawerTitle>Timers</DrawerTitle>
         </DrawerHeader>
-        <NoteList />
+
+        {/* <TimerList /> */}
       </DrawerContent>
     </Drawer>
   );

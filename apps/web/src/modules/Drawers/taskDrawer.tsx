@@ -23,7 +23,7 @@ export function TaskDrawer() {
       direction="bottom"
       noBodyStyles
     >
-      <DrawerContent className="h-[95vh] w-[40vw] right-0">
+      <DrawerContent className="h-[95vh] right-0">
         <DrawerHeader className="text-center flex justify-center py-1">
           <DrawerTitle>Tasks</DrawerTitle>
         </DrawerHeader>

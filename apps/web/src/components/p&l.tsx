@@ -5,7 +5,7 @@ import { RootState } from "../store/store";
 
 export const PnL = () => {
   const { positions = {}, fundInfo = {} } = useSelector(
-    ({ state }: RootState) => state.shoonya || {}
+    ({ states }: RootState) => states.shoonya || {}
   );
 
   //   const { _shoonyaPL } = useSelector((s: RootState) => s.ticks_shoonya);
@@ -27,18 +27,24 @@ export const PnL = () => {
   ).toFixed(2);
 
   return (
-    <div className="min-w-[140px]">
+    <div
+      className="min-w-[140px] select-none"
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        setShowidPerc(!showInPerc);
+      }}
+    >
       <div className="flex items-center">
         <h3>P&L</h3>
-        <h2
-          className={`select-none ml-2.5 ${PRICECOLOR(shoonyaPLInPerc)}`}
-          onDoubleClick={() => setShowidPerc(!showInPerc)}
-        >
+        <h2 className={`select-none ml-2.5 ${PRICECOLOR(shoonyaPLInPerc)}`}>
           {showInPerc ? shoonyaPLInPerc + "%" : shoonyaPLInRs}
         </h2>
       </div>
       <div className="flex items-center text-xs text-muted-foreground mt-1">
-        brokerage: <span className="ml-2">{fundInfo.brokerage ?? 10}</span>
+        brokerage:{" "}
+        <span className="ml-2">
+          {showInPerc ? brokerageInPerc + "%" : (fundInfo.brokerage ?? 0)}
+        </span>
       </div>
     </div>
   );

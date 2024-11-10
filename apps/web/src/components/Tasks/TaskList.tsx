@@ -36,6 +36,8 @@ export function TaskList() {
     loadTasks();
   }, []);
 
+  console.log("tasks", tasks);
+
   const loadTasks = async () => {
     const response = await getTasks();
     setTasks(Array.isArray(response) ? response : []);

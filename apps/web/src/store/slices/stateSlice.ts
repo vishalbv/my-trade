@@ -1,16 +1,14 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { allStates } from "../../utils/constants";
 // import { _allStates } from "../../helpers/constants";
 
 // const defaultStates = _.fromPairs(_allStates.map((v) => [v.id, { ...v }]));
-// const initialState = {
-//   ...defaultStates,
-//   global: {},
-//   ticks_shoonya: {},
-//   notifications: [],
-//   reports: {},
-//   tasks: {},
-//   notes: {},
-// };
+const initialState = allStates.reduce((acc: State, state: string) => {
+  acc[state] = {};
+  return acc;
+}, {});
+
+console.log("initialState", initialState);
 
 interface State {
   [key: string]: any;
@@ -32,7 +30,7 @@ interface SetStatesByIDAndKeyPayload {
 
 const stateReducer = createSlice({
   name: "state",
-  initialState: {} as State,
+  initialState: initialState,
   reducers: {
     setAllStates: (state, action: PayloadAction<State>) => {
       return action.payload;
