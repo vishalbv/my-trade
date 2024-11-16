@@ -103,6 +103,42 @@ class Fyers extends State {
     app_id: fyersAuthParams.app_id,
   });
 
+  getHistory = async ({
+    symbol,
+    resolution,
+    date_format = 1,
+    range_from,
+    range_to,
+    cont_flag = 1,
+  }: {
+    symbol: string;
+    resolution: string;
+    date_format?: number;
+    range_from: string;
+    range_to: string;
+    cont_flag?: number;
+  }) => {
+    try {
+      const response = await fyers.getHistory({
+        symbol,
+        resolution,
+        date_format,
+        range_from,
+        range_to,
+        cont_flag,
+      });
+
+      if (response.s === "ok") {
+        return response;
+      }
+      throw new Error(
+        `Failed to fetch historical data: ${JSON.stringify(response)}`
+      );
+    } catch (error: any) {
+      throw new Error(`Historical data error: ${error.message}`);
+    }
+  };
+
   // placeOrder = (body = {}) => {
   //   const params = {
   //     ...this.getParams(),

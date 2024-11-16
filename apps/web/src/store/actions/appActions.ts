@@ -21,3 +21,7 @@ export const logout = (body?: any) => {
     console.log(data);
   });
 };
+
+export const getHistory = (body: any) => {
+  return postRequest(`history`, body);
+};

@@ -10,5 +10,6 @@ declare module "fyers-api-v3" {
       auth_code: string;
     }): Promise<any>;
     place_order(params: any): Promise<any>;
+    getHistory(params: any): Promise<any>;
   }
 }
