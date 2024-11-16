@@ -12,10 +12,17 @@ interface ChartProps {
     high: number;
     low: number;
     close: number;
+    index?: number;
   }[];
+  timeframeConfig: {
+    resolution: string;
+    minScaleDays: number;
+    maxScaleDays: number;
+    tickFormat: (timestamp: number) => string;
+  };
 }
 
-const Chart: React.FC<ChartProps> = ({ data }) => {
+const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drawingMode, setDrawingMode] = useState<"line" | "fibonacci" | null>(
     null
@@ -145,7 +152,35 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
       createGrid();
     };
 
-    // Add candlesticks to chart area first (so they appear behind axes)
+    // Calculate initial candle width
+    const calculateCandleWidth = () => {
+      if (data.length < 2) return 2;
+
+      // Get pixel distance between two consecutive candles
+      const firstTimestamp = new Date(data[0].timestamp);
+      const secondTimestamp = new Date(data[1].timestamp);
+      const x1 = xScale(firstTimestamp);
+      const x2 = xScale(secondTimestamp);
+      const pixelDistance = Math.abs(x2 - x1);
+
+      // Ensure minimum gap between candles
+      const minGap = 1; // Minimum 1px gap
+      const maxWidthWithGap = pixelDistance - minGap;
+
+      // Calculate base width as a proportion of available space
+      const widthProportion = 0.77; // Use 77% of available space
+      let calculatedWidth = maxWidthWithGap * widthProportion;
+
+      // Apply min/max limits
+      const minWidth = 2;
+      const maxWidth = Math.min(150, maxWidthWithGap); // Never exceed available space
+
+      return Math.min(Math.max(calculatedWidth, minWidth), maxWidth);
+    };
+
+    const initialCandleWidth = calculateCandleWidth();
+
+    // Add candlesticks to chart area with calculated width
     candlestickGroup
       .selectAll("g.candlestick")
       .data(data)
@@ -154,24 +189,25 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
       .attr("class", "candlestick")
       .each(function (d) {
         const g = d3.select(this);
-        const className =
-          d.close > d.open ? "candlestick-up" : "candlestick-down";
+        const className = d.close > d.open ? "candlestick-up" : "candlestick-down";
+        const x = xScale(new Date(d.timestamp));
 
         // Draw the wick
         g.append("line")
           .attr("class", className)
-          .attr("x1", () => xScale(new Date(d.timestamp)))
-          .attr("x2", () => xScale(new Date(d.timestamp)))
-          .attr("y1", () => yScale(d.high))
-          .attr("y2", () => yScale(d.low));
+          .attr("x1", x)
+          .attr("x2", x)
+          .attr("y1", yScale(d.high))
+          .attr("y2", yScale(d.low))
+          .attr("stroke-width", 1);
 
-        // Draw the body
+        // Draw the body with calculated width
         g.append("rect")
           .attr("class", className)
-          .attr("x", () => xScale(new Date(d.timestamp)) - 3)
-          .attr("y", () => yScale(Math.max(d.open, d.close)))
-          .attr("width", 6)
-          .attr("height", () => Math.abs(yScale(d.open) - yScale(d.close)));
+          .attr("x", x - initialCandleWidth / 2)
+          .attr("y", yScale(Math.max(d.open, d.close)))
+          .attr("width", initialCandleWidth)
+          .attr("height", Math.abs(yScale(d.open) - yScale(d.close)));
       });
 
     // Create axes groups with backgrounds
@@ -311,21 +347,32 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
             Math.max(...data.map((d) => d.timestamp))
           );
 
-          // Calculate scale change with reduced sensitivity
-          const scaleDelta = 1 + event.dx * 0.001;
+          // Increased sensitivity for more aggressive scaling
+          const sensitivity =
+            timeframeConfig.resolution === "1" ? 0.004 : 0.006; // Doubled sensitivity
+          const scaleDelta = 1 + event.dx * sensitivity;
 
           // Calculate new range
           const timeRange =
             currentDomain[1].getTime() - currentDomain[0].getTime();
           const newTimeRange = timeRange * scaleDelta;
 
-          // Apply scaling limits
+          // Greatly relaxed scaling limits
           const msPerDay = 24 * 60 * 60 * 1000;
           const daysVisible = newTimeRange / msPerDay;
-          const minDays = 5;
-          const maxDays = 200;
+          const minDays = timeframeConfig.resolution === "1" ? 0.01 : 0.02; // Allow much more zoom in
+          const maxDays = timeframeConfig.resolution === "1" ? 300 : 3650; // Allow much more zoom out
 
           if (daysVisible < minDays || daysVisible > maxDays) {
+            return;
+          }
+
+          // Reduced minimum candle spacing for extreme zoom
+          const minCandleSpacing = 0.5; // Reduced from 1 to 0.5
+          const candlesInView = data.length;
+          const pixelsPerCandle = width / (candlesInView * scaleDelta);
+
+          if (pixelsPerCandle < minCandleSpacing) {
             return;
           }
 
@@ -335,37 +382,56 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
             latestDate,
           ]);
 
-          // Update candlesticks with improved positioning and visibility check
+          // Calculate candle width based on actual pixel distance with better spacing
+          const calculateCandleWidth = () => {
+            const visibleCandles = data.filter((d) => {
+              const x = xScale(new Date(d.timestamp));
+              return x >= 0 && x <= width;
+            });
+
+            if (visibleCandles.length < 2) return 2;
+
+            // Get pixel distance between two consecutive candles
+            const firstCandle = visibleCandles[0];
+            const secondCandle = visibleCandles[1];
+            const x1 = xScale(new Date(firstCandle.timestamp));
+            const x2 = xScale(new Date(secondCandle.timestamp));
+            const pixelDistance = Math.abs(x2 - x1);
+
+            // Ensure minimum gap between candles
+            const minGap = 1; // Minimum 1px gap
+            const maxWidthWithGap = pixelDistance - minGap;
+
+            // Calculate base width as a proportion of available space
+            const widthProportion = 0.77; // Use 70% of available space
+            let calculatedWidth = maxWidthWithGap * widthProportion;
+
+            // Apply min/max limits
+            const minWidth = 2;
+            const maxWidth = Math.min(150, maxWidthWithGap); // Never exceed available space
+
+            return Math.min(Math.max(calculatedWidth, minWidth), maxWidth);
+          };
+
+          const candleWidth = calculateCandleWidth();
+
+          // Update candlesticks with new width
           candlestickGroup.selectAll("g.candlestick").each(function (d: any) {
             const g = d3.select(this);
             const timestamp = new Date(d.timestamp);
             const x = xScale(timestamp);
 
-            // Calculate spacing based on current scale
-            const nextTimestamp = new Date(
-              timestamp.getTime() + 24 * 60 * 60 * 1000
-            );
-            const nextX = xScale(nextTimestamp);
-            const availableSpace = Math.abs(nextX - x);
-
-            // Adjust candle width with better proportions
-            const candleWidth = Math.min(
-              Math.max(availableSpace * 0.8, 3), // 80% of available space, min 3px
-              25 // max width 25px
-            );
-
-            // Extended visibility check range (increased buffer zone)
             if (x >= -width * 2 && x <= width * 3) {
-              // Much larger visibility range
-              g.style("display", "block");
+              g.style("display", "block")
+                .transition()
+                .duration(50)
+                .ease(d3.easeLinear);
 
-              // Update wick with fixed width
               g.select("line")
                 .attr("x1", x)
                 .attr("x2", x)
                 .attr("stroke-width", 1);
 
-              // Update body with centered position
               g.select("rect")
                 .attr("x", x - candleWidth / 2)
                 .attr("width", candleWidth);
@@ -374,46 +440,21 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
             }
           });
 
-          // Update x-axis with proper date formatting in drag handler
+          // Update x-axis with timeframe-specific formatting
           xAxisElement.call(
             d3
               .axisBottom(xScale)
               .ticks(width / 80)
-              .tickFormat((d: Date) => {
-                const domain = xScale.domain();
-                const timeRange = domain[1].getTime() - domain[0].getTime();
-                const daysVisible = timeRange / (24 * 60 * 60 * 1000);
-
-                if (daysVisible > 365) {
-                  return d3.timeFormat("%Y")(d);
-                } else if (daysVisible > 60) {
-                  return d3.timeFormat("%b %Y")(d);
-                } else if (daysVisible > 7) {
-                  return d3.timeFormat("%b %d")(d);
-                } else {
-                  return d3.timeFormat("%b %d %H:%M")(d);
-                }
-              })
+              .tickFormat((d: any) => timeframeConfig.tickFormat(d.getTime()))
               .tickSizeOuter(0)
           );
 
           // Update grid
-          gridContainer.selectAll(".x-grid").call(
-            d3
-              .axisBottom(xScale)
-              .tickSize(-height)
-              .tickFormat(() => "")
-          );
-
-          gridContainer.selectAll(".y-grid").call(
-            d3
-              .axisLeft(yScale)
-              .tickSize(-width * 3)
-              .tickFormat(() => "")
-          );
+          updateGrid();
         })
       );
 
+    // Update y-axis interaction handler for matching scale range
     yAxisGroup
       .append("rect")
       .attr("class", "y-axis-interaction")
@@ -427,35 +468,33 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
         d3.drag<SVGRectElement, unknown>().on("drag", (event) => {
           if (drawingMode) return;
 
-          // Get current domain
+          // Get current domain and range
           const domain = yScale.domain();
           const domainRange = domain[1] - domain[0];
-
-          // Calculate scale change with reversed direction
-          const scaleDelta = 1 + event.dy * 0.002;
-
-          // Calculate new range while keeping center fixed
-          const newRange = domainRange * scaleDelta;
           const centerPrice = (domain[0] + domain[1]) / 2;
+
+          // Increased sensitivity for y-axis
+          const scaleDelta = 1 + event.dy * 0.004; // Doubled sensitivity
+
+          // Calculate new range
+          const newRange = domainRange * scaleDelta;
           const halfNewRange = newRange / 2;
 
-          // Apply minimum and maximum scaling limits
-          const pricePerPixel = newRange / height;
-          const minPricePerPixel = 0.1; // Minimum price variation per pixel
-          const maxPricePerPixel = 100; // Maximum price variation per pixel
+          // Calculate new domain keeping center fixed
+          const newMin = centerPrice - halfNewRange;
+          const newMax = centerPrice + halfNewRange;
 
-          if (
-            pricePerPixel < minPricePerPixel || // Too expanded
-            pricePerPixel > maxPricePerPixel // Too compressed
-          ) {
+          // Greatly relaxed scaling limits
+          const originalRange = originalYDomain[1] - originalYDomain[0];
+          const minRange = originalRange * 0.01; // 1% of original range (was 10%)
+          const maxRange = originalRange * 100; // 10000% of original range (was 1000%)
+
+          if (newRange < minRange || newRange > maxRange) {
             return;
           }
 
           // Update scale with new domain
-          yScale.domain([
-            centerPrice - halfNewRange,
-            centerPrice + halfNewRange,
-          ]);
+          yScale.domain([newMin, newMax]);
 
           // Update candlesticks
           candlestickGroup.selectAll("g.candlestick").each(function (d: any) {
@@ -473,7 +512,7 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
           });
 
           // Update y-axis
-          yAxisElement.call(d3.axisRight(yScale) as any);
+          yAxisElement.call(d3.axisRight(yScale));
 
           // Update grid
           updateGrid();
@@ -488,7 +527,7 @@ const Chart: React.FC<ChartProps> = ({ data }) => {
         d3.zoomIdentity.translate(margin.left, margin.top)
       )
       .on("dblclick.zoom", null);
-  }, [data, drawingMode]);
+  }, [data, drawingMode, timeframeConfig]);
 
   useEffect(() => {
     initializeChart();
