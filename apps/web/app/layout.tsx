@@ -4,6 +4,7 @@ import "./globals.scss";
 import { Provider } from "../src/components/providers";
 import Header from "../src/modules/Header/header";
 import Sidebar from "../src/modules/Sidebar/sidebar";
+import NoSsrWrapper from "./no-ssr-wrapper";
 
 const oleoScript = Oleo_Script({
   weight: ["400", "700"],
@@ -34,19 +35,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
         className={`${oleoScript.variable} ${lato.variable} ${sura.variable} font-sans font-lato text-foreground animated-bg-dark`}
       >
-        <Provider theme={{ attribute: "class" }}>
-          <div className="flex h-screen">
-            <Sidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <Header />
-              <main className="flex-1 overflow-y-auto p-4">{children}</main>
+        <NoSsrWrapper>
+          <Provider theme={{ attribute: "class" }}>
+            <div className="flex h-screen">
+              <Sidebar />
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <Header />
+                <main className="flex-1 overflow-y-auto p-4">{children}</main>
+              </div>
             </div>
-          </div>
-        </Provider>
+          </Provider>
+        </NoSsrWrapper>
       </body>
     </html>
   );

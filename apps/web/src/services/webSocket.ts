@@ -10,7 +10,7 @@ const INITIAL_RECONNECT_DELAY = 1000;
 const dispatch = store.dispatch;
 
 function connect() {
-  socket = new WebSocket("ws://localhost:2300");
+  socket = new WebSocket("ws://127.0.0.1:2300");
 
   socket.onopen = () => {
     console.log("WebSocket Connected");

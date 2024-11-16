@@ -13,7 +13,7 @@ export const fyersDataSocketService = {
     socketInstance.on("connect", () => {
       socketInstance.mode(socketInstance.LiteMode);
       console.log(socketInstance.isConnected());
-      socketInstance.subscribe(["NSE:IDEA-EQ", "NSE:SBIN-EQ"]);
+      socketInstance.subscribe(["NSE:NIFTY50-INDEX", "NSE:SBIN-EQ"]);
     });
 
     socketInstance.on("message", (message: any) => {

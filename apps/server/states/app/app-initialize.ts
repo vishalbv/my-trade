@@ -151,6 +151,7 @@ const initializeStateFromDB = async () => {
   return Promise.all([
     ...Object.values(_allStates).map(async (i) => {
       const data = await statesDbService.getStateById(i.id);
+
       i.setState(data, true);
     }),
   ]);

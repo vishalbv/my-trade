@@ -11,6 +11,7 @@ import statesDbService from "../services/statesDb";
 export const checkLoginSession = async (callback: () => void) => {
   try {
     const appState = await statesDbService.getStateById("app");
+
     if (appState) {
       const { lastLoginDate, refreshTokenExpiry } = appState;
       if (refreshTokenExpiry) {

@@ -17,16 +17,16 @@ export function RightDrawer() {
     (state: RootState) => state.drawer.activeDrawer === "right"
   );
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        dispatch(toggleDrawer("right"));
-      }
-    };
+  // useEffect(() => {
+  //   const handleKeyDown = (event: KeyboardEvent) => {
+  //     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+  //       dispatch(toggleDrawer("right"));
+  //     }
+  //   };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  //   window.addEventListener("keydown", handleKeyDown);
+  //   return () => window.removeEventListener("keydown", handleKeyDown);
+  // }, []);
 
   return (
     <Drawer

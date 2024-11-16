@@ -1,4 +1,3 @@
-import express from "express";
 import { sendResponse } from "@repo/utils/server/helpers";
 import dbService from "../services/db";
 import moment from "moment";
@@ -7,98 +6,111 @@ interface Task {
   id: string;
   title: string;
   description?: string;
+  completed: boolean;
   createdAt: number;
   updatedAt: number;
-  completed: boolean;
   priority: boolean;
 }
 
-export const declareTaskApis = (app: express.Application) => {
-  // Create new task
-  app.post("/api/tasks", async function (req, res) {
+interface RequestParams {
+  id?: string;
+}
+
+interface RequestBody {
+  title?: string;
+  description?: string;
+  completed?: boolean;
+  priority?: boolean;
+}
+
+export const declareTaskApis = () => ({
+  "POST /api/tasks": async ({ body }: { body: RequestBody }) => {
     try {
       const task: Task = {
         id: Date.now().toString(),
-        title: req.body.title,
-        description: req.body.description || "",
+        title: body.title || "",
+        description: body.description || "",
+        completed: false,
         createdAt: moment().valueOf(),
         updatedAt: moment().valueOf(),
-        priority: req.body.priority || false,
-        completed: false,
+        priority: body.priority || false,
       };
 
       await dbService.createDocument("tasks", task);
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Task created successfully",
         data: task,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to create task",
-      });
+      };
     }
-  });
+  },
 
-  // Get all tasks
-  app.get("/api/tasks", async function (req, res) {
+  "GET /api/tasks": async () => {
     try {
       const tasks = await dbService.getDocuments("tasks");
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Tasks retrieved successfully",
         data: tasks,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to fetch tasks",
-      });
+      };
     }
-  });
+  },
 
-  // Update task
-  app.put("/api/tasks/:id", async function (req, res) {
+  "PUT /api/tasks/:id": async ({
+    body,
+    params,
+  }: {
+    body: RequestBody;
+    params: RequestParams;
+  }) => {
     try {
-      const taskId = req.params.id;
+      const taskId = params.id;
       const updatedTask = {
-        ...req.body,
+        ...body,
         updatedAt: moment().valueOf(),
       };
 
-      await dbService.updateDocument("tasks", taskId, updatedTask);
-      sendResponse(res, {
+      await dbService.updateDocument("tasks", taskId!, updatedTask);
+      return {
         status: 200,
         message: "Task updated successfully",
         data: updatedTask,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to update task",
-      });
+      };
     }
-  });
+  },
 
-  // Delete task
-  app.delete("/api/tasks/:id", async function (req, res) {
+  "DELETE /api/tasks/:id": async ({ params }: { params: RequestParams }) => {
     try {
-      const taskId = req.params.id;
-      await dbService.deleteDocument("tasks", taskId);
-      sendResponse(res, {
+      const taskId = params.id;
+      await dbService.deleteDocument("tasks", taskId!);
+      return {
         status: 200,
         message: "Task deleted successfully",
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to delete task",
-      });
+      };
     }
-  });
-};
+  },
+});

@@ -1,24 +1,8 @@
-import express from "express";
-import http from "http";
-import cors from "cors";
 import { initializeWebSocket } from "./services/webSocket";
-
 import { startDbService } from "./services/db";
 import { declareApis } from "./apis";
 import { checkLoginSession } from "./utils/helpers";
 import initializeApp from "./states/app/app-initialize";
-
-const app = express();
-const server = http.createServer(app);
-
-// Add CORS middleware
-app.use(cors());
-// app.use(cors({
-//   origin: 'http://example.com',
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
-app.use(express.json());
 
 try {
   await startDbService();
@@ -48,22 +32,9 @@ try {
   }
 }
 
-initializeWebSocket(server);
-declareApis(app);
+// Initialize WebSocket server with HTTP handling
+const server = initializeWebSocket();
 console.log("checkLoginSession");
 checkLoginSession(initializeApp);
 
-const port = process.env.PORT || 2300;
-server.listen(
-  {
-    port: port,
-    host: "127.0.0.1",
-  },
-  () => {
-    const addr = server.address();
-    console.log(
-      `Server listening at`,
-      typeof addr === "string" ? addr : `http://${addr?.address}:${addr?.port}`
-    );
-  }
-);
+console.log(`Server listening on port ${server.port}`);

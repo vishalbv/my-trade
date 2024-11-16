@@ -96,7 +96,6 @@ export default Clock;
 const getTimeAndDate = () => {
   let date = moment().format("DD/MM/yyyy:dddd:hh:mm:ss:a");
   let arr = date.split(":");
-  console.log(arr);
 
   return {
     date: arr[0] || "",

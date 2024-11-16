@@ -1,4 +1,3 @@
-import express from "express";
 import { sendResponse } from "@repo/utils/server/helpers";
 import dbService from "../services/db";
 import moment from "moment";
@@ -12,91 +11,93 @@ interface Note {
   priority: boolean;
 }
 
-export const declareNoteApis = (app: express.Application) => {
-  // Create new note
-  app.post("/api/notes", async function (req, res) {
+export const declareNoteApis = () => ({
+  "POST /api/notes": async ({ body }: { body: Note }) => {
     try {
       const note: Note = {
         id: Date.now().toString(),
-        title: req.body.title,
-        description: req.body.description || "",
+        title: body.title,
+        description: body.description || "",
         createdAt: moment().valueOf(),
         updatedAt: moment().valueOf(),
-        priority: req.body.priority || false,
+        priority: body.priority || false,
       };
 
       await dbService.createDocument("notes", note);
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Note created successfully",
         data: note,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to create note",
-      });
+      };
     }
-  });
+  },
 
-  // Get all notes
-  app.get("/api/notes", async function (req, res) {
+  "GET /api/notes": async () => {
     try {
       const notes = await dbService.getDocuments("notes");
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Notes retrieved successfully",
         data: notes,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to fetch notes",
-      });
+      };
     }
-  });
+  },
 
-  // Update note
-  app.put("/api/notes/:id", async function (req, res) {
+  "PUT /api/notes/:id": async ({
+    body,
+    params,
+  }: {
+    body: Note;
+    params: { id: string };
+  }) => {
     try {
-      const noteId = req.params.id;
+      const noteId = params.id;
       const updatedNote = {
-        ...req.body,
+        ...body,
         updatedAt: moment().valueOf(),
       };
 
       await dbService.updateDocument("notes", noteId, updatedNote);
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Note updated successfully",
         data: updatedNote,
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to update note",
-      });
+      };
     }
-  });
+  },
 
-  // Delete note
-  app.delete("/api/notes/:id", async function (req, res) {
+  "DELETE /api/notes/:id": async ({ params }: { params: { id: string } }) => {
     try {
-      const noteId = req.params.id;
+      const noteId = params.id;
       await dbService.deleteDocument("notes", noteId);
-      sendResponse(res, {
+      return {
         status: 200,
         message: "Note deleted successfully",
-      });
+      };
     } catch (error) {
-      sendResponse(res, {
+      return {
         status: 500,
         message:
           error instanceof Error ? error.message : "Failed to delete note",
-      });
+      };
     }
-  });
-};
+  },
+});

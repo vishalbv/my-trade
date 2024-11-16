@@ -45,7 +45,7 @@ function Initialize() {
 
   useEffect(() => {
     if (access_token) {
-      fyersDataSocketService.connect(app_id + access_token);
+      fyersDataSocketService.connect(app_id + ":" + access_token);
     }
   }, [access_token, app_id]);
 

@@ -8,8 +8,8 @@ import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 
 export default function Login() {
-  const { loggedIn } = useSelector(({ state }: RootState) => state.app || {});
-  console.log("state2222222", loggedIn);
+  const { loggedIn } = useSelector(({ states }: RootState) => states.app || {});
+
   const router = useRouter();
   const loginBorkers = async () => {
     var url = new URL(window.location.href);
