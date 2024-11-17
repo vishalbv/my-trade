@@ -236,3 +236,29 @@
   stroke: #363c4e;
   stroke-opacity: 0.1;
 }
+
+.crosshair {
+  pointer-events: none;
+}
+
+.crosshair-line {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1px;
+  stroke-dasharray: 3, 3;
+}
+
+.crosshair-label {
+  fill: #d1d4dc;
+  font-size: 12px;
+}
+
+.crosshair-label-background {
+  fill: #2a2e39;
+  stroke: #363c4e;
+  stroke-width: 1px;
+}
+
+.highlighted-tick text {
+  fill: #ffffff !important;
+  font-weight: bold;
+}

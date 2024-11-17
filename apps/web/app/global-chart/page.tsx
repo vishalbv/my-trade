@@ -3,16 +3,11 @@
 import Chart from "../../src/components/Chart/Chart";
 import { useEffect, useState } from "react";
 import { getHistory } from "../../src/store/actions/appActions";
-import moment from "moment";
-
-interface OHLCData {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  index?: number; // Add index for continuous scaling
-}
+import {
+  processMarketData,
+  createContinuousData,
+} from "../../src/components/Chart/utils/dataTransformations";
+import { OHLCData } from "../../src/components/Chart/types";
 
 interface TimeframeConfig {
   resolution: string;
@@ -74,7 +69,7 @@ export default function GlobalChart() {
       try {
         const response = await getHistory({
           symbol: "NSE:NIFTY50-INDEX",
-          resolution: "1",
+          resolution: timeframe,
           date_format: 0,
           range_from: Math.floor(Date.now() / 1000 - 10000 * 60).toString(),
           range_to: Math.floor(Date.now() / 1000).toString(),
@@ -82,42 +77,10 @@ export default function GlobalChart() {
           broker: "fyers",
         });
 
-        if (response?.candles && Array.isArray(response?.candles)) {
-          // Transform data first
-          const transformedData: OHLCData[] = response.candles.map(
-            (candle: any[], index: number) => ({
-              timestamp: candle[0] * 1000,
-              open: candle[1],
-              high: candle[2],
-              low: candle[3],
-              close: candle[4],
-              index,
-            })
-          );
+        if (response?.candles && Array.isArray(response.candles)) {
+          const processedData = processMarketData(response.candles);
 
-          // Sort by timestamp first
-          const sortedData = transformedData.sort(
-            (a, b) => a.timestamp - b.timestamp
-          );
-
-          // Filter market hours data but preserve continuous indexing
-          let continuousIndex = 0;
-          const filteredData = sortedData.filter((candle) => {
-            const date = new Date(candle.timestamp);
-            const hours = date.getHours();
-            const minutes = date.getMinutes();
-            const time = hours * 60 + minutes;
-            const isMarketHours = time >= 9 * 15 && time <= 15 * 60 + 30;
-
-            if (isMarketHours) {
-              // Update the index to be continuous
-              candle.index = continuousIndex++;
-              return true;
-            }
-            return false;
-          });
-
-          // Adjust timestamps to be continuous (remove gaps)
+          // Calculate time interval based on timeframe
           const timeInterval =
             timeframe === "1"
               ? 60000 // 1 minute
@@ -127,12 +90,10 @@ export default function GlobalChart() {
                   ? 900000 // 15 minutes
                   : 86400000; // 1 day
 
-          const continuousData = filteredData.map((candle, idx) => ({
-            ...candle,
-            timestamp: filteredData[0].timestamp + idx * timeInterval, // Create continuous timestamps
-            index: idx,
-          }));
-
+          const continuousData = createContinuousData(
+            processedData,
+            timeInterval
+          );
           setChartData(continuousData);
         }
       } catch (error) {

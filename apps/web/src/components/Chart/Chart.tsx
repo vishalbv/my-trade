@@ -30,6 +30,14 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
   const [drawingTools, setDrawingTools] = useState<DrawingTools | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startPoint, setStartPoint] = useState<[number, number] | null>(null);
+  const [mousePosition, setMousePosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Add refs to store current scales
+  const xScaleRef = useRef<d3.ScaleTime<number, number>>();
+  const yScaleRef = useRef<d3.ScaleLinear<number, number>>();
 
   const initializeChart = useCallback(() => {
     if (!svgRef.current || !data.length) return;
@@ -43,19 +51,23 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
 
     // Calculate initial view based on desired candle width with right padding
     const calculateInitialView = () => {
-      const desiredCandleWidth = 10; // Target width for each candle
-      const desiredGap = 2; // Desired gap between candles
+      if (!data.length) {
+        return {
+          start: new Date(),
+          end: new Date(),
+          rightPadding: 0,
+        };
+      }
+
+      const desiredCandleWidth = 10;
+      const desiredGap = 2;
       const totalWidthPerCandle = desiredCandleWidth + desiredGap;
 
-      // Calculate how many candles we can show in the available width
-      const rightPadding = width * 0.15; // 15% of width for right padding
+      const rightPadding = width * 0.15;
       const availableWidth = width - rightPadding;
       const visibleCandles = Math.floor(availableWidth / totalWidthPerCandle);
 
-      // Get the latest timestamp
       const latestTimestamp = Math.max(...data.map((d) => d.timestamp));
-
-      // Calculate start time to show the desired number of candles
       const startTime = new Date(latestTimestamp - visibleCandles * 60 * 1000);
 
       return {
@@ -268,23 +280,22 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
     const xAxis = d3
       .axisBottom(xScale)
       .ticks(width / 80)
-      .tickFormat((d: Date) => {
-        // Format date based on visible range
+      .tickFormat((d: any) => {
+        const date = new Date(d);
         const domain = xScale.domain();
-        const timeRange = domain[1].getTime() - domain[0].getTime();
+        const timeRange = domain[1]?.getTime() - domain[0]?.getTime();
         const daysVisible = timeRange / (24 * 60 * 60 * 1000);
 
         if (daysVisible > 365) {
-          return d3.timeFormat("%Y")(d); // Show year only
+          return d3.timeFormat("%Y")(date);
         } else if (daysVisible > 60) {
-          return d3.timeFormat("%b %Y")(d); // Show month and year
+          return d3.timeFormat("%b %Y")(date);
         } else if (daysVisible > 7) {
-          return d3.timeFormat("%b %d")(d); // Show month and day
+          return d3.timeFormat("%b %d")(date);
         } else {
-          return d3.timeFormat("%b %d %H:%M")(d); // Show full date and time
+          return d3.timeFormat("%b %d %H:%M")(date);
         }
-      })
-      .tickSizeOuter(0);
+      });
 
     const yAxis = d3
       .axisRight(yScale)
@@ -319,7 +330,7 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
       .attr("class", "y-axis")
       .call(yAxis);
 
-    // Update zoom behavior
+    // Update zoom behavior to include mouse tracking
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 1])
@@ -334,6 +345,24 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
       .on("zoom", (event) => {
         if (drawingMode) return;
 
+        // Get mouse position during zoom/pan from the source event
+        if (event.sourceEvent) {
+          const [mouseX, mouseY] = d3.pointer(event.sourceEvent, svg.node());
+
+          // Update mouse position if within chart bounds
+          if (
+            mouseX >= margin.left &&
+            mouseX <= width + margin.left &&
+            mouseY >= margin.top &&
+            mouseY <= height + margin.top
+          ) {
+            setMousePosition({
+              x: mouseX - margin.left,
+              y: mouseY - margin.top,
+            });
+          }
+        }
+
         const transform = event.transform;
 
         // Update chart area and grid container
@@ -346,24 +375,31 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
         // Calculate visible range using the latest data point as reference
         const latestDate = new Date(Math.max(...data.map((d) => d.timestamp)));
         const xRange = [0, width].map((d) => transform.invertX(d));
-        const newXScale = xScale.copy();
+
+        // Update x scale
+        const updatedXScale = xScale.copy();
         const timeRange =
           xScale.invert(xRange[1]).getTime() -
           xScale.invert(xRange[0]).getTime();
 
-        newXScale.domain([
+        updatedXScale.domain([
           new Date(latestDate.getTime() - timeRange),
           latestDate,
         ]);
 
+        // Update y scale
         const yRange = [height, 0].map((d) => transform.invertY(d));
-        const newYScale = yScale
+        const updatedYScale = yScale
           .copy()
           .domain(yRange.map((d) => yScale.invert(d)));
 
+        // Update scale refs
+        xScaleRef.current = updatedXScale;
+        yScaleRef.current = updatedYScale;
+
         // Update axes
-        xAxisElement.call(d3.axisBottom(newXScale) as any);
-        yAxisElement.call(d3.axisRight(newYScale) as any);
+        xAxisElement.call(d3.axisBottom(updatedXScale) as any);
+        yAxisElement.call(d3.axisRight(updatedYScale) as any);
 
         // Update grid
         updateGrid();
@@ -623,6 +659,10 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
 
     // Apply margin transform to mainGroup
     mainGroup.attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Store scales in refs
+    xScaleRef.current = xScale;
+    yScaleRef.current = yScale;
   }, [data, drawingMode, timeframeConfig]);
 
   useEffect(() => {
@@ -651,24 +691,33 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isDragging || !startPoint || !drawingTools || !drawingMode) return;
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      if (!svgRef.current || drawingMode) return;
 
-      const svg = svgRef.current;
-      if (!svg) return;
+      const svg = d3.select(svgRef.current);
+      const margin = { top: 20, right: 50, bottom: 30, left: 50 };
+      const width = svgRef.current.clientWidth - margin.left - margin.right;
+      const height = svgRef.current.clientHeight - margin.top - margin.bottom;
 
-      const currentPoint = d3.pointer(e.nativeEvent, svg);
+      // Get mouse position relative to SVG
+      const [mouseX, mouseY] = d3.pointer(event.nativeEvent, svg.node());
 
-      // Clear previous temporary drawing
-      d3.select(svg).selectAll(".temp-drawing").remove();
-
-      if (drawingMode === "line") {
-        drawingTools.drawLine(startPoint, currentPoint, true);
-      } else if (drawingMode === "fibonacci") {
-        drawingTools.drawFibonacci(startPoint, currentPoint, true);
+      // Update mouse position if within chart bounds
+      if (
+        mouseX >= margin.left &&
+        mouseX <= width + margin.left &&
+        mouseY >= margin.top &&
+        mouseY <= height + margin.top
+      ) {
+        setMousePosition({
+          x: mouseX - margin.left,
+          y: mouseY - margin.top,
+        });
+      } else {
+        setMousePosition(null);
       }
     },
-    [isDragging, startPoint, drawingTools, drawingMode]
+    [drawingMode]
   );
 
   const handleMouseUp = useCallback(
@@ -696,6 +745,163 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
     [isDragging, startPoint, drawingTools, drawingMode]
   );
 
+  const drawCrosshair = useCallback(
+    (
+      svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
+      mouseX: number,
+      mouseY: number,
+      xScale: d3.ScaleTime<number, number>,
+      yScale: d3.ScaleLinear<number, number>,
+      width: number,
+      height: number,
+      margin: { top: number; right: number; bottom: number; left: number }
+    ) => {
+      // Remove existing crosshair
+      svg.selectAll(".crosshair").remove();
+
+      // Get the current transform
+      const transform = d3.zoomTransform(svg.node() as Element);
+
+      // Create crosshair group
+      const crosshair = svg
+        .append("g")
+        .attr("class", "crosshair")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // Use mouseX and mouseY directly for the crosshair lines
+      // since these are already in the correct coordinate space
+      crosshair
+        .append("line")
+        .attr("class", "crosshair-line")
+        .attr("x1", mouseX)
+        .attr("x2", mouseX)
+        .attr("y1", 0)
+        .attr("y2", height);
+
+      crosshair
+        .append("line")
+        .attr("class", "crosshair-line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", mouseY)
+        .attr("y2", mouseY);
+
+      // Calculate values using the transformed coordinates
+      const yValue = yScale.invert(mouseY);
+      const xValue = xScale.invert(mouseX);
+
+      // Y-axis label
+      const yLabel = crosshair
+        .append("g")
+        .attr("class", "crosshair-label-group")
+        .attr("transform", `translate(${width},${mouseY})`);
+
+      yLabel
+        .append("rect")
+        .attr("class", "crosshair-label-background")
+        .attr("x", 2)
+        .attr("y", -10)
+        .attr("width", 65)
+        .attr("height", 20);
+
+      yLabel
+        .append("text")
+        .attr("class", "crosshair-label")
+        .attr("x", 6)
+        .attr("y", 4)
+        .text(yValue.toFixed(2));
+
+      // X-axis label
+      const xLabel = crosshair
+        .append("g")
+        .attr("class", "crosshair-label-group")
+        .attr("transform", `translate(${mouseX},${height})`);
+
+      const formattedTime = timeframeConfig.tickFormat(xValue.getTime());
+
+      xLabel
+        .append("rect")
+        .attr("class", "crosshair-label-background")
+        .attr("x", -50)
+        .attr("y", 2)
+        .attr("width", 100)
+        .attr("height", 20);
+
+      xLabel
+        .append("text")
+        .attr("class", "crosshair-label")
+        .attr("x", -45)
+        .attr("y", 16)
+        .text(formattedTime);
+
+      // Highlight nearest y-axis tick
+      svg.selectAll(".y-axis text").attr("class", function () {
+        const tick = d3.select(this);
+        const tickValue = parseFloat(tick.text());
+        const tickY = yScale(tickValue);
+        return Math.abs(tickY - mouseY) < 10 ? "highlighted-tick" : "";
+      });
+
+      // Highlight nearest x-axis tick
+      svg.selectAll(".x-axis text").attr("class", function () {
+        const tick = d3.select(this);
+        const tickValue = tick.datum() as Date;
+        const tickX = xScale(tickValue);
+        return Math.abs(tickX - mouseX) < 30 ? "highlighted-tick" : "";
+      });
+    },
+    [timeframeConfig]
+  );
+
+  // Add mouse leave handler
+  const handleMouseLeave = useCallback(() => {
+    setMousePosition(null);
+    if (svgRef.current) {
+      const svg = d3.select(svgRef.current);
+      svg.selectAll(".crosshair").remove();
+      svg.selectAll(".highlighted-tick").classed("highlighted-tick", false);
+    }
+  }, []);
+
+  // Update useEffect to include crosshair handling
+  useEffect(() => {
+    if (
+      !svgRef.current ||
+      !data.length ||
+      !mousePosition ||
+      !xScaleRef.current ||
+      !yScaleRef.current
+    )
+      return;
+
+    const svg = d3.select(svgRef.current);
+    const margin = { top: 20, right: 50, bottom: 30, left: 50 };
+    const width = svgRef.current.clientWidth - margin.left - margin.right;
+    const height = svgRef.current.clientHeight - margin.top - margin.bottom;
+
+    // Get the current transform
+    const transform = d3.zoomTransform(svg.node() as Element);
+
+    // Use the current scales from refs
+    const xScale = xScaleRef.current;
+    const yScale = yScaleRef.current;
+
+    // Calculate the transformed mouse position
+    const transformedX = transform.invertX(mousePosition.x);
+    const transformedY = transform.invertY(mousePosition.y);
+
+    drawCrosshair(
+      svg,
+      mousePosition.x,
+      mousePosition.y,
+      xScale,
+      yScale,
+      width,
+      height,
+      margin
+    );
+  }, [data, mousePosition, drawCrosshair]);
+
   return (
     <div className="chart-container">
       <div className="toolbar">
@@ -716,13 +922,10 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
       <svg
         ref={svgRef}
         className="chart"
-        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => {
-          setIsDragging(false);
-          setStartPoint(null);
-        }}
       />
     </div>
   );
