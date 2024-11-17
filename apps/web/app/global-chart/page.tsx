@@ -3,6 +3,7 @@
 import Chart from "../../src/components/Chart/Chart";
 import { useEffect, useState } from "react";
 import { getHistory } from "../../src/store/actions/appActions";
+import moment from "moment";
 
 interface OHLCData {
   timestamp: number;
@@ -73,9 +74,11 @@ export default function GlobalChart() {
       try {
         const response = await getHistory({
           symbol: "NSE:NIFTY50-INDEX",
-          resolution: timeframeConfigs[timeframe].resolution,
-          range_from: "2024-01-01",
-          range_to: "2024-01-02",
+          resolution: "1",
+          date_format: 0,
+          range_from: Math.floor(Date.now() / 1000 - 10000 * 60).toString(),
+          range_to: Math.floor(Date.now() / 1000).toString(),
+          cont_flag: 1,
           broker: "fyers",
         });
 

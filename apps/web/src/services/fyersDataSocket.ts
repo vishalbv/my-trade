@@ -1,14 +1,28 @@
 // @ts-ignore
 import { fyersDataSocket } from "fyers-web-sdk-v3";
+import { sendMessage } from "./webSocket";
 
 let socketInstance: any = null;
 
 export const fyersDataSocketService = {
   connect: (accessToken: string) => {
-    socketInstance = fyersDataSocket.getInstance(
-      accessToken,
-      "path/where/logs/to/be/saved"
-    );
+    try {
+      socketInstance = fyersDataSocket.getInstance(
+        accessToken,
+        "path/where/logs/to/be/saved"
+      );
+    } catch (error: any) {
+      // Check for token expiration error
+      if (error.message?.includes("expired token")) {
+        sendMessage("fyers", {
+          access_token: null,
+        });
+        // Redirect to home page
+        window.location.href = "/"; // Using window.location for full page refresh
+        // OR use router.push('/') if you're inside a component
+      }
+      throw error; // Re-throw the error for other error types
+    }
 
     socketInstance.on("connect", () => {
       socketInstance.mode(socketInstance.LiteMode);

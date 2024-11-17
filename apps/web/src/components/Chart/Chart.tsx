@@ -41,37 +41,79 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
     // Clear existing content
     d3.select(svgRef.current).selectAll("*").remove();
 
-    // Create scales with proper initial view
+    // Calculate initial view based on desired candle width with right padding
+    const calculateInitialView = () => {
+      const desiredCandleWidth = 10; // Target width for each candle
+      const desiredGap = 2; // Desired gap between candles
+      const totalWidthPerCandle = desiredCandleWidth + desiredGap;
+
+      // Calculate how many candles we can show in the available width
+      const rightPadding = width * 0.15; // 15% of width for right padding
+      const availableWidth = width - rightPadding;
+      const visibleCandles = Math.floor(availableWidth / totalWidthPerCandle);
+
+      // Get the latest timestamp
+      const latestTimestamp = Math.max(...data.map((d) => d.timestamp));
+
+      // Calculate start time to show the desired number of candles
+      const startTime = new Date(latestTimestamp - visibleCandles * 60 * 1000);
+
+      return {
+        start: startTime,
+        end: new Date(latestTimestamp),
+        rightPadding,
+      };
+    };
+
+    // Store initial view state
+    const initialView = calculateInitialView();
     const xScale = d3
       .scaleTime()
-      .domain(d3.extent(data, (d) => new Date(d.timestamp)) as [Date, Date])
-      .range([0, width]);
+      .domain([initialView.start, initialView.end])
+      .range([0, width]); // Use full width
 
-    // Get the actual data domain with type safety
-    const [minDate, maxDate] = d3.extent(
-      data,
-      (d) => new Date(d.timestamp)
-    ) as [Date, Date];
-    const dataTimeRange = maxDate.getTime() - minDate.getTime();
+    // Calculate y-scale range based on visible candles
+    const calculateYAxisRange = () => {
+      // Get visible candles based on x-axis domain
+      const visibleCandles = data.filter((d) => {
+        const x = xScale(new Date(d.timestamp));
+        return x >= 0 && x <= width;
+      });
 
-    // Add padding to the time range (20% on each side)
-    const timeRangePadding = dataTimeRange * 0.2;
-    const paddedMinDate = new Date(minDate.getTime() - timeRangePadding);
-    const paddedMaxDate = new Date(maxDate.getTime() + timeRangePadding);
+      if (visibleCandles.length === 0) return { min: 0, max: 100 };
 
-    // Set initial domain with padding
-    xScale.domain([paddedMinDate, paddedMaxDate]);
+      // Calculate min/max from visible candles only
+      const yMin = d3.min(visibleCandles, (d) => d.low) as number;
+      const yMax = d3.max(visibleCandles, (d) => d.high) as number;
+      const yRange = yMax - yMin;
 
-    // Calculate y-scale domain with proper padding
-    const yMin = d3.min(data, (d) => d.low) as number;
-    const yMax = d3.max(data, (d) => d.high) as number;
-    const yRange = yMax - yMin;
-    const yPadding = yRange * 0.2; // 20% padding
+      // Add padding based on visible range
+      const topPaddingPercent = 0.1; // 10% padding top
+      const bottomPaddingPercent = 0.1; // 10% padding bottom
 
+      const topPadding = yRange * topPaddingPercent;
+      const bottomPadding = yRange * bottomPaddingPercent;
+
+      return {
+        min: yMin - bottomPadding,
+        max: yMax + topPadding,
+      };
+    };
+
+    const yAxisRange = calculateYAxisRange();
     const yScale = d3
       .scaleLinear()
-      .domain([yMin - yPadding, yMax + yPadding])
-      .range([height, 0]);
+      .domain([yAxisRange.min, yAxisRange.max])
+      .range([height, 0])
+      .nice();
+
+    // Also update the y-axis range during x-axis scaling
+    const updateYAxisRange = () => {
+      const newYAxisRange = calculateYAxisRange();
+      yScale.domain([newYAxisRange.min, newYAxisRange.max]).nice();
+      yAxisElement.call(d3.axisRight(yScale));
+      updateGrid();
+    };
 
     // Store original domains for reference
     const originalXDomain = xScale.domain();
@@ -189,7 +231,8 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
       .attr("class", "candlestick")
       .each(function (d) {
         const g = d3.select(this);
-        const className = d.close > d.open ? "candlestick-up" : "candlestick-down";
+        const className =
+          d.close > d.open ? "candlestick-up" : "candlestick-down";
         const x = xScale(new Date(d.timestamp));
 
         // Draw the wick
@@ -451,6 +494,56 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
 
           // Update grid
           updateGrid();
+
+          // Update y-axis range based on visible candles with proper gaps
+          const updateYAxisRangeWithGaps = () => {
+            // Get only visible candles
+            const visibleCandles = data.filter((d) => {
+              const x = xScale(new Date(d.timestamp));
+              return x >= 0 && x <= width;
+            });
+
+            if (visibleCandles.length === 0) return;
+
+            // Calculate min/max from visible candles
+            const yMin = d3.min(visibleCandles, (d) => d.low) as number;
+            const yMax = d3.max(visibleCandles, (d) => d.high) as number;
+            const yRange = yMax - yMin;
+
+            // Calculate padding based on price range
+            const topPaddingPercent = 0.1; // 10% padding top
+            const bottomPaddingPercent = 0.1; // 10% padding bottom
+
+            const topPadding = yRange * topPaddingPercent;
+            const bottomPadding = yRange * bottomPaddingPercent;
+
+            // Update y-scale with new range
+            yScale.domain([yMin - bottomPadding, yMax + topPadding]).nice();
+
+            // Update y-axis
+            yAxisElement.call(d3.axisRight(yScale));
+
+            // Update candlesticks
+            candlestickGroup.selectAll("g.candlestick").each(function (d: any) {
+              const g = d3.select(this);
+
+              // Update wick position
+              g.select("line")
+                .attr("y1", yScale(d.high))
+                .attr("y2", yScale(d.low));
+
+              // Update body position
+              g.select("rect")
+                .attr("y", yScale(Math.max(d.open, d.close)))
+                .attr("height", Math.abs(yScale(d.open) - yScale(d.close)));
+            });
+
+            // Update grid
+            updateGrid();
+          };
+
+          // Call the new function after updating x-axis
+          updateYAxisRangeWithGaps();
         })
       );
 
@@ -519,14 +612,17 @@ const Chart: React.FC<ChartProps> = ({ data, timeframeConfig }) => {
         })
       );
 
-    // Apply zoom behavior with fixed initial transform
+    // Apply zoom behavior with initial transform to create right padding
     svg
       .call(zoom as any)
       .call(
         zoom.transform as any,
-        d3.zoomIdentity.translate(margin.left, margin.top)
+        d3.zoomIdentity.translate(-initialView.rightPadding, 0)
       )
       .on("dblclick.zoom", null);
+
+    // Apply margin transform to mainGroup
+    mainGroup.attr("transform", `translate(${margin.left},${margin.top})`);
   }, [data, drawingMode, timeframeConfig]);
 
   useEffect(() => {
