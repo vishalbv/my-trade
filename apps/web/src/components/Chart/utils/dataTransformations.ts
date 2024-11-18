@@ -16,14 +16,19 @@ export function processMarketData(rawCandles: RawCandle[]): OHLCData[] {
   // Transform and sort data
   const transformedData = rawCandles
     .map((candle, index) => ({
-      timestamp: candle[0] * 1000, // Convert to milliseconds
+      timestamp: new Date(new Date(0).setUTCSeconds(candle[0])), // Convert to milliseconds
       open: candle[1],
       high: candle[2],
       low: candle[3],
       close: candle[4],
-      index,
+      index, // Add index for x-axis scaling
     }))
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .sort((a, b) => a.timestamp - b.timestamp)
+    // Reindex after sorting
+    .map((candle, index) => ({
+      ...candle,
+      index,
+    }));
 
   return transformedData;
 }
@@ -34,11 +39,9 @@ export function createContinuousData(
 ): OHLCData[] {
   if (!data.length) return [];
 
-  const baseTimestamp = data[0].timestamp;
-
+  // Keep original timestamps but ensure indices are continuous
   return data.map((candle, idx) => ({
     ...candle,
-    timestamp: baseTimestamp + idx * timeInterval,
     index: idx,
   }));
 }

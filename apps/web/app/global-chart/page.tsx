@@ -1,6 +1,6 @@
 "use client";
 
-import Chart from "../../src/components/Chart/Chart";
+import CanvasChart from "../../src/components/Chart/CanvasChart";
 import { useEffect, useState } from "react";
 import { getHistory } from "../../src/store/actions/appActions";
 import {
@@ -60,6 +60,11 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
   },
 };
 
+interface HistoryResponse {
+  candles?: [number, number, number, number, number, number][];
+  // Add other response fields if needed
+}
+
 export default function GlobalChart() {
   const [chartData, setChartData] = useState<OHLCData[]>([]);
   const [timeframe, setTimeframe] = useState<string>("1");
@@ -67,15 +72,15 @@ export default function GlobalChart() {
   useEffect(() => {
     const fetchHistoricalData = async () => {
       try {
-        const response = await getHistory({
+        const response = (await getHistory({
           symbol: "NSE:NIFTY50-INDEX",
           resolution: timeframe,
           date_format: 0,
-          range_from: Math.floor(Date.now() / 1000 - 10000 * 60).toString(),
-          range_to: Math.floor(Date.now() / 1000).toString(),
+          range_from: Math.floor(Date.now() / 1000 - 20000 * 60).toString(),
+          range_to: Math.floor(Date.now() / 1000 - 10000 * 60).toString(),
           cont_flag: 1,
           broker: "fyers",
-        });
+        })) as HistoryResponse;
 
         if (response?.candles && Array.isArray(response.candles)) {
           const processedData = processMarketData(response.candles);
@@ -125,7 +130,10 @@ export default function GlobalChart() {
           <option value="D">1 Day</option>
         </select>
       </div>
-      <Chart data={chartData} timeframeConfig={timeframeConfigs[timeframe]} />
+      <CanvasChart
+        data={chartData}
+        timeframeConfig={timeframeConfigs[timeframe]}
+      />
     </div>
   );
 }
