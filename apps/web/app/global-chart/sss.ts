@@ -1,7 +1,9 @@
 "use client";
 
+import CanvasChart from "../../src/components/Chart/CanvasChart";
 import { useState } from "react";
-
+import { useRealtimeCandles } from "../../src/components/Chart/hooks/useRealtimeCandles";
+import { SymbolSearch } from "../../src/components/Chart/components/SymbolSearch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +24,6 @@ import {
   VerticalStackIcon,
 } from "../../src/components/Chart/icons/layoutIcons";
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
-import { SymbolSearch } from "../../src/components/Chart/components/SymbolSearch";
 
 interface TimeframeConfig {
   resolution: string;
@@ -146,43 +147,44 @@ export default function GlobalChart() {
   const currentLayout = layoutOptions.find((l) => l.id === selectedLayout);
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="relative h-full">
       <div className="flex items-center absolute top-0 right-0 z-10">
-        <div className="flex items-center ml-auto">
-          {/* Layout Selector Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="light" className="h-8 px-2 font-normal">
-                <span className="flex items-center gap-2">
-                  {currentLayout?.icon}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[144px] p-2">
-              <div className="grid grid-cols-3 gap-2">
-                {layoutOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.id}
-                    onClick={() => setSelectedLayout(option.id)}
-                    className={cn(
-                      selectedLayout === option.id
-                        ? "bg-muted"
-                        : "hover:bg-muted",
-                      "flex items-center justify-center p-2 h-8 w-8"
-                    )}
-                    title={option.label}
-                  >
-                    {option.icon}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* Layout Selector Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="light" className="h-8 px-2 font-normal">
+              <span className="flex items-center gap-2">
+                {currentLayout?.icon}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-[144px] p-2" // 16px icon * 3 + 8px gap * 2 + 16px padding
+          >
+            <div className="grid grid-cols-3 gap-2">
+              {layoutOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.id}
+                  onClick={() => setSelectedLayout(option.id)}
+                  className={cn(
+                    selectedLayout === option.id
+                      ? "bg-muted"
+                      : "hover:bg-muted",
+                    "flex items-center justify-center p-2 h-8 w-8"
+                  )}
+                  title={option.label} // Show label as tooltip
+                >
+                  {option.icon}
+                </DropdownMenuItem>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Chart container - flex-1 to take remaining height */}
-      <div className="flex-1 min-h-0">
+      {/* Chart container */}
+      <div className="relative h-[calc(100%-48px)]">
         <ChartLayout
           layout={selectedLayout}
           timeframeConfigs={timeframeConfigs}

@@ -79,7 +79,7 @@ export async function apiRequest<T>(
 export async function postRequest<T>(endpoint: string, body: any): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(body || {}),
   });
 }
 

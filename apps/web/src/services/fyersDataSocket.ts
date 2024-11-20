@@ -1,6 +1,8 @@
 // @ts-ignore
 import { fyersDataSocket } from "fyers-web-sdk-v3";
 import { sendMessage } from "./webSocket";
+import { store } from "../store/store";
+import { updateFyersWebTick } from "../store/slices/ticksSlice";
 
 let socketInstance: any = null;
 
@@ -32,6 +34,21 @@ export const fyersDataSocketService = {
 
     socketInstance.on("message", (message: any) => {
       console.log({ TEST: message });
+      // if (message && message.symbol) {
+      //   store.dispatch(
+      //     updateFyersWebTick({
+      //       symbol: message.symbol,
+      //       data: {
+      //         ltp: message.ltp,
+      //         volume: message.volume,
+      //         high: message.high,
+      //         low: message.low,
+      //         timestamp: message.timestamp,
+      //         // Add other relevant data from the message
+      //       },
+      //     })
+      //   );
+      // }
     });
 
     socketInstance.on("error", (message: any) => {

@@ -13,7 +13,10 @@
     "./switch": "./components/ui/switch.tsx",
     "./tooltip": "./components/ui/tooltip.tsx",
     "./textarea": "./components/ui/textarea.tsx",
-    "./checkbox": "./components/ui/checkbox.tsx"
+    "./checkbox": "./components/ui/checkbox.tsx",
+    "./dialog": "./components/ui/dialog.tsx",
+    "./dropdown-menu": "./components/ui/dropdown-menu.tsx",
+    "./separator": "./components/ui/separator.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -33,6 +36,8 @@
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",

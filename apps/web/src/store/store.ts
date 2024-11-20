@@ -1,11 +1,13 @@
 import { configureStore, ThunkAction, Action, Store } from "@reduxjs/toolkit";
 import stateReducer from "./slices/stateSlice";
 import drawerReducer from "./slices/drawerSlice";
+import ticksReducer from "./slices/ticksSlice";
 
 export const store: Store = configureStore({
   reducer: {
     states: stateReducer,
     drawer: drawerReducer,
+    ticks: ticksReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

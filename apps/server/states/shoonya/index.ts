@@ -102,9 +102,11 @@ class Shoonya extends State {
 
         return { access_token };
       } else {
+        logger.error("login failed", res);
         throw new Error(res?.data?.emsg || "Login failed");
       }
     } catch (error: any) {
+      logger.error("login failed", error);
       throw new Error(`Failed to login: ${error.message}`);
     }
   };
