@@ -11,7 +11,13 @@ import {
 import { Button } from "@repo/ui/button";
 import { Separator } from "@repo/ui/separator";
 import { cn } from "@repo/utils/ui/helpers";
-import { LayoutGrid, Monitor, PanelLeftOpen, PanelTop } from "lucide-react";
+import {
+  LayoutGrid,
+  Monitor,
+  PanelLeftOpen,
+  PanelTop,
+  LineChart,
+} from "lucide-react";
 import {
   SingleChartIcon,
   HorizontalSplitIcon,
@@ -136,11 +142,20 @@ const layoutOptions: LayoutOption[] = [
   },
 ];
 
+interface Indicator {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
 export default function GlobalChart() {
   const [timeframe, setTimeframe] = useState<string>("1");
   const [symbol, setSymbol] = useState<string>("NSE:NIFTY50-INDEX");
   const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>("single");
+  const [indicators, setIndicators] = useState<Indicator[]>([
+    { id: "rsi", label: "RSI", enabled: false },
+  ]);
 
   const currentTimeframe = timeframeOptions.find((t) => t.value === timeframe);
   const currentLayout = layoutOptions.find((l) => l.id === selectedLayout);
@@ -148,7 +163,54 @@ export default function GlobalChart() {
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center absolute top-0 right-0 z-10">
-        <div className="flex items-center ml-auto">
+        <div className="flex items-center ml-auto gap-2">
+          {/* Indicators Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="light" className="h-8 px-2 font-normal">
+                <span className="flex items-center gap-2">
+                  <LineChart className="h-4 w-4" />
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              {indicators.map((indicator) => (
+                <DropdownMenuItem
+                  key={indicator.id}
+                  className="flex items-center justify-between"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setIndicators((prev) =>
+                      prev.map((ind) =>
+                        ind.id === indicator.id
+                          ? { ...ind, enabled: !ind.enabled }
+                          : ind
+                      )
+                    );
+                  }}
+                >
+                  <span>{indicator.label}</span>
+                  <div className="flex items-center h-4 w-4 rounded-sm border border-primary">
+                    {indicator.enabled && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3 w-3"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Layout Selector Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -186,6 +248,7 @@ export default function GlobalChart() {
         <ChartLayout
           layout={selectedLayout}
           timeframeConfigs={timeframeConfigs}
+          indicators={indicators}
         />
       </div>
 

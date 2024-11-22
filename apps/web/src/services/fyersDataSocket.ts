@@ -33,22 +33,19 @@ export const fyersDataSocketService = {
     });
 
     socketInstance.on("message", (message: any) => {
-      console.log({ TEST: message });
-      // if (message && message.symbol) {
-      //   store.dispatch(
-      //     updateFyersWebTick({
-      //       symbol: message.symbol,
-      //       data: {
-      //         ltp: message.ltp,
-      //         volume: message.volume,
-      //         high: message.high,
-      //         low: message.low,
-      //         timestamp: message.timestamp,
-      //         // Add other relevant data from the message
-      //       },
-      //     })
-      //   );
-      // }
+      if (message && message.symbol) {
+        store.dispatch(
+          updateFyersWebTick({
+            symbol: message.symbol,
+            data: {
+              ltp: message.ltp,
+              timestamp: message.exch_feed_time,
+              type: message.type,
+              // Only including the fields that are actually present in your message
+            },
+          })
+        );
+      }
     });
 
     socketInstance.on("error", (message: any) => {

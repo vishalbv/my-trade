@@ -7,14 +7,10 @@ import { useState } from "react";
 import styles from "./clock.module.scss";
 import { _setInterval } from "../utils/helpers";
 import { ActiveDot } from "./activeDot";
+import { useSelector } from "react-redux";
 
 // import { _setInterval } from "../../helpers/helperFunctions";
 let intervalVal: ReturnType<typeof window.setInterval> | null = null;
-let marketStatus = {
-  activeStatus: false,
-  preMarketStatus: false,
-  isHoliday: false,
-};
 
 interface TimeState {
   date: string;
@@ -36,7 +32,7 @@ const Clock = memo(({ simpleClock }: { simpleClock?: boolean }) => {
     aa: "",
     _date: moment(),
   });
-  // const { marketStatus = {} } = useSelector((s) => s.app);
+  const { marketStatus = {} } = useSelector((state: any) => state.states.app);
   useEffect(() => {
     setTime({ ...getTimeAndDate() });
 

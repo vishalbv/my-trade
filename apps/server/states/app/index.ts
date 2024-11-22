@@ -1,5 +1,6 @@
 import moment from "moment";
 import State from "../state.ts";
+import { updateMarketStatus } from "./functions";
 // import { updateMarketStatus } from "./functions.js";
 // import { INDEX_DETAILS } from "../../utils/constants.js";
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
@@ -19,13 +20,13 @@ class App extends State {
   isLoggedIn = () => this.getState().access_token;
   isInTestMode = () => this.getState().testMode;
 
-  // startingFunctionsAtInitialize = () => {
-  //   updateMarketStatus((data) => this.setState({ marketStatus: data }));
-  //   _ticksFyersService
-  //     .getQuotes(Object.keys(INDEX_DETAILS))
-  //     .then((data) => this.setState({ indexPrices: data }))
-  //     .catch((error) => this.setState({ indexPrices: [] }));
-  // };
+  startingFunctionsAtInitialize = () => {
+    updateMarketStatus((data: any) => this.setState({ marketStatus: data }));
+    // _ticksFyersService
+    //   .getQuotes(Object.keys(INDEX_DETAILS))
+    //   .then((data) => this.setState({ indexPrices: data }))
+    //   .catch((error) => this.setState({ indexPrices: [] }));
+  };
 
   // updateDbAtInitOfDay = () => {
   //   this.setState({

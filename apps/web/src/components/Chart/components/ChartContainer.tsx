@@ -13,12 +13,19 @@ import { cn } from "@repo/utils/ui/helpers";
 import { TimeframeConfig } from "../types";
 import { SymbolSearch } from "./SymbolSearch";
 
+interface Indicator {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
 interface ChartContainerProps {
   timeframeConfigs: { [key: string]: TimeframeConfig };
   initialSymbol?: string;
   initialTimeframe?: string;
   className?: string;
   layoutKey: string;
+  indicators: Indicator[];
 }
 
 const timeframeOptions = [
@@ -34,6 +41,7 @@ export const ChartContainer = ({
   initialTimeframe = "1",
   className,
   layoutKey,
+  indicators,
 }: ChartContainerProps) => {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState(initialTimeframe);
@@ -52,7 +60,7 @@ export const ChartContainer = ({
       const resizeEvent = new Event("resize");
       window.dispatchEvent(resizeEvent);
     }
-  }, [layoutKey]);
+  }, [layoutKey, indicators]);
 
   return (
     <div ref={containerRef} className={cn("flex flex-col h-full", className)}>
@@ -111,6 +119,7 @@ export const ChartContainer = ({
           key={`${layoutKey}-${symbol}-${timeframe}`}
           data={chartData}
           timeframeConfig={timeframeConfigs[timeframe]}
+          indicators={indicators}
         />
       </div>
     </div>

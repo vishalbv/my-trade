@@ -1,6 +1,10 @@
 // import moment from "moment";
 // import _app from "../app/index.js";
 
+import { getTimeoutTo, isDatesEqual } from "@repo/utils/helpers";
+import moment from "moment";
+import _app from "./index";
+
 // import {
 //   getReportsFromDB,
 //   getStatesDBByID,
@@ -82,85 +86,83 @@
 //   return await getReportsFromDB();
 // };
 
-// export const updateMarketStatus = (setState) => {
-//   let now = moment(moment().format("hh:mm:ss a"), "h:mm:ss a");
+export const updateMarketStatus = (setState: any) => {
+  let now = moment(moment().format("hh:mm:ss a"), "h:mm:ss a");
 
-//   let isHoliday =
-//     now.days() == 0 ||
-//     now.days() == 6 ||
-//     _app
-//       .getState()
-//       .holidays.some((i) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
+  let isHoliday =
+    now.days() == 0 ||
+    now.days() == 6 ||
+    _app
+      .getState()
+      .holidays.some((i: any) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
 
-//   let times = [
-//     {
-//       time: "00:00:00 am",
-//       status: {
-//         isHoliday,
-//         activeStatus: false,
-//         preMarketStatus: false,
-//         status: 0,
-//       },
-//     },
-//     {
-//       time: "09:00:00 am",
-//       status: {
-//         isHoliday,
-//         activeStatus: false,
-//         preMarketStatus: true,
-//         status: 1,
-//       },
-//     },
-//     {
-//       time: "09:08:00 am",
-//       status: {
-//         isHoliday,
-//         activeStatus: false,
-//         preMarketStatus: false,
-//         status: 2,
-//       },
-//     },
-//     {
-//       time: "09:15:00 am",
-//       status: {
-//         isHoliday,
-//         activeStatus: true,
-//         preMarketStatus: false,
-//         status: 3,
-//       },
-//     },
-//     {
-//       time: "03:30:01 pm",
-//       status: {
-//         isHoliday,
-//         activeStatus: false,
-//         preMarketStatus: false,
-//         status: 4,
-//       },
-//       callback: () => {
-//         console.log("okokkkkkkkk");
-//         generateReport();
-//       },
-//     },
-//   ];
-//   let index = times.findIndex((i) => now.isBefore(moment(i.time, "h:mm:ss a")));
-//   if (isHoliday || index == -1)
-//     return setState({
-//       isHoliday,
-//       activeStatus: false,
-//       preMarketStatus: false,
-//       status: 0,
-//     });
-//   times[index - 1] && setState(times[index - 1].status);
-//   console.log(times.slice(index - 1, times.length), index, "uuu");
-//   times.slice(index - 1, times.length).map((i) => {
-//     console.log(i.status, "opppppp");
-//     setTimeout(
-//       () => {
-//         setState(i.status);
-//         i.callback && i.callback();
-//       },
-//       getTimeoutTo(moment(i.time, "h:mm:ss a"))
-//     );
-//   });
-// };
+  let times = [
+    {
+      time: "00:00:00 am",
+      status: {
+        isHoliday,
+        activeStatus: false,
+        preMarketStatus: false,
+        status: 0,
+      },
+    },
+    {
+      time: "09:00:00 am",
+      status: {
+        isHoliday,
+        activeStatus: false,
+        preMarketStatus: true,
+        status: 1,
+      },
+    },
+    {
+      time: "09:08:00 am",
+      status: {
+        isHoliday,
+        activeStatus: false,
+        preMarketStatus: false,
+        status: 2,
+      },
+    },
+    {
+      time: "09:15:00 am",
+      status: {
+        isHoliday,
+        activeStatus: true,
+        preMarketStatus: false,
+        status: 3,
+      },
+    },
+    {
+      time: "03:30:01 pm",
+      status: {
+        isHoliday,
+        activeStatus: false,
+        preMarketStatus: false,
+        status: 4,
+      },
+      callback: () => {
+        // generateReport();
+      },
+    },
+  ];
+  let index = times.findIndex((i) => now.isBefore(moment(i.time, "h:mm:ss a")));
+  if (isHoliday || index == -1)
+    return setState({
+      isHoliday,
+      activeStatus: false,
+      preMarketStatus: false,
+      status: 0,
+    });
+  times[index - 1] && setState(times[index - 1].status);
+
+  times.slice(index - 1, times.length).map((i) => {
+    setTimeout(
+      () => {
+        setState(i.status);
+        i.callback && i.callback();
+      },
+      getTimeoutTo(moment(i.time, "h:mm:ss a"))
+    );
+  });
+};

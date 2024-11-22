@@ -5,6 +5,7 @@ import {
   ChartDimensions,
   ChartTheme,
   ViewState,
+  Indicator,
 } from "./types";
 import { themes } from "./constants/themes";
 import { useTheme } from "next-themes";
@@ -13,6 +14,7 @@ import { RSIIndicator } from "./components/RSIIndicator";
 interface CanvasChartProps {
   data: OHLCData[];
   timeframeConfig: TimeframeConfig;
+  indicators: Indicator[];
 }
 
 interface MousePosition {
@@ -25,7 +27,20 @@ interface MousePosition {
 
 const ANIMATION_DURATION = 300; // ms
 
-const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
+interface ViewState {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  startIndex: number;
+  visibleBars: number;
+  theme: ChartTheme;
+}
+
+const CanvasChart: React.FC<CanvasChartProps> = ({
+  data,
+  timeframeConfig,
+  indicators,
+}) => {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +59,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
     offsetY: 0,
     startIndex: 0,
     visibleBars: 0,
-    theme: currentTheme,
+    theme: themes.dark,
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -144,7 +159,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
 
   // Update the createDummyCandles function
   const createDummyCandles = useCallback(
-    (lastCandle: OHLCData, count: number): OHLCData[] => {
+    (lastCandle: OHLCData | undefined, count: number): OHLCData[] => {
+      if (!lastCandle) return [];
+
       const dummyCandles: OHLCData[] = [];
       let currentDate = new Date(lastCandle.timestamp);
 
@@ -390,8 +407,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
   // Enhanced zoom handler with animation
   const handleZoom = useCallback(
     (zoomFactor: number, centerX?: number) => {
+      if (!combinedData.length || !dimensions.width) return;
+
       const newScale = Math.max(0.1, Math.min(5, viewState.scale * zoomFactor));
-      const newVisibleBars = Math.floor(viewState.visibleBars / zoomFactor);
+      const newVisibleBars = Math.floor(
+        (dimensions.width -
+          dimensions.padding.left -
+          dimensions.padding.right) /
+          (10 * newScale)
+      );
 
       let newStartIndex;
       if (centerX !== undefined) {
@@ -423,10 +447,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
         offsetY: viewState.offsetY,
         startIndex: newStartIndex,
         visibleBars: newVisibleBars,
-        theme: viewState.theme,
+        theme: currentTheme || themes.dark,
       });
     },
-    [viewState, dimensions, combinedData.length, animateViewState]
+    [viewState, dimensions, combinedData.length, currentTheme, animateViewState]
   );
 
   // Pan handler with animation
@@ -486,6 +510,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
   }>({});
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+
     if (e.touches.length === 2 && e.touches[0] && e.touches[1]) {
       const distance = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
@@ -503,6 +529,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+
     if (
       e.touches.length === 2 &&
       e.touches[0] &&
@@ -529,14 +557,71 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
     setTouchState({});
   };
 
-  // Add the missing wheel handler
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const mouseX =
-      e.clientX - (containerRef.current?.getBoundingClientRect().left || 0);
-    handleZoom(zoomFactor, mouseX);
-  };
+  // First, add this effect at the top level of your component to handle wheel events
+  useEffect(() => {
+    const preventScroll = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+
+    // Add the event listener to the container
+    if (containerRef.current) {
+      containerRef.current.addEventListener("wheel", preventScroll, {
+        passive: false,
+      });
+    }
+
+    return () => {
+      // Clean up the event listener
+      if (containerRef.current) {
+        containerRef.current.removeEventListener("wheel", preventScroll);
+      }
+    };
+  }, []);
+
+  // Update the handleWheel function
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!combinedData.length || !dimensions.width) return;
+
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const mouseX =
+        e.clientX - (containerRef.current?.getBoundingClientRect().left || 0);
+
+      // Calculate new scale with bounds
+      const newScale = Math.max(0.1, Math.min(5, viewState.scale * zoomFactor));
+      const newVisibleBars = Math.floor(
+        (dimensions.width -
+          dimensions.padding.left -
+          dimensions.padding.right) /
+          (10 * newScale)
+      );
+
+      // Calculate new start index based on mouse position
+      const chartX = mouseX - dimensions.padding.left;
+      const mouseBarPosition = chartX / (10 * viewState.scale);
+      const barOffset =
+        mouseBarPosition - mouseBarPosition * (newScale / viewState.scale);
+
+      const newStartIndex = Math.max(
+        0,
+        Math.min(
+          combinedData.length - newVisibleBars,
+          viewState.startIndex + Math.floor(barOffset)
+        )
+      );
+
+      // Update view state with animation
+      animateViewState({
+        scale: newScale,
+        offsetX: viewState.offsetX,
+        offsetY: viewState.offsetY,
+        startIndex: newStartIndex,
+        visibleBars: newVisibleBars,
+        theme: viewState.theme, // Use the current theme from viewState
+      });
+    },
+    [viewState, dimensions, combinedData.length, animateViewState]
+  );
 
   // Add the missing double click handler
   const handleDoubleClick = () => {
@@ -1228,13 +1313,27 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
     });
   }, [combinedData, dimensions, viewState, timeframeConfig, currentTheme]);
 
+  // Update theme-related style properties to include fallback
+  const themeStyles = useMemo(
+    () => ({
+      background: currentTheme?.background || themes.dark.background,
+      grid: currentTheme?.grid || themes.dark.grid,
+      text: currentTheme?.text || themes.dark.text,
+      // ... other theme properties
+    }),
+    [currentTheme]
+  );
+
+  // Find if RSI is enabled
+  const isRSIEnabled = indicators.find((i) => i.id === "rsi")?.enabled || false;
+
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
         height: "100%",
-        background: currentTheme.background,
+        background: themeStyles.background,
         display: "flex",
         flexDirection: "column",
       }}
@@ -1245,8 +1344,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
         style={{
           position: "relative",
           width: "100%",
-          height: "calc(100% - 130px)", // Adjust for RSI (100px) + X-axis (30px)
+          height: `calc(100% - ${isRSIEnabled ? 130 : 30}px)`,
           cursor: isDragging ? "grabbing" : "crosshair",
+          touchAction: "none",
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -1279,35 +1379,37 @@ const CanvasChart: React.FC<CanvasChartProps> = ({ data, timeframeConfig }) => {
         />
       </div>
 
-      {/* RSI Indicator */}
-      <div
-        style={{
-          height: "100px",
-          borderTop: `1px solid ${currentTheme.grid}`,
-        }}
-      >
-        <RSIIndicator
-          data={combinedData}
-          dimensions={{
-            ...dimensions,
-            padding: {
-              ...dimensions.padding,
-              bottom: 0,
-            },
+      {/* Conditionally render RSI Indicator */}
+      {isRSIEnabled && (
+        <div
+          style={{
+            height: "100px",
+            borderTop: `1px solid ${themeStyles.grid}`,
           }}
-          theme={currentTheme}
-          period={14}
-          height={100}
-          startIndex={viewState.startIndex}
-          visibleBars={viewState.visibleBars}
-        />
-      </div>
+        >
+          <RSIIndicator
+            data={combinedData}
+            dimensions={{
+              ...dimensions,
+              padding: {
+                ...dimensions.padding,
+                bottom: 0,
+              },
+            }}
+            theme={currentTheme}
+            period={14}
+            height={100}
+            startIndex={viewState.startIndex}
+            visibleBars={viewState.visibleBars}
+          />
+        </div>
+      )}
 
       {/* X-Axis Area */}
       <div
         style={{
           height: "30px",
-          borderTop: `1px solid ${currentTheme.grid}`,
+          borderTop: `1px solid ${themeStyles.grid}`,
           position: "relative",
         }}
       >

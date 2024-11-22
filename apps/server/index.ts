@@ -34,7 +34,7 @@ try {
 
 // Initialize WebSocket server with HTTP handling
 const server = initializeWebSocket();
-console.log("checkLoginSession");
+
 checkLoginSession(initializeApp);
 
 console.log(`Server listening on port ${server.port}`);
