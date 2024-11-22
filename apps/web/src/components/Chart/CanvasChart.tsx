@@ -921,7 +921,77 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     return false;
   };
 
-  // Update the render effect
+  // Add this before calculateGridPrices
+  const getY = useCallback(
+    (
+      price: number,
+      adjustedMinPrice: number,
+      adjustedMaxPrice: number,
+      chartHeight: number
+    ) => {
+      const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
+      return (
+        dimensions.padding.top +
+        chartHeight -
+        ((price - adjustedMinPrice) / adjustedPriceRange) * chartHeight
+      );
+    },
+    [dimensions.padding.top]
+  );
+
+  // Update calculateGridPrices to accept getY function
+  const calculateGridPrices = useCallback(
+    (
+      minPrice: number,
+      maxPrice: number,
+      adjustedMinPrice: number,
+      adjustedMaxPrice: number,
+      chartHeight: number,
+      getYFunc: (
+        price: number,
+        min: number,
+        max: number,
+        height: number
+      ) => number
+    ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
+      // Calculate nice grid step
+      const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
+      const maxPriceTicks = Math.max(4, Math.floor(chartHeight / 80));
+      const gridPriceStep = calculateNiceNumber(
+        visiblePriceRange,
+        maxPriceTicks
+      );
+
+      // Calculate grid prices
+      const firstGridPrice =
+        Math.ceil(adjustedMinPrice / gridPriceStep) * gridPriceStep;
+      const gridPrices: number[] = [];
+      const priceLabels: { y: number; text: string }[] = [];
+
+      for (
+        let price = firstGridPrice;
+        price <= adjustedMaxPrice;
+        price += gridPriceStep
+      ) {
+        gridPrices.push(price);
+        const y = getYFunc(
+          price,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+        priceLabels.push({
+          y,
+          text: price.toFixed(2),
+        });
+      }
+
+      return { gridPrices, priceLabels };
+    },
+    []
+  );
+
+  // Update the render effect to use the new functions
   useEffect(() => {
     if (!mainCanvasRef.current || !data.length) return;
 
@@ -944,7 +1014,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const chartHeight =
       dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
 
-    // Calculate candle dimensions ONCE - to be used throughout
+    // Calculate candle dimensions
     const barSpacing = chartWidth / viewState.visibleBars;
     const candleWidth = barSpacing * 0.8;
     const spacing = barSpacing * 0.2;
@@ -971,189 +1041,24 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
     const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
 
-    // Update getY function to use adjusted prices
-    const getY = (price: number) =>
-      dimensions.padding.top +
-      chartHeight -
-      ((price - adjustedMinPrice) / adjustedPriceRange) * chartHeight;
+    // Calculate grid prices and labels
+    const { gridPrices, priceLabels } = calculateGridPrices(
+      minPrice,
+      maxPrice,
+      adjustedMinPrice,
+      adjustedMaxPrice,
+      chartHeight,
+      getY
+    );
 
-    // Calculate visible time range
-    const visibleTimeRange =
-      visibleData[visibleData.length - 1].timestamp - visibleData[0].timestamp;
-    const startTime = visibleData[0].timestamp; // Define startTime here
-
-    // Calculate time grid step based on visible range
-    const timeStep = calculateTimeStep(visibleTimeRange, viewState.visibleBars);
-    const firstGridTime = Math.ceil(startTime / timeStep) * timeStep;
-
-    // Calculate price grid with more spacing
-    const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
-    const maxPriceTicks = Math.max(4, Math.floor(chartHeight / 80));
-    const gridPriceStep = calculateNiceNumber(visiblePriceRange, maxPriceTicks);
-
-    // Calculate grid prices
-    const firstGridPrice =
-      Math.ceil(adjustedMinPrice / gridPriceStep) * gridPriceStep;
-    const gridPrices = [];
-    for (
-      let price = firstGridPrice;
-      price <= adjustedMaxPrice;
-      price += gridPriceStep
-    ) {
-      gridPrices.push(price);
-    }
-
-    // Create price labels array
-    const priceLabels = gridPrices.map((price) => ({
-      y: getY(price),
-      text: price.toFixed(2),
-    }));
-
-    // Define drawTimeAxis function inside the effect
-    const drawTimeAxis = () => {
-      let lastLabelX = -Infinity;
-      const minLabelSpacing = ctx.measureText("00:00").width * 1.5;
-
-      // Find date transitions first
-      const dateTransitions: { index: number; timestamp: number }[] = [];
-      let prevDate = "";
-
-      visibleData.forEach((candle, i) => {
-        const date = new Date(candle.timestamp);
-        const currentDate = date.toDateString();
-
-        // Mark date transitions
-        if (currentDate !== prevDate) {
-          dateTransitions.push({ index: i, timestamp: candle.timestamp });
-          prevDate = currentDate;
-        }
-      });
-
-      // Draw regular time labels first
-      visibleData.forEach((candle, i) => {
-        const candleCenterX =
-          dimensions.padding.left + i * barSpacing + barSpacing / 2;
-        const date = new Date(candle.timestamp);
-        const minutes = date.getMinutes();
-        const hours = date.getHours();
-
-        // Skip if this is a date transition point
-        const isDateTransition = dateTransitions.some((t) => t.index === i);
-        if (!isDateTransition) {
-          const isMarketOpen = hours === 9 && minutes === 15;
-          const isHourMark = minutes === 0;
-
-          if (
-            (isMarketOpen || isHourMark) &&
-            candleCenterX - lastLabelX >= minLabelSpacing
-          ) {
-            // Draw time label
-            ctx.save();
-            ctx.fillStyle = currentTheme.text;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "top";
-
-            const timeLabel = date.toLocaleTimeString(undefined, {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            });
-
-            // Draw label background
-            const labelWidth = ctx.measureText(timeLabel).width + 10;
-            const labelHeight = 20;
-            ctx.fillStyle = currentTheme.axisBackground;
-            ctx.fillRect(
-              candleCenterX - labelWidth / 2,
-              dimensions.height - dimensions.padding.bottom + 8,
-              labelWidth,
-              labelHeight
-            );
-
-            // Draw label text
-            ctx.fillStyle = currentTheme.text;
-            ctx.fillText(
-              timeLabel,
-              candleCenterX,
-              dimensions.height - dimensions.padding.bottom + 12
-            );
-
-            lastLabelX = candleCenterX;
-            ctx.restore();
-          }
-        }
-      });
-
-      // Always draw date transition labels
-      dateTransitions.forEach(({ index, timestamp }) => {
-        const candleCenterX =
-          dimensions.padding.left + index * barSpacing + barSpacing / 2;
-        const date = new Date(timestamp);
-
-        // Draw date transition line
-        ctx.strokeStyle = currentTheme.grid;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(candleCenterX, dimensions.padding.top);
-        ctx.lineTo(
-          candleCenterX,
-          dimensions.height - dimensions.padding.bottom
-        );
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Always draw date label regardless of spacing
-        ctx.save();
-        ctx.fillStyle = currentTheme.text;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-
-        // Format date label with both date and time
-        const dateLabel = `${date.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        })} ${date.toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        })}`;
-
-        // Draw label background
-        const labelWidth = ctx.measureText(dateLabel).width + 10;
-        const labelHeight = 20;
-        ctx.fillStyle = currentTheme.axisBackground;
-        ctx.fillRect(
-          candleCenterX - labelWidth / 2,
-          dimensions.height - dimensions.padding.bottom + 8,
-          labelWidth,
-          labelHeight
-        );
-
-        // Draw label text
-        ctx.fillStyle = currentTheme.text;
-        ctx.fillText(
-          dateLabel,
-          candleCenterX,
-          dimensions.height - dimensions.padding.bottom + 12
-        );
-
-        lastLabelX = candleCenterX;
-        ctx.restore();
-      });
-    };
-
-    // 1. Clear canvas
-    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
-
-    // 2. Draw horizontal grid lines
+    // Draw grid lines
     gridPrices.forEach((price) => {
-      const y = getY(price);
+      const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
       if (
         y >= dimensions.padding.top &&
         y <= dimensions.height - dimensions.padding.bottom
       ) {
-        ctx.strokeStyle = currentTheme.grid;
+        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
         ctx.lineWidth = 0.5;
         ctx.beginPath();
         ctx.moveTo(dimensions.padding.left, y);
@@ -1162,7 +1067,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
     });
 
-    // 3. Draw vertical grid lines
+    // Draw vertical grid lines
     visibleData.forEach((candle, i) => {
       const candleCenterX =
         dimensions.padding.left + i * barSpacing + barSpacing / 2;
@@ -1172,7 +1077,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Draw grid line for hour marks and market open
       if (minutes === 0 || (hours === 9 && minutes === 15)) {
-        ctx.strokeStyle = currentTheme.grid;
+        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
         ctx.lineWidth = 0.5;
         ctx.setLineDash([]);
         ctx.beginPath();
@@ -1185,39 +1090,33 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
     });
 
-    // 4. Draw date transition lines
-    let prevDate = "";
-    visibleData.forEach((candle, i) => {
-      const date = new Date(candle.timestamp);
-      const currentDate = date.toDateString();
-
-      if (currentDate !== prevDate) {
-        const candleCenterX =
-          dimensions.padding.left + i * barSpacing + barSpacing / 2;
-
-        ctx.strokeStyle = currentTheme.grid;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(candleCenterX, dimensions.padding.top);
-        ctx.lineTo(
-          candleCenterX,
-          dimensions.height - dimensions.padding.bottom
-        );
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        prevDate = currentDate;
-      }
-    });
-
-    // 5. Draw candlesticks
+    // Draw candlesticks
     visibleData.forEach((candle, i) => {
       const x = dimensions.padding.left + i * barSpacing;
-      const openY = getY(candle.open);
-      const closeY = getY(candle.close);
-      const highY = getY(candle.high);
-      const lowY = getY(candle.low);
+      const openY = getY(
+        candle.open,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight
+      );
+      const closeY = getY(
+        candle.close,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight
+      );
+      const highY = getY(
+        candle.high,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight
+      );
+      const lowY = getY(
+        candle.low,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight
+      );
 
       // Set colors and opacity based on candle type
       const opacity = candle.display === false ? 0 : 1;
@@ -1225,12 +1124,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       ctx.globalAlpha = opacity;
       ctx.fillStyle =
         candle.close >= candle.open
-          ? currentTheme.upColor
-          : currentTheme.downColor;
+          ? currentTheme?.upColor || themes.dark.upColor
+          : currentTheme?.downColor || themes.dark.downColor;
       ctx.strokeStyle =
         candle.close >= candle.open
-          ? currentTheme.upColor
-          : currentTheme.downColor;
+          ? currentTheme?.upColor || themes.dark.upColor
+          : currentTheme?.downColor || themes.dark.downColor;
 
       // Draw wick
       ctx.beginPath();
@@ -1243,17 +1142,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       ctx.fillRect(x, Math.min(openY, closeY), candleWidth, bodyHeight);
     });
 
-    // Reset opacity for other elements
+    // Reset opacity
     ctx.globalAlpha = 1;
 
-    // 6. Draw time axis labels
-    drawTimeAxis();
-
-    // 7. Draw price labels
+    // Draw price labels
     const skipFactor = Math.ceil(priceLabels.length / 8);
     priceLabels.forEach((label, i) => {
       if (i % skipFactor === 0) {
-        ctx.fillStyle = currentTheme.text;
+        ctx.fillStyle = currentTheme?.text || themes.dark.text;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillText(
@@ -1263,7 +1159,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         );
       }
     });
-  }, [combinedData, dimensions, viewState, timeframeConfig, currentTheme]);
+  }, [
+    combinedData,
+    dimensions,
+    viewState,
+    currentTheme,
+    getY,
+    calculateGridPrices,
+  ]);
 
   // Add new ref for x-axis canvas
   const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
