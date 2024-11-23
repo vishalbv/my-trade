@@ -12,6 +12,7 @@ import { Separator } from "@repo/ui/separator";
 import { cn } from "@repo/utils/ui/helpers";
 import { TimeframeConfig } from "../types";
 import { SymbolSearch } from "./SymbolSearch";
+import { DrawingToolbar, DrawingTool } from "./DrawingToolbar";
 
 interface Indicator {
   id: string;
@@ -26,6 +27,7 @@ interface ChartContainerProps {
   className?: string;
   layoutKey: string;
   indicators: Indicator[];
+  activeTool: DrawingTool;
 }
 
 const timeframeOptions = [
@@ -42,6 +44,7 @@ export const ChartContainer = ({
   className,
   layoutKey,
   indicators,
+  activeTool,
 }: ChartContainerProps) => {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState(initialTimeframe);
@@ -118,8 +121,9 @@ export const ChartContainer = ({
         <CanvasChart
           key={`${layoutKey}-${symbol}-${timeframe}`}
           data={chartData}
-          timeframeConfig={timeframeConfigs[timeframe]}
+          timeframeConfig={timeframeConfigs[timeframe] || timeframeConfigs["1"]}
           indicators={indicators}
+          activeTool={activeTool}
         />
       </div>
     </div>

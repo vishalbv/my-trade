@@ -139,14 +139,12 @@ function handleNotificationEvent(data: any) {
 
 export function broadcastMessage(event: string, data: any) {
   const message: WebSocketMessage = { event, data };
-  logger.info(`Broadcasting message to ${clients.size} clients:`, message);
 
   const messageString = JSON.stringify(message);
   clients.forEach((client) => {
     try {
       if (client.readyState === 1) {
         client.send(messageString);
-        logger.info("Message sent successfully to a client");
       } else {
         logger.warn(`Client in unexpected state: ${client.readyState}`);
       }

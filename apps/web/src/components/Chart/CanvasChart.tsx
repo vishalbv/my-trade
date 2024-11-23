@@ -10,11 +10,15 @@ import {
 import { themes } from "./constants/themes";
 import { useTheme } from "next-themes";
 import { RSIIndicator } from "./components/RSIIndicator";
+import { v4 as uuidv4 } from "uuid";
+import { Drawing, DrawingState, Point, TrendLine } from "./types/drawings";
+import { DrawingTool } from "./components/DrawingToolbar";
 
 interface CanvasChartProps {
   data: OHLCData[];
   timeframeConfig: TimeframeConfig;
   indicators: Indicator[];
+  activeTool: DrawingTool;
 }
 
 interface MousePosition {
@@ -40,6 +44,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   data,
   timeframeConfig,
   indicators,
+  activeTool,
 }) => {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -78,6 +83,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     timestamp: 0,
     visible: false,
   });
+
+  const [rsiHeight, setRsiHeight] = useState(100);
+  const [isDraggingDivider, setIsDraggingDivider] = useState(false);
+
+  const [dragStartHeight, setDragStartHeight] = useState<number>(100);
+  const [dragStartY, setDragStartY] = useState<number>(0);
+  const lastDragUpdate = useRef<number>(0);
+  const isRSIEnabled = indicators.find((i) => i.id === "rsi")?.enabled || false;
 
   // Animate view state changes
   const animateViewState = useCallback(
@@ -922,92 +935,384 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   };
 
   // Add this before calculateGridPrices
-  const getY = useCallback(
-    (
-      price: number,
-      adjustedMinPrice: number,
-      adjustedMaxPrice: number,
-      chartHeight: number
-    ) => {
-      const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
-      return (
-        dimensions.padding.top +
-        chartHeight -
-        ((price - adjustedMinPrice) / adjustedPriceRange) * chartHeight
-      );
-    },
-    [dimensions.padding.top]
-  );
+  const getY = (
+    price: number,
+    minPrice: number,
+    maxPrice: number,
+    chartHeight: number
+  ): number => {
+    const priceRange = maxPrice - minPrice;
+    if (priceRange === 0) return dimensions.padding.top;
 
-  // Update calculateGridPrices to accept getY function
-  const calculateGridPrices = useCallback(
-    (
-      minPrice: number,
-      maxPrice: number,
-      adjustedMinPrice: number,
-      adjustedMaxPrice: number,
-      chartHeight: number,
-      getYFunc: (
-        price: number,
-        min: number,
-        max: number,
-        height: number
-      ) => number
-    ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
-      // Calculate nice grid step
-      const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
-      const maxPriceTicks = Math.max(4, Math.floor(chartHeight / 80));
-      const gridPriceStep = calculateNiceNumber(
-        visiblePriceRange,
-        maxPriceTicks
-      );
+    const percentage = (maxPrice - price) / priceRange;
+    return dimensions.padding.top + percentage * chartHeight;
+  };
 
-      // Calculate grid prices
-      const firstGridPrice =
-        Math.ceil(adjustedMinPrice / gridPriceStep) * gridPriceStep;
-      const gridPrices: number[] = [];
-      const priceLabels: { y: number; text: string }[] = [];
+  // Add this function to calculate grid prices
+  const calculateGridPrices = (
+    minPrice: number,
+    maxPrice: number,
+    adjustedMinPrice: number,
+    adjustedMaxPrice: number,
+    chartHeight: number,
+    maxTicks: number = 6
+  ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
+    const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
+    const gridPriceStep = calculateNiceNumber(visiblePriceRange, maxTicks);
 
-      for (
-        let price = firstGridPrice;
-        price <= adjustedMaxPrice;
-        price += gridPriceStep
-      ) {
-        gridPrices.push(price);
-        const y = getYFunc(
-          price,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
-        priceLabels.push({
-          y,
-          text: price.toFixed(2),
-        });
-      }
+    // Calculate grid prices
+    const firstGridPrice =
+      Math.ceil(adjustedMinPrice / gridPriceStep) * gridPriceStep;
+    const gridPrices: number[] = [];
+    const priceLabels: { y: number; text: string }[] = [];
 
-      return { gridPrices, priceLabels };
-    },
-    []
-  );
+    for (
+      let price = firstGridPrice;
+      price <= adjustedMaxPrice;
+      price += gridPriceStep
+    ) {
+      gridPrices.push(price);
+      const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+      priceLabels.push({
+        y,
+        text: price.toFixed(2),
+      });
+    }
 
-  // Update the render effect to use the new functions
+    return { gridPrices, priceLabels };
+  };
+
+  // Update the handleDividerMouseDown function
+  const handleDividerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingDivider(true);
+    setDragStartHeight(rsiHeight);
+    setDragStartY(e.clientY);
+  };
+
+  // Update the divider dragging effect
   useEffect(() => {
-    if (!mainCanvasRef.current || !data.length) return;
+    const handleDividerDrag = (e: MouseEvent) => {
+      if (!isDraggingDivider || !containerRef.current) return;
 
-    const mainCanvas = mainCanvasRef.current;
-    const ctx = mainCanvas.getContext("2d");
-    if (!ctx) return;
+      // Throttle updates to every 16ms (roughly 60fps)
+      const now = performance.now();
+      if (now - lastDragUpdate.current < 16) return;
+      lastDragUpdate.current = now;
 
-    // Set canvas size with device pixel ratio
-    const dpr = window.devicePixelRatio || 1;
-    mainCanvas.width = dimensions.width * dpr;
-    mainCanvas.height = dimensions.height * dpr;
-    ctx.scale(dpr, dpr);
+      const deltaY = e.clientY - dragStartY;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const totalHeight = containerRect.height;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+      // Calculate new height based on the initial height and mouse movement
+      const minHeight = 50;
+      const maxHeight = Math.min(300, totalHeight * 0.4);
+      const newHeight = Math.max(
+        minHeight,
+        Math.min(maxHeight, dragStartHeight - deltaY)
+      );
 
+      // Use RAF for smooth updates
+      requestAnimationFrame(() => {
+        setRsiHeight(Math.round(newHeight)); // Round to avoid sub-pixel rendering
+      });
+    };
+
+    const handleDividerDragEnd = () => {
+      setIsDraggingDivider(false);
+    };
+
+    if (isDraggingDivider) {
+      window.addEventListener("mousemove", handleDividerDrag, {
+        passive: true,
+      });
+      window.addEventListener("mouseup", handleDividerDragEnd);
+
+      // Prevent text selection while dragging
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "row-resize";
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleDividerDrag);
+      window.removeEventListener("mouseup", handleDividerDragEnd);
+
+      // Reset styles
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [isDraggingDivider, dragStartHeight, dragStartY]);
+
+  // Update the divider JSX
+  {
+    isRSIEnabled && (
+      <>
+        {/* Draggable Divider */}
+        <div
+          style={{
+            height: "4px",
+            background: currentTheme.grid,
+            cursor: "row-resize",
+            position: "relative",
+            userSelect: "none",
+            touchAction: "none",
+            opacity: isDraggingDivider ? 0.8 : 0.5, // Visual feedback
+            transition: "opacity 0.2s ease", // Smooth opacity change
+          }}
+          onMouseDown={handleDividerMouseDown}
+        >
+          {/* Drag handle indicator */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "30px",
+              height: "2px",
+              background: currentTheme.text,
+              borderRadius: "1px",
+              opacity: isDraggingDivider ? 1 : 0.7,
+              transition: "opacity 0.2s ease",
+            }}
+          />
+          {/* Add side handles for better visual feedback */}
+          <div
+            style={{
+              position: "absolute",
+              left: "calc(50% - 20px)",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "4px",
+              height: "8px",
+              background: currentTheme.text,
+              borderRadius: "2px",
+              opacity: isDraggingDivider ? 1 : 0.7,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              right: "calc(50% - 20px)",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "4px",
+              height: "8px",
+              background: currentTheme.text,
+              borderRadius: "2px",
+              opacity: isDraggingDivider ? 1 : 0.7,
+            }}
+          />
+        </div>
+
+        {/* RSI Container with smooth height transition */}
+        <div
+          style={{
+            height: `${rsiHeight}px`,
+            position: "relative",
+            transition: isDraggingDivider ? "none" : "height 0.2s ease",
+          }}
+        >
+          <RSIIndicator
+            data={combinedData}
+            dimensions={{
+              ...dimensions,
+              padding: {
+                ...dimensions.padding,
+                bottom: 0,
+              },
+            }}
+            theme={currentTheme}
+            period={14}
+            height={rsiHeight}
+            startIndex={viewState.startIndex}
+            visibleBars={viewState.visibleBars}
+          />
+        </div>
+      </>
+    );
+  }
+
+  // Add drawing state
+  const [drawingState, setDrawingState] = useState<DrawingState>({
+    drawings: [],
+    activeDrawing: null,
+    isDrawing: false,
+    isDragging: false,
+    dragPoint: null,
+    startPoint: null,
+  });
+
+  // Function to convert mouse coordinates to chart coordinates
+  const getChartCoordinates = (e: React.MouseEvent): Point => {
+    if (!overlayCanvasRef.current) return { x: 0, y: 0 };
+    const rect = overlayCanvasRef.current.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  // Function to check if a point is near a line
+  const isNearLine = (
+    point: Point,
+    start: Point,
+    end: Point,
+    threshold = 5
+  ): boolean => {
+    const A = point.x - start.x;
+    const B = point.y - start.y;
+    const C = end.x - start.x;
+    const D = end.y - start.y;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+
+    if (lenSq !== 0) param = dot / lenSq;
+
+    let xx, yy;
+
+    if (param < 0) {
+      xx = start.x;
+      yy = start.y;
+    } else if (param > 1) {
+      xx = end.x;
+      yy = end.y;
+    } else {
+      xx = start.x + param * C;
+      yy = start.y + param * D;
+    }
+
+    const dx = point.x - xx;
+    const dy = point.y - yy;
+
+    return Math.sqrt(dx * dx + dy * dy) < threshold;
+  };
+
+  // Function to check if a point is near another point
+  const isNearPoint = (p1: Point, p2: Point, threshold = 5): boolean => {
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    return Math.sqrt(dx * dx + dy * dy) < threshold;
+  };
+
+  // Handle mouse down for drawing
+  const handleDrawingMouseDown = (e: React.MouseEvent) => {
+    if (activeTool !== "trendLine") return;
+
+    const point = getChartCoordinates(e);
+
+    // If we're not currently drawing, start a new line
+    if (!drawingState.isDrawing) {
+      setDrawingState((prev) => ({
+        ...prev,
+        isDrawing: true,
+        startPoint: point,
+        activeDrawing: {
+          id: uuidv4(),
+          type: "trendLine",
+          startPoint: point,
+          endPoint: point,
+        },
+      }));
+    } else {
+      // If we are drawing, finish the line on second click
+      setDrawingState((prev) => ({
+        ...prev,
+        isDrawing: false,
+        startPoint: null,
+        drawings: [...prev.drawings, prev.activeDrawing!],
+        activeDrawing: null,
+      }));
+    }
+  };
+
+  // Handle mouse move for drawing
+  const handleDrawingMouseMove = (e: React.MouseEvent) => {
+    if (drawingState.isDrawing && drawingState.activeDrawing) {
+      // Update the end point while drawing
+      const point = getChartCoordinates(e);
+      setDrawingState((prev) => ({
+        ...prev,
+        activeDrawing: {
+          ...prev.activeDrawing!,
+          endPoint: point,
+        },
+      }));
+    }
+  };
+
+  // Handle mouse up for drawing
+  const handleDrawingMouseUp = () => {
+    if (drawingState.isDrawing || drawingState.isDragging) {
+      setDrawingState((prev) => {
+        const newDrawings = prev.isDragging
+          ? prev.drawings.map((d) =>
+              d.id === prev.activeDrawing?.id ? prev.activeDrawing : d
+            )
+          : [...prev.drawings, prev.activeDrawing!];
+
+        return {
+          drawings: newDrawings,
+          activeDrawing: null,
+          isDrawing: false,
+          isDragging: false,
+          dragPoint: null,
+          startPoint: null,
+        };
+      });
+    }
+  };
+
+  // Add drawing event handlers to the overlay canvas
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) return;
+
+    canvas.style.cursor = activeTool === "trendLine" ? "crosshair" : "default";
+  }, [activeTool]);
+
+  // Draw the trend lines
+  const drawTrendLines = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const drawLine = (line: TrendLine, isActive: boolean) => {
+        ctx.beginPath();
+        ctx.moveTo(line.startPoint.x, line.startPoint.y);
+        ctx.lineTo(line.endPoint.x, line.endPoint.y);
+        ctx.strokeStyle = isActive ? currentTheme.text : currentTheme.grid;
+        ctx.lineWidth = isActive ? 2 : 1;
+        ctx.stroke();
+
+        // Draw end points
+        [line.startPoint, line.endPoint].forEach((point) => {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = isActive ? currentTheme.text : currentTheme.grid;
+          ctx.fill();
+        });
+      };
+
+      // Draw all lines
+      drawingState.drawings.forEach((drawing) => {
+        if (drawing.type === "trendLine") {
+          drawLine(drawing, drawing === drawingState.activeDrawing);
+        }
+      });
+
+      // Draw active drawing
+      if (drawingState.activeDrawing?.type === "trendLine") {
+        drawLine(drawingState.activeDrawing, true);
+      }
+    },
+    [drawingState, currentTheme]
+  );
+
+  // Add xAxisCanvasRef
+  const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Add a separate function for drawing candlesticks
+  const drawCandlesticks = (ctx: CanvasRenderingContext2D) => {
     // Calculate chart dimensions
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
@@ -1040,55 +1345,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
     const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
     const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
-
-    // Calculate grid prices and labels
-    const { gridPrices, priceLabels } = calculateGridPrices(
-      minPrice,
-      maxPrice,
-      adjustedMinPrice,
-      adjustedMaxPrice,
-      chartHeight,
-      getY
-    );
-
-    // Draw grid lines
-    gridPrices.forEach((price) => {
-      const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
-      if (
-        y >= dimensions.padding.top &&
-        y <= dimensions.height - dimensions.padding.bottom
-      ) {
-        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
-      }
-    });
-
-    // Draw vertical grid lines
-    visibleData.forEach((candle, i) => {
-      const candleCenterX =
-        dimensions.padding.left + i * barSpacing + barSpacing / 2;
-      const date = new Date(candle.timestamp);
-      const minutes = date.getMinutes();
-      const hours = date.getHours();
-
-      // Draw grid line for hour marks and market open
-      if (minutes === 0 || (hours === 9 && minutes === 15)) {
-        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(candleCenterX, dimensions.padding.top);
-        ctx.lineTo(
-          candleCenterX,
-          dimensions.height - dimensions.padding.bottom
-        );
-        ctx.stroke();
-      }
-    });
 
     // Draw candlesticks
     visibleData.forEach((candle, i) => {
@@ -1124,12 +1380,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       ctx.globalAlpha = opacity;
       ctx.fillStyle =
         candle.close >= candle.open
-          ? currentTheme?.upColor || themes.dark.upColor
-          : currentTheme?.downColor || themes.dark.downColor;
+          ? currentTheme.upColor
+          : currentTheme.downColor;
       ctx.strokeStyle =
         candle.close >= candle.open
-          ? currentTheme?.upColor || themes.dark.upColor
-          : currentTheme?.downColor || themes.dark.downColor;
+          ? currentTheme.upColor
+          : currentTheme.downColor;
 
       // Draw wick
       ctx.beginPath();
@@ -1144,187 +1400,184 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     // Reset opacity
     ctx.globalAlpha = 1;
+  };
 
-    // Draw price labels
-    const skipFactor = Math.ceil(priceLabels.length / 8);
-    priceLabels.forEach((label, i) => {
-      if (i % skipFactor === 0) {
-        ctx.fillStyle = currentTheme?.text || themes.dark.text;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          label.text,
-          dimensions.width - dimensions.padding.right + 5,
-          label.y
-        );
+  // Update the drawAxes function
+  const drawAxes = (ctx: CanvasRenderingContext2D) => {
+    // Calculate chart dimensions
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const chartHeight =
+      dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
+
+    // Get visible data
+    const visibleStartIndex = Math.max(0, viewState.startIndex);
+    const visibleEndIndex = Math.min(
+      combinedData.length,
+      visibleStartIndex + viewState.visibleBars
+    );
+    const visibleData = combinedData.slice(visibleStartIndex, visibleEndIndex);
+
+    if (!visibleData.length) return;
+
+    // Calculate price range from visible data
+    const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    const pricePadding = priceRange * 0.1;
+
+    // Calculate adjusted price range with offset
+    const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
+    const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
+
+    // Draw price grid and labels
+    const { gridPrices, priceLabels } = calculateGridPrices(
+      minPrice,
+      maxPrice,
+      adjustedMinPrice,
+      adjustedMaxPrice,
+      chartHeight
+    );
+
+    // Draw grid lines
+    gridPrices.forEach((price) => {
+      const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+      if (
+        y >= dimensions.padding.top &&
+        y <= dimensions.height - dimensions.padding.bottom
+      ) {
+        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+        ctx.stroke();
       }
     });
-  }, [
-    combinedData,
-    dimensions,
-    viewState,
-    currentTheme,
-    getY,
-    calculateGridPrices,
-  ]);
 
-  // Add new ref for x-axis canvas
-  const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
+    // Draw price labels
+    priceLabels.forEach((label) => {
+      ctx.fillStyle = currentTheme?.text || themes.dark.text;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        label.text,
+        dimensions.width - dimensions.padding.right + 5,
+        label.y
+      );
+    });
+  };
 
-  // Add new effect to draw x-axis
+  // In the main render effect, update it to include both candles and drawings:
+
   useEffect(() => {
-    if (!xAxisCanvasRef.current || !data.length) return;
+    if (!mainCanvasRef.current || !data.length) return;
 
-    const canvas = xAxisCanvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const mainCanvas = mainCanvasRef.current;
+    const ctx = mainCanvas.getContext("2d");
     if (!ctx) return;
 
     // Set canvas size with device pixel ratio
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = dimensions.width * dpr;
-    canvas.height = 30 * dpr;
+    mainCanvas.width = dimensions.width * dpr;
+    mainCanvas.height = dimensions.height * dpr;
     ctx.scale(dpr, dpr);
 
     // Clear canvas
-    ctx.clearRect(0, 0, dimensions.width, 30);
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-    // Draw time labels
-    ctx.fillStyle = currentTheme.text;
-    ctx.textAlign = "center";
-    ctx.font = "10px sans-serif";
+    // Draw candlesticks and axes
+    drawCandlesticks(ctx);
+    drawAxes(ctx);
 
-    const chartWidth =
-      dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const barWidth = chartWidth / viewState.visibleBars;
+    // Draw trend lines on overlay canvas
+    const overlayCtx = overlayCanvasRef.current?.getContext("2d");
+    if (overlayCtx) {
+      overlayCtx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-    // Get visible data
-    const visibleData = combinedData.slice(
-      viewState.startIndex,
-      viewState.startIndex + viewState.visibleBars
-    );
-
-    visibleData.forEach((candle, i) => {
-      const x = dimensions.padding.left + i * barWidth + barWidth / 2;
-      const date = new Date(candle.timestamp);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-
-      if (minutes === 0 || (hours === 9 && minutes === 15)) {
-        const timeLabel = timeframeConfig.tickFormat(candle.timestamp);
-        ctx.fillText(timeLabel, x, 20);
+      // Draw crosshair if not in drawing mode
+      if (!activeTool) {
+        drawCrosshair();
       }
-    });
-  }, [combinedData, dimensions, viewState, timeframeConfig, currentTheme]);
 
-  // Update theme-related style properties to include fallback
-  const themeStyles = useMemo(
-    () => ({
-      background: currentTheme?.background || themes.dark.background,
-      grid: currentTheme?.grid || themes.dark.grid,
-      text: currentTheme?.text || themes.dark.text,
-      // ... other theme properties
-    }),
-    [currentTheme]
-  );
+      // Draw trend lines
+      drawTrendLines(overlayCtx);
+    }
+  }, [
+    dimensions,
+    data,
+    viewState,
+    mousePosition,
+    drawingState,
+    drawTrendLines,
+    activeTool,
+  ]);
 
-  // Find if RSI is enabled
-  const isRSIEnabled = indicators.find((i) => i.id === "rsi")?.enabled || false;
+  // Add handleDrawingMouseLeave
+  const handleDrawingMouseLeave = () => {
+    if (drawingState.isDrawing) {
+      // Cancel drawing if mouse leaves the chart area
+      setDrawingState((prev) => ({
+        ...prev,
+        isDrawing: false,
+        startPoint: null,
+        activeDrawing: null,
+      }));
+    }
+  };
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "relative",
         width: "100%",
-        height: "100%",
-        background: themeStyles.background,
-        display: "flex",
-        flexDirection: "column",
+        height: `calc(100% - ${isRSIEnabled ? rsiHeight + 30 : 30}px)`,
+        cursor:
+          activeTool === "trendLine"
+            ? "crosshair"
+            : isDragging
+              ? "grabbing"
+              : "default",
+        touchAction: "none",
       }}
+      onMouseDown={
+        activeTool === "trendLine" ? handleDrawingMouseDown : handleMouseDown
+      }
+      onMouseMove={
+        activeTool === "trendLine" ? handleDrawingMouseMove : handleMouseMove
+      }
+      onMouseUp={handleMouseUp}
+      onMouseLeave={(e) => {
+        handleMouseLeave(e);
+        handleDrawingMouseLeave();
+      }}
+      onWheel={handleWheel}
+      onDoubleClick={handleDoubleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Main Chart Area */}
-      <div
-        ref={containerRef}
+      <canvas
+        ref={mainCanvasRef}
         style={{
-          position: "relative",
           width: "100%",
-          height: `calc(100% - ${isRSIEnabled ? 130 : 30}px)`,
-          cursor: isDragging ? "grabbing" : "crosshair",
-          touchAction: "none",
+          height: "100%",
+          position: "absolute",
+          zIndex: 1,
         }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        onDoubleClick={handleDoubleClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <canvas
-          ref={mainCanvasRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-            zIndex: 1,
-          }}
-        />
-        <canvas
-          ref={overlayCanvasRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-            zIndex: 2,
-            pointerEvents: "none",
-          }}
-        />
-      </div>
-
-      {/* Conditionally render RSI Indicator */}
-      {isRSIEnabled && (
-        <div
-          style={{
-            height: "100px",
-            borderTop: `1px solid ${themeStyles.grid}`,
-          }}
-        >
-          <RSIIndicator
-            data={combinedData}
-            dimensions={{
-              ...dimensions,
-              padding: {
-                ...dimensions.padding,
-                bottom: 0,
-              },
-            }}
-            theme={currentTheme}
-            period={14}
-            height={100}
-            startIndex={viewState.startIndex}
-            visibleBars={viewState.visibleBars}
-          />
-        </div>
-      )}
-
-      {/* X-Axis Area */}
-      <div
+      />
+      <canvas
+        ref={overlayCanvasRef}
         style={{
-          height: "30px",
-          borderTop: `1px solid ${themeStyles.grid}`,
-          position: "relative",
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          zIndex: 2,
+          pointerEvents: "none",
         }}
-      >
-        <canvas
-          ref={xAxisCanvasRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-          }}
-        />
-      </div>
+      />
     </div>
   );
 };

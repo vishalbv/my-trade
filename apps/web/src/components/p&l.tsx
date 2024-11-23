@@ -10,7 +10,7 @@ export const PnL = () => {
 
   //   const { _shoonyaPL } = useSelector((s: RootState) => s.ticks_shoonya);
 
-  const _shoonyaPL = 1000;
+  const _shoonyaPL = 204783.0;
 
   const [showInPerc, setShowidPerc] = useState(true);
 

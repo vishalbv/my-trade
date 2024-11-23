@@ -1,10 +1,12 @@
+import { ChartTheme } from "./constants/themes";
+
 export interface OHLCData {
   timestamp: number;
   open: number;
   high: number;
   low: number;
   close: number;
-  volume?: number;
+  volume: number;
   display?: boolean;
 }
 
@@ -26,18 +28,6 @@ export interface ChartDimensions {
   };
 }
 
-export interface ChartTheme {
-  background: string;
-  grid: string;
-  text: string;
-  upColor: string;
-  downColor: string;
-  crosshair: string;
-  axisBackground: string;
-  controlsBackground: string;
-  buttonHover: string;
-}
-
 export interface ViewState {
   scale: number;
   offsetX: number;
@@ -47,10 +37,19 @@ export interface ViewState {
   theme: ChartTheme;
 }
 
-export interface MousePosition {
-  x: number;
-  y: number;
-  price: number;
-  timestamp: number;
-  visible: boolean;
+export interface Indicator {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface ChartTheme {
+  background: string;
+  text: string;
+  grid: string;
+  upColor: string;
+  downColor: string;
+  axisBackground: string;
+  crosshair: string;
+  buttonHover: string;
 }

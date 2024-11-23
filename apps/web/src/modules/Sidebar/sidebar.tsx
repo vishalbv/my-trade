@@ -27,8 +27,8 @@ import Clock from "../../components/clock";
 
 const leftbraItems = [
   {
-    label: "TRADE-MANAGE",
-    href: "/trade-manage",
+    label: "MONEY-MANAGE",
+    href: "/money-manage",
     icon: TrendingUp,
   },
   {

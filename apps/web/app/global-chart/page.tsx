@@ -29,6 +29,10 @@ import {
 } from "../../src/components/Chart/icons/layoutIcons";
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
 import { SymbolSearch } from "../../src/components/Chart/components/SymbolSearch";
+import {
+  DrawingToolbar,
+  DrawingTool,
+} from "../../src/components/Chart/components/DrawingToolbar";
 
 interface TimeframeConfig {
   resolution: string;
@@ -156,6 +160,7 @@ export default function GlobalChart() {
   const [indicators, setIndicators] = useState<Indicator[]>([
     { id: "rsi", label: "RSI", enabled: false },
   ]);
+  const [activeTool, setActiveTool] = useState<DrawingTool>(null);
 
   const currentTimeframe = timeframeOptions.find((t) => t.value === timeframe);
   const currentLayout = layoutOptions.find((l) => l.id === selectedLayout);
@@ -164,6 +169,14 @@ export default function GlobalChart() {
     <div className="flex flex-col h-full relative">
       <div className="flex items-center absolute top-0 right-0 z-10">
         <div className="flex items-center ml-auto gap-2">
+          {/* Drawing Tools */}
+          <div className="flex items-center px-2 border-r border-border">
+            <DrawingToolbar
+              activeTool={activeTool}
+              onToolSelect={setActiveTool}
+            />
+          </div>
+
           {/* Indicators Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -249,6 +262,7 @@ export default function GlobalChart() {
           layout={selectedLayout}
           timeframeConfigs={timeframeConfigs}
           indicators={indicators}
+          activeTool={activeTool}
         />
       </div>
 

@@ -108,7 +108,6 @@ export const useRealtimeCandles = ({
             low: lastCandle.close,
             close: lastCandle.close,
             volume: 0,
-            index: lastCandle.index + 1,
           };
           return [...prevCandles, newCandle];
         });
@@ -123,7 +122,7 @@ export const useRealtimeCandles = ({
             toTimestamp
           );
 
-          if (recentCandles) {
+          if (recentCandles && recentCandles.length > 0) {
             setChartData((prevCandles) => {
               const oldCandles = prevCandles.filter(
                 (candle) => candle.timestamp < recentCandles[0].timestamp

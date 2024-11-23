@@ -15,7 +15,6 @@ class StatesDbService {
   }
 
   async getStateById(id: string) {
-    logger.info("Fetching state by id:", id);
     try {
       return await dbService.getCollection("states").findOne({ id });
     } catch (error) {

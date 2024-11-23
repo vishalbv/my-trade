@@ -1,5 +1,6 @@
 import { TimeframeConfig } from "../types";
 import { ChartContainer } from "./ChartContainer";
+import { DrawingTool } from "./DrawingToolbar";
 
 interface Indicator {
   id: string;
@@ -11,12 +12,14 @@ interface ChartLayoutProps {
   layout: string;
   timeframeConfigs: { [key: string]: TimeframeConfig };
   indicators: Indicator[];
+  activeTool: DrawingTool;
 }
 
 export const ChartLayout = ({
   layout,
   timeframeConfigs,
   indicators,
+  activeTool,
 }: ChartLayoutProps) => {
   const renderLayout = () => {
     switch (layout) {
@@ -27,6 +30,7 @@ export const ChartLayout = ({
               timeframeConfigs={timeframeConfigs}
               layoutKey={`${layout}-0`}
               indicators={indicators}
+              activeTool={activeTool}
             />
           </div>
         );
@@ -39,6 +43,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-0`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="bg-background h-full">
@@ -46,6 +51,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-1`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
           </div>
@@ -59,6 +65,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-0`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="bg-background h-full">
@@ -66,6 +73,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-1`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
           </div>
@@ -80,6 +88,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-0`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
               <div className="bg-background h-full">
@@ -87,6 +96,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-1`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
             </div>
@@ -95,6 +105,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-2`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
           </div>
@@ -108,6 +119,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-0`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="grid grid-rows-2 gap-[1px] h-full">
@@ -116,6 +128,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-1`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
               <div className="bg-background h-full">
@@ -123,6 +136,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-2`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
             </div>
@@ -138,6 +152,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-0`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
               <div className="bg-background h-full">
@@ -145,6 +160,7 @@ export const ChartLayout = ({
                   timeframeConfigs={timeframeConfigs}
                   layoutKey={`${layout}-1`}
                   indicators={indicators}
+                  activeTool={activeTool}
                 />
               </div>
             </div>
@@ -153,6 +169,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-2`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
           </div>
@@ -166,6 +183,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-0`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="bg-background h-full">
@@ -173,6 +191,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-1`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="bg-background h-full">
@@ -180,6 +199,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-2`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
             <div className="bg-background h-full">
@@ -187,6 +207,7 @@ export const ChartLayout = ({
                 timeframeConfigs={timeframeConfigs}
                 layoutKey={`${layout}-3`}
                 indicators={indicators}
+                activeTool={activeTool}
               />
             </div>
           </div>
