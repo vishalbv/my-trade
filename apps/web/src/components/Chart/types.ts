@@ -47,9 +47,9 @@ export interface ChartTheme {
   background: string;
   text: string;
   grid: string;
+  crosshair: string;
   upColor: string;
   downColor: string;
   axisBackground: string;
-  crosshair: string;
   buttonHover: string;
 }

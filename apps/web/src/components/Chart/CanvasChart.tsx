@@ -49,8 +49,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { theme } = useTheme();
-  const currentTheme = themes[theme as keyof typeof themes] || themes.dark;
+  const { theme: themeMode } = useTheme();
+  const currentTheme = useMemo(
+    () => themes[themeMode as keyof typeof themes] || themes.dark,
+    [themeMode]
+  );
 
   const [dimensions, setDimensions] = useState<ChartDimensions>({
     width: 0,
@@ -927,6 +930,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     for (let i = 1; i < labels.length; i++) {
       const prevLabel = labels[i - 1];
       const currentLabel = labels[i];
+      if (!prevLabel || !currentLabel) continue;
+
       const prevWidth = ctx.measureText(prevLabel.text).width;
       const spacing = currentLabel.x - (prevLabel.x + prevWidth);
       if (spacing < minSpacing) return true;
@@ -1143,14 +1148,89 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     startPoint: null,
   });
 
-  // Function to convert mouse coordinates to chart coordinates
+  // Add these helper functions for coordinate conversion
+  const screenToChartCoordinates = (
+    point: Point,
+    dimensions: ChartDimensions,
+    viewState: ViewState,
+    priceRangeObj: { min: number; max: number }
+  ): Point => {
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const chartHeight =
+      dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
+
+    const barIndex =
+      Math.floor(
+        ((point.x - dimensions.padding.left) / chartWidth) *
+          viewState.visibleBars
+      ) + viewState.startIndex;
+
+    const priceDiff = priceRangeObj.max - priceRangeObj.min;
+    const price =
+      priceRangeObj.max -
+      ((point.y - dimensions.padding.top) / chartHeight) * priceDiff;
+
+    return { x: barIndex, y: price };
+  };
+
+  const chartToScreenCoordinates = (
+    point: { x: number; y: number },
+    dimensions: ChartDimensions,
+    viewState: ViewState,
+    priceRange: { min: number; max: number }
+  ): Point => {
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const chartHeight =
+      dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
+
+    // Convert x from bar index to screen coordinates
+    const x =
+      dimensions.padding.left +
+      ((point.x - viewState.startIndex) / viewState.visibleBars) * chartWidth;
+
+    // Convert y from price to screen coordinates
+    const range = priceRange.max - priceRange.min;
+    const y =
+      dimensions.padding.top +
+      ((priceRange.max - point.y) / range) * chartHeight;
+
+    return { x, y };
+  };
+
+  // Update the getChartCoordinates function
   const getChartCoordinates = (e: React.MouseEvent): Point => {
     if (!overlayCanvasRef.current) return { x: 0, y: 0 };
+
     const rect = overlayCanvasRef.current.getBoundingClientRect();
-    return {
+    const screenPoint = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+
+    // Get visible data for price range calculation
+    const visibleData = combinedData.slice(
+      viewState.startIndex,
+      viewState.startIndex + viewState.visibleBars
+    );
+
+    const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const pricePadding = (maxPrice - minPrice) * 0.1;
+
+    const priceRange = {
+      min: minPrice - pricePadding + viewState.offsetY,
+      max: maxPrice + pricePadding + viewState.offsetY,
+    };
+
+    return screenToChartCoordinates(
+      screenPoint,
+      dimensions,
+      viewState,
+      priceRange
+    );
   };
 
   // Function to check if a point is near a line
@@ -1203,9 +1283,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     const point = getChartCoordinates(e);
 
-    // If we're not currently drawing, start a new line
     if (!drawingState.isDrawing) {
-      setDrawingState((prev) => ({
+      setDrawingState((prev: DrawingState) => ({
         ...prev,
         isDrawing: true,
         startPoint: point,
@@ -1217,8 +1296,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         },
       }));
     } else {
-      // If we are drawing, finish the line on second click
-      setDrawingState((prev) => ({
+      setDrawingState((prev: DrawingState) => ({
         ...prev,
         isDrawing: false,
         startPoint: null,
@@ -1231,9 +1309,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Handle mouse move for drawing
   const handleDrawingMouseMove = (e: React.MouseEvent) => {
     if (drawingState.isDrawing && drawingState.activeDrawing) {
-      // Update the end point while drawing
       const point = getChartCoordinates(e);
-      setDrawingState((prev) => ({
+      setDrawingState((prev: DrawingState) => ({
         ...prev,
         activeDrawing: {
           ...prev.activeDrawing!,
@@ -1246,9 +1323,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Handle mouse up for drawing
   const handleDrawingMouseUp = () => {
     if (drawingState.isDrawing || drawingState.isDragging) {
-      setDrawingState((prev) => {
+      setDrawingState((prev: DrawingState) => {
         const newDrawings = prev.isDragging
-          ? prev.drawings.map((d) =>
+          ? prev.drawings.map((d: Drawing) =>
               d.id === prev.activeDrawing?.id ? prev.activeDrawing : d
             )
           : [...prev.drawings, prev.activeDrawing!];
@@ -1277,15 +1354,49 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const drawTrendLines = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const drawLine = (line: TrendLine, isActive: boolean) => {
+        // Get visible data for price range calculation
+        const visibleData = combinedData.slice(
+          viewState.startIndex,
+          viewState.startIndex + viewState.visibleBars
+        );
+
+        const prices = visibleData.flatMap((candle) => [
+          candle.high,
+          candle.low,
+        ]);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const pricePadding = (maxPrice - minPrice) * 0.1;
+
+        const priceRange = {
+          min: minPrice - pricePadding + viewState.offsetY,
+          max: maxPrice + pricePadding + viewState.offsetY,
+        };
+
+        // Convert chart coordinates to screen coordinates
+        const startScreen = chartToScreenCoordinates(
+          line.startPoint,
+          dimensions,
+          viewState,
+          priceRange
+        );
+        const endScreen = chartToScreenCoordinates(
+          line.endPoint,
+          dimensions,
+          viewState,
+          priceRange
+        );
+
+        // Draw the line
         ctx.beginPath();
-        ctx.moveTo(line.startPoint.x, line.startPoint.y);
-        ctx.lineTo(line.endPoint.x, line.endPoint.y);
+        ctx.moveTo(startScreen.x, startScreen.y);
+        ctx.lineTo(endScreen.x, endScreen.y);
         ctx.strokeStyle = isActive ? currentTheme.text : currentTheme.grid;
         ctx.lineWidth = isActive ? 2 : 1;
         ctx.stroke();
 
         // Draw end points
-        [line.startPoint, line.endPoint].forEach((point) => {
+        [startScreen, endScreen].forEach((point) => {
           ctx.beginPath();
           ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
           ctx.fillStyle = isActive ? currentTheme.text : currentTheme.grid;
@@ -1305,7 +1416,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         drawLine(drawingState.activeDrawing, true);
       }
     },
-    [drawingState, currentTheme]
+    [drawingState, currentTheme, dimensions, viewState, combinedData]
   );
 
   // Add xAxisCanvasRef

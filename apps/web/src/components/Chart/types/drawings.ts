@@ -3,12 +3,15 @@ export interface Point {
   y: number;
 }
 
-export interface TrendLine {
+export interface BaseDrawing {
   id: string;
+  type: string;
+}
+
+export interface TrendLine extends BaseDrawing {
   type: "trendLine";
   startPoint: Point;
   endPoint: Point;
-  selected?: boolean;
 }
 
 export type Drawing = TrendLine;
