@@ -27,16 +27,6 @@ interface MousePosition {
 
 const ANIMATION_DURATION = 300; // ms
 
-interface ViewState {
-  scaleX: number;
-  scaleY: number;
-  offsetX: number;
-  offsetY: number;
-  startIndex: number;
-  visibleBars: number;
-  theme: ChartTheme;
-}
-
 // Add this interface for drag mode
 interface DragState {
   mode: "pan" | "scaleX" | "scaleY";
@@ -374,14 +364,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         break;
       }
       case "pan": {
-        // Calculate horizontal movement
+        // Calculate horizontal movement with scale-based sensitivity
         const dx = e.clientX - dragState.startX;
         const chartWidth =
           dimensions.width - dimensions.padding.left - dimensions.padding.right;
         const barWidth = chartWidth / viewState.visibleBars;
-        const barsToMove = Math.round(dx / barWidth);
 
-        // Calculate vertical movement
+        // Adjust horizontal movement speed based on scale
+        const horizontalSensitivity = 1 / Math.max(0.2, viewState.scaleX);
+        const barsToMove = Math.round((dx * horizontalSensitivity) / barWidth);
+
+        // Calculate vertical movement with scale-based sensitivity
         const dy = e.clientY - dragState.startY;
         const chartHeight =
           dimensions.height -
@@ -401,8 +394,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const maxPrice = Math.max(...prices);
         const priceRange = maxPrice - minPrice;
 
-        // Calculate price movement based on vertical drag
-        const priceMove = (dy / chartHeight) * priceRange;
+        // Adjust vertical movement speed based on scale
+        const verticalSensitivity = 1 / Math.max(0.2, viewState.scaleY);
+        const priceMove =
+          ((dy * verticalSensitivity) / chartHeight) * priceRange;
 
         if (barsToMove !== 0 || Math.abs(dy) > 1) {
           setViewState((prev) => {
@@ -414,11 +409,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               )
             );
 
-            // Update vertical offset
+            // Update vertical offset with increased range and sensitivity
             const newOffsetY = (prev.offsetY || 0) + priceMove;
 
-            // Limit vertical panning to reasonable bounds
-            const maxOffset = priceRange * 0.5;
+            // Increase the offset limit based on scale
+            const maxOffset = priceRange * (2.5 / Math.max(0.2, prev.scaleY));
             const boundedOffsetY = Math.max(
               -maxOffset,
               Math.min(maxOffset, newOffsetY)
@@ -1121,182 +1116,312 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     []
   );
 
-  // Update the render effect to use the new functions
+  // Update the state declarations
+  const [rsiHeight, setRsiHeight] = useState<number>(100);
+  const [isDraggingRSI, setIsDraggingRSI] = useState(false);
+  const [dragStartY, setDragStartY] = useState<number>(0);
+  const [dragStartHeight, setDragStartHeight] = useState<number>(0);
+
+  // Update the RSI separator mouse down handler
+  const handleRSISeparatorMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingRSI(true);
+    setDragStartY(e.clientY);
+    setDragStartHeight(rsiHeight);
+  };
+
+  // First declare drawChart
+  const drawChart = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      // Clear canvas
+      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+      // Calculate chart dimensions
+      const chartWidth =
+        dimensions.width - dimensions.padding.left - dimensions.padding.right;
+      const chartHeight =
+        dimensions.height -
+        dimensions.padding.top -
+        dimensions.padding.bottom -
+        (isRSIEnabled ? rsiHeight + 4 : 0); // Add 4px for separator
+
+      // Calculate candle dimensions using scaleX
+      const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
+      const candleWidth = barWidth * 0.8;
+
+      // Get visible data
+      const visibleStartIndex = Math.max(0, viewState.startIndex);
+      const visibleEndIndex = Math.min(
+        combinedData.length,
+        visibleStartIndex + viewState.visibleBars
+      );
+      const visibleData = combinedData.slice(
+        visibleStartIndex,
+        visibleEndIndex
+      );
+
+      if (!visibleData.length) return;
+
+      // Calculate price range from visible data
+      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice;
+      const pricePadding = priceRange * 0.1;
+
+      // Calculate adjusted price range with offset
+      const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
+      const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
+      const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
+
+      // Calculate grid prices and labels
+      const { gridPrices, priceLabels } = calculateGridPrices(
+        minPrice,
+        maxPrice,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight,
+        getY
+      );
+
+      // Draw grid lines
+      gridPrices.forEach((price) => {
+        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+        if (
+          y >= dimensions.padding.top &&
+          y <= dimensions.height - dimensions.padding.bottom
+        ) {
+          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(dimensions.padding.left, y);
+          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+          ctx.stroke();
+        }
+      });
+
+      // Draw vertical grid lines
+      visibleData.forEach((candle, i) => {
+        const candleCenterX =
+          dimensions.padding.left + i * barWidth + barWidth / 2;
+        const date = new Date(candle.timestamp);
+        const minutes = date.getMinutes();
+        const hours = date.getHours();
+
+        if (minutes === 0 || (hours === 9 && minutes === 15)) {
+          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+          ctx.lineWidth = 0.5;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(candleCenterX, dimensions.padding.top);
+          ctx.lineTo(
+            candleCenterX,
+            dimensions.height - dimensions.padding.bottom
+          );
+          ctx.stroke();
+        }
+      });
+
+      // Draw candlesticks
+      visibleData.forEach((candle, i) => {
+        const x = dimensions.padding.left + i * barWidth;
+        const openY = getY(
+          candle.open,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+        const closeY = getY(
+          candle.close,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+        const highY = getY(
+          candle.high,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+        const lowY = getY(
+          candle.low,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+
+        const opacity = candle.display === false ? 0 : 1;
+
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle =
+          candle.close >= candle.open
+            ? currentTheme?.upColor || defaultTheme.upColor
+            : currentTheme?.downColor || defaultTheme.downColor;
+        ctx.strokeStyle =
+          candle.close >= candle.open
+            ? currentTheme?.upColor || defaultTheme.upColor
+            : currentTheme?.downColor || defaultTheme.downColor;
+
+        // Draw wick
+        ctx.beginPath();
+        ctx.moveTo(x + candleWidth / 2, highY);
+        ctx.lineTo(x + candleWidth / 2, lowY);
+        ctx.stroke();
+
+        // Draw candle body
+        const bodyHeight = Math.max(Math.abs(closeY - openY), 1);
+        ctx.fillRect(x, Math.min(openY, closeY), candleWidth, bodyHeight);
+      });
+
+      // Reset opacity
+      ctx.globalAlpha = 1;
+
+      // Draw price labels
+      const skipFactor = Math.ceil(priceLabels.length / 8);
+      priceLabels.forEach((label, i) => {
+        if (i % skipFactor === 0) {
+          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            label.text,
+            dimensions.width - dimensions.padding.right + 5,
+            label.y
+          );
+        }
+      });
+    },
+    [
+      dimensions,
+      viewState,
+      combinedData,
+      isRSIEnabled,
+      rsiHeight,
+      currentTheme,
+      defaultTheme,
+      calculateGridPrices,
+      getY,
+    ]
+  );
+
+  // Then use it in handleRSIDrag
+  const handleRSIDrag = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingRSI || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerHeight = containerRect.height;
+      const dy = dragStartY - e.clientY;
+
+      const newHeight = Math.max(
+        50,
+        Math.min(containerHeight * 0.4, dragStartHeight + dy)
+      );
+
+      requestAnimationFrame(() => {
+        setRsiHeight(newHeight);
+        if (mainCanvasRef.current) {
+          const ctx = mainCanvasRef.current.getContext("2d");
+          if (ctx) {
+            drawChart(ctx);
+          }
+        }
+      });
+    },
+    [isDraggingRSI, dragStartY, dragStartHeight, drawChart]
+  );
+
+  // Add handleRSIDragEnd
+  const handleRSIDragEnd = useCallback(() => {
+    setIsDraggingRSI(false);
+  }, []);
+
+  // Update the RSI drag effect
+  useEffect(() => {
+    if (isDraggingRSI) {
+      window.addEventListener("mousemove", handleRSIDrag);
+      window.addEventListener("mouseup", handleRSIDragEnd);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleRSIDrag);
+      window.removeEventListener("mouseup", handleRSIDragEnd);
+    };
+  }, [isDraggingRSI, handleRSIDrag, handleRSIDragEnd]);
+
+  // Update the main render effect to use the drawChart function
   useEffect(() => {
     if (!mainCanvasRef.current || !data.length) return;
-
-    const mainCanvas = mainCanvasRef.current;
-    const ctx = mainCanvas.getContext("2d");
+    const ctx = mainCanvasRef.current.getContext("2d");
     if (!ctx) return;
 
     // Set canvas size with device pixel ratio
     const dpr = window.devicePixelRatio || 1;
-    mainCanvas.width = dimensions.width * dpr;
-    mainCanvas.height = dimensions.height * dpr;
+    mainCanvasRef.current.width = dimensions.width * dpr;
+    mainCanvasRef.current.height = dimensions.height * dpr;
     ctx.scale(dpr, dpr);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+    drawChart(ctx);
+  }, [drawChart, dimensions, data.length]);
 
-    // Calculate chart dimensions
-    const chartWidth =
-      dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const chartHeight =
-      dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
+  // Update the RSI container style to use transform for smoother animation
+  const rsiContainerStyle = {
+    height: `${rsiHeight}px`,
+    borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
+    transform: "translate3d(0, 0, 0)", // Enable hardware acceleration
+    willChange: "height", // Hint to browser about the changing property
+  };
 
-    // Calculate candle dimensions using scaleX
-    const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
-    const candleWidth = barWidth * 0.8; // Candle body width
-    const spacing = barWidth * 0.2; // Space between candles
+  // Update the RSI section in the return JSX
+  {
+    isRSIEnabled && (
+      <>
+        <div
+          style={{
+            height: "4px",
+            backgroundColor: currentTheme?.grid || defaultTheme.grid,
+            cursor: "ns-resize",
+            position: "relative",
+            zIndex: 3,
+            transform: "translate3d(0, 0, 0)", // Enable hardware acceleration
+          }}
+          onMouseDown={handleRSISeparatorMouseDown}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "30px",
+              height: "2px",
+              backgroundColor: currentTheme?.text || defaultTheme.text,
+              opacity: isDraggingRSI ? 0.8 : 0.5, // Increase opacity while dragging
+              transition: "opacity 0.2s ease",
+            }}
+          />
+        </div>
 
-    // Get visible data
-    const visibleStartIndex = Math.max(0, viewState.startIndex);
-    const visibleEndIndex = Math.min(
-      combinedData.length,
-      visibleStartIndex + viewState.visibleBars
+        <div style={rsiContainerStyle}>
+          <RSIIndicator
+            data={combinedData}
+            dimensions={{
+              ...dimensions,
+              height: rsiHeight, // Pass the current height
+              padding: {
+                ...dimensions.padding,
+                bottom: 0,
+              },
+            }}
+            theme={currentTheme}
+            period={14}
+            height={rsiHeight}
+            startIndex={viewState.startIndex}
+            visibleBars={viewState.visibleBars}
+          />
+        </div>
+      </>
     );
-    const visibleData = combinedData.slice(visibleStartIndex, visibleEndIndex);
-
-    if (!visibleData.length) return;
-
-    // Calculate price range from visible data
-    const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice;
-    const pricePadding = priceRange * 0.1;
-
-    // Calculate adjusted price range with offset
-    const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
-    const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-    const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
-
-    // Calculate grid prices and labels
-    const { gridPrices, priceLabels } = calculateGridPrices(
-      minPrice,
-      maxPrice,
-      adjustedMinPrice,
-      adjustedMaxPrice,
-      chartHeight,
-      getY
-    );
-
-    // Draw grid lines
-    gridPrices.forEach((price) => {
-      const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
-      if (
-        y >= dimensions.padding.top &&
-        y <= dimensions.height - dimensions.padding.bottom
-      ) {
-        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
-      }
-    });
-
-    // Draw vertical grid lines
-    visibleData.forEach((candle, i) => {
-      const candleCenterX =
-        dimensions.padding.left + i * barWidth + barWidth / 2;
-      const date = new Date(candle.timestamp);
-      const minutes = date.getMinutes();
-      const hours = date.getHours();
-
-      // Draw grid line for hour marks and market open
-      if (minutes === 0 || (hours === 9 && minutes === 15)) {
-        ctx.strokeStyle = currentTheme?.grid || themes.dark.grid;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(candleCenterX, dimensions.padding.top);
-        ctx.lineTo(
-          candleCenterX,
-          dimensions.height - dimensions.padding.bottom
-        );
-        ctx.stroke();
-      }
-    });
-
-    // Draw candlesticks
-    visibleData.forEach((candle, i) => {
-      const x = dimensions.padding.left + i * barWidth;
-      const openY = getY(
-        candle.open,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight
-      );
-      const closeY = getY(
-        candle.close,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight
-      );
-      const highY = getY(
-        candle.high,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight
-      );
-      const lowY = getY(
-        candle.low,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight
-      );
-
-      // Set colors and opacity based on candle type
-      const opacity = candle.display === false ? 0 : 1;
-
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle =
-        candle.close >= candle.open
-          ? currentTheme?.upColor || themes.dark.upColor
-          : currentTheme?.downColor || themes.dark.downColor;
-      ctx.strokeStyle =
-        candle.close >= candle.open
-          ? currentTheme?.upColor || themes.dark.upColor
-          : currentTheme?.downColor || themes.dark.downColor;
-
-      // Draw wick
-      ctx.beginPath();
-      ctx.moveTo(x + candleWidth / 2, highY);
-      ctx.lineTo(x + candleWidth / 2, lowY);
-      ctx.stroke();
-
-      // Draw candle body
-      const bodyHeight = Math.max(Math.abs(closeY - openY), 1);
-      ctx.fillRect(x, Math.min(openY, closeY), candleWidth, bodyHeight);
-    });
-
-    // Reset opacity
-    ctx.globalAlpha = 1;
-
-    // Draw price labels
-    const skipFactor = Math.ceil(priceLabels.length / 8);
-    priceLabels.forEach((label, i) => {
-      if (i % skipFactor === 0) {
-        ctx.fillStyle = currentTheme?.text || themes.dark.text;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          label.text,
-          dimensions.width - dimensions.padding.right + 5,
-          label.y
-        );
-      }
-    });
-  }, [
-    combinedData,
-    dimensions,
-    viewState,
-    currentTheme,
-    getY,
-    calculateGridPrices,
-  ]);
+  }
 
   // Add new ref for x-axis canvas
   const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -1488,6 +1613,27 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     viewState.scaleX,
   ]);
 
+  // Add this effect for resize handling
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { height } = entry.contentRect;
+        setDimensions((prev) => ({
+          ...prev,
+          height: height,
+        }));
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Update the return JSX
   return (
     <div
@@ -1506,7 +1652,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         style={{
           position: "relative",
           width: "100%",
-          height: `calc(100% - ${isRSIEnabled ? 130 : 30}px)`,
+          height: `calc(100% - ${isRSIEnabled ? rsiHeight + 34 : 30}px)`,
           cursor: isDragging ? "grabbing" : "crosshair",
           touchAction: "none",
         }}
@@ -1543,28 +1689,57 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       {/* Conditionally render RSI Indicator */}
       {isRSIEnabled && (
-        <div
-          style={{
-            height: "100px",
-            borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
-          }}
-        >
-          <RSIIndicator
-            data={combinedData}
-            dimensions={{
-              ...dimensions,
-              padding: {
-                ...dimensions.padding,
-                bottom: 0,
-              },
+        <>
+          {/* Draggable Separator */}
+          <div
+            style={{
+              height: "4px",
+              backgroundColor: currentTheme?.grid || defaultTheme.grid,
+              cursor: "ns-resize",
+              position: "relative",
+              zIndex: 3,
             }}
-            theme={currentTheme}
-            period={14}
-            height={100}
-            startIndex={viewState.startIndex}
-            visibleBars={viewState.visibleBars}
-          />
-        </div>
+            onMouseDown={handleRSISeparatorMouseDown}
+          >
+            {/* Visual indicator for draggable area */}
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "30px",
+                height: "2px",
+                backgroundColor: currentTheme?.text || defaultTheme.text,
+                opacity: 0.5,
+              }}
+            />
+          </div>
+
+          {/* RSI Chart */}
+          <div
+            style={{
+              height: `${rsiHeight}px`,
+              borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
+            }}
+          >
+            <RSIIndicator
+              data={combinedData}
+              dimensions={{
+                ...dimensions,
+                padding: {
+                  ...dimensions.padding,
+                  bottom: 0,
+                },
+              }}
+              theme={currentTheme}
+              period={14}
+              height={rsiHeight}
+              startIndex={viewState.startIndex}
+              visibleBars={viewState.visibleBars}
+            />
+          </div>
+        </>
       )}
 
       {/* X-Axis Area with visual feedback */}
