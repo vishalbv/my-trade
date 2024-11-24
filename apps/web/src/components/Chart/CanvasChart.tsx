@@ -28,7 +28,8 @@ interface MousePosition {
 const ANIMATION_DURATION = 300; // ms
 
 interface ViewState {
-  scale: number;
+  scaleX: number;
+  scaleY: number;
   offsetX: number;
   offsetY: number;
   startIndex: number;
@@ -36,16 +37,32 @@ interface ViewState {
   theme: ChartTheme;
 }
 
+// Add this interface for drag mode
+interface DragState {
+  mode: "pan" | "scaleX" | "scaleY";
+  startX: number;
+  startY: number;
+  startScaleX: number;
+  startScaleY: number;
+}
+
+const BASE_CANDLE_WIDTH = 10;
+
 const CanvasChart: React.FC<CanvasChartProps> = ({
   data,
   timeframeConfig,
   indicators,
 }) => {
+  const isRSIEnabled = indicators.some(
+    (indicator) => indicator.id === "rsi" && indicator.enabled
+  );
+
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
-  const currentTheme = themes[theme as keyof typeof themes] || themes.dark;
+  const defaultTheme = themes.dark!; // Ensure dark theme exists
+  const currentTheme = themes[theme as keyof typeof themes] || defaultTheme;
 
   const [dimensions, setDimensions] = useState<ChartDimensions>({
     width: 0,
@@ -54,16 +71,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   });
 
   const [viewState, setViewState] = useState<ViewState>({
-    scale: 1,
+    scaleX: 1,
+    scaleY: 1,
     offsetX: 0,
     offsetY: 0,
     startIndex: 0,
     visibleBars: 0,
-    theme: themes.dark,
+    theme: defaultTheme,
   });
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragState, setDragState] = useState<DragState | null>(null);
 
   const [animation, setAnimation] = useState<{
     startTime: number;
@@ -78,6 +95,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     timestamp: 0,
     visible: false,
   });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const [touchState, setTouchState] = useState<{
+    startTouches?: Touch[];
+    startDistance?: number;
+    startScale?: number;
+  }>({});
 
   // Animate view state changes
   const animateViewState = useCallback(
@@ -104,9 +130,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       if (progress < 1) {
         setViewState({
-          scale:
-            animation.startState.scale +
-            (animation.targetState.scale - animation.startState.scale) * eased,
+          scaleX:
+            animation.startState.scaleX +
+            (animation.targetState.scaleX - animation.startState.scaleX) *
+              eased,
+          scaleY:
+            animation.startState.scaleY +
+            (animation.targetState.scaleY - animation.startState.scaleY) *
+              eased,
           offsetX:
             animation.startState.offsetX +
             (animation.targetState.offsetX - animation.startState.offsetX) *
@@ -251,7 +282,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       setViewState({
-        scale: 1,
+        scaleX: 1,
+        scaleY: 1,
         offsetX: 0,
         offsetY: 0,
         startIndex,
@@ -285,96 +317,143 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     }
   }, [combinedData.length, viewState.visibleBars]);
 
-  // Mouse event handlers
+  // Update handleMouseDown to detect drag on xAxisCanvas
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    if (
+    // Check if clicking on y-axis
+    const isOverYAxis = x >= dimensions.width - dimensions.padding.right;
+
+    if (isOverYAxis) {
+      setDragState({
+        mode: "scaleY",
+        startX: e.clientX,
+        startY: e.clientY,
+        startScaleX: viewState.scaleX,
+        startScaleY: viewState.scaleY,
+      });
+      e.currentTarget.style.cursor = "ns-resize";
+    } else if (
       x >= dimensions.padding.left &&
       x <= dimensions.width - dimensions.padding.right
     ) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      (e.currentTarget as HTMLDivElement).style.cursor = "grabbing";
+      setDragState({
+        mode: "pan",
+        startX: e.clientX,
+        startY: e.clientY,
+        startScaleX: viewState.scaleX,
+        startScaleY: viewState.scaleY,
+      });
+      e.currentTarget.style.cursor = "grabbing";
     }
   };
 
+  // Update handleMouseMove
   const handleMouseMove = (e: React.MouseEvent) => {
-    // Always update crosshair first
     handleMouseMoveForCrosshair(e);
 
-    if (!isDragging) return;
+    if (!dragState) return;
 
-    // Calculate horizontal movement
-    const dx = e.clientX - dragStart.x;
-    const chartWidth =
-      dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const barWidth = chartWidth / viewState.visibleBars;
-    const barsToMove = Math.round(dx / barWidth);
-
-    // Calculate vertical movement
-    const dy = e.clientY - dragStart.y;
-    const chartHeight =
-      dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
-
-    // Get visible data for price calculations
-    const visibleData = combinedData.slice(
-      viewState.startIndex,
-      viewState.startIndex + viewState.visibleBars
-    );
-    const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice;
-
-    // Calculate price movement based on vertical drag
-    const priceMove = (dy / chartHeight) * priceRange;
-
-    if (barsToMove !== 0 || Math.abs(dy) > 1) {
-      // Update view state with new start index and offset
-      setViewState((prev) => {
-        const newStartIndex = Math.max(
-          0,
-          Math.min(
-            combinedData.length - prev.visibleBars,
-            prev.startIndex - barsToMove
-          )
+    switch (dragState.mode) {
+      case "scaleY": {
+        const dy = dragState.startY - e.clientY;
+        const scaleFactor = 1 + dy / 200; // Adjust sensitivity as needed
+        const newScaleY = Math.max(
+          0.1,
+          Math.min(5, dragState.startScaleY * scaleFactor)
         );
 
-        // Update vertical offset
-        const newOffsetY = (prev.offsetY || 0) + priceMove;
-
-        // Limit vertical panning to reasonable bounds
-        const maxOffset = priceRange * 0.5;
-        const boundedOffsetY = Math.max(
-          -maxOffset,
-          Math.min(maxOffset, newOffsetY)
-        );
-
-        return {
+        setViewState((prev) => ({
           ...prev,
-          startIndex: newStartIndex,
-          offsetY: boundedOffsetY,
-        };
-      });
+          scaleY: newScaleY,
+        }));
+        break;
+      }
+      case "pan": {
+        // Calculate horizontal movement
+        const dx = e.clientX - dragState.startX;
+        const chartWidth =
+          dimensions.width - dimensions.padding.left - dimensions.padding.right;
+        const barWidth = chartWidth / viewState.visibleBars;
+        const barsToMove = Math.round(dx / barWidth);
 
-      // Update drag start position
-      setDragStart({ x: e.clientX, y: e.clientY });
+        // Calculate vertical movement
+        const dy = e.clientY - dragState.startY;
+        const chartHeight =
+          dimensions.height -
+          dimensions.padding.top -
+          dimensions.padding.bottom;
+
+        // Get visible data for price calculations
+        const visibleData = combinedData.slice(
+          viewState.startIndex,
+          viewState.startIndex + viewState.visibleBars
+        );
+        const prices = visibleData.flatMap((candle) => [
+          candle.high,
+          candle.low,
+        ]);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const priceRange = maxPrice - minPrice;
+
+        // Calculate price movement based on vertical drag
+        const priceMove = (dy / chartHeight) * priceRange;
+
+        if (barsToMove !== 0 || Math.abs(dy) > 1) {
+          setViewState((prev) => {
+            const newStartIndex = Math.max(
+              0,
+              Math.min(
+                combinedData.length - prev.visibleBars,
+                prev.startIndex - barsToMove
+              )
+            );
+
+            // Update vertical offset
+            const newOffsetY = (prev.offsetY || 0) + priceMove;
+
+            // Limit vertical panning to reasonable bounds
+            const maxOffset = priceRange * 0.5;
+            const boundedOffsetY = Math.max(
+              -maxOffset,
+              Math.min(maxOffset, newOffsetY)
+            );
+
+            return {
+              ...prev,
+              startIndex: newStartIndex,
+              offsetY: boundedOffsetY,
+            };
+          });
+
+          // Update drag start position
+          setDragState({
+            ...dragState,
+            startX: e.clientX,
+            startY: e.clientY,
+          });
+        }
+        break;
+      }
     }
   };
 
+  // Update handleMouseUp
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(false);
-    (e.currentTarget as HTMLDivElement).style.cursor = "crosshair";
+    setDragState(null);
+    e.currentTarget.style.cursor = "crosshair";
   };
 
+  // Update handleMouseLeave
   const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging) {
-      setIsDragging(false);
-      (e.currentTarget as HTMLDivElement).style.cursor = "crosshair";
+    if (dragState) {
+      setDragState(null);
+      e.currentTarget.style.cursor = "crosshair";
     }
     setMousePosition((prev) => ({ ...prev, visible: false }));
 
@@ -391,7 +470,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     if (data.length && dimensions.width) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
-      const visibleBars = Math.floor(chartWidth / (10 * viewState.scale));
+      const visibleBars = Math.floor(chartWidth / (10 * viewState.scaleX));
 
       setViewState((prev) => ({
         ...prev,
@@ -406,49 +485,79 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Enhanced zoom handler with animation
   const handleZoom = useCallback(
-    (zoomFactor: number, centerX?: number) => {
+    (
+      zoomFactor: number,
+      centerX?: number,
+      centerY?: number,
+      axis: "x" | "y" | "both" = "both"
+    ) => {
       if (!combinedData.length || !dimensions.width) return;
 
-      const newScale = Math.max(0.1, Math.min(5, viewState.scale * zoomFactor));
-      const newVisibleBars = Math.floor(
-        (dimensions.width -
-          dimensions.padding.left -
-          dimensions.padding.right) /
-          (10 * newScale)
-      );
+      const newState = { ...viewState };
 
-      let newStartIndex;
-      if (centerX !== undefined) {
-        const chartX = centerX - dimensions.padding.left;
-        const mouseBarPosition = chartX / (10 * viewState.scale);
-        const barOffset =
-          mouseBarPosition - mouseBarPosition * (newScale / viewState.scale);
-        newStartIndex = Math.max(
-          0,
-          Math.min(
-            combinedData.length - newVisibleBars,
-            viewState.startIndex + Math.floor(barOffset)
-          )
+      if (axis === "x" || axis === "both") {
+        const newScaleX = Math.max(
+          0.1,
+          Math.min(5, viewState.scaleX * zoomFactor)
         );
-      } else {
-        const centerIndex = viewState.startIndex + viewState.visibleBars / 2;
-        newStartIndex = Math.max(
-          0,
-          Math.min(
-            combinedData.length - newVisibleBars,
-            centerIndex - newVisibleBars / 2
-          )
+        const newVisibleBars = Math.floor(
+          (dimensions.width -
+            dimensions.padding.left -
+            dimensions.padding.right) /
+            (10 * newScaleX)
         );
+
+        if (centerX !== undefined) {
+          const chartX = centerX - dimensions.padding.left;
+          const mouseBarPosition = chartX / (10 * viewState.scaleX);
+          const barOffset =
+            mouseBarPosition -
+            mouseBarPosition * (newScaleX / viewState.scaleX);
+          newState.startIndex = Math.max(
+            0,
+            Math.min(
+              combinedData.length - newVisibleBars,
+              viewState.startIndex + Math.floor(barOffset)
+            )
+          );
+        } else {
+          const centerIndex = viewState.startIndex + viewState.visibleBars / 2;
+          newState.startIndex = Math.max(
+            0,
+            Math.min(
+              combinedData.length - newVisibleBars,
+              centerIndex - newVisibleBars / 2
+            )
+          );
+        }
+
+        newState.scaleX = newScaleX;
+        newState.visibleBars = newVisibleBars;
       }
 
-      animateViewState({
-        scale: newScale,
-        offsetX: viewState.offsetX,
-        offsetY: viewState.offsetY,
-        startIndex: newStartIndex,
-        visibleBars: newVisibleBars,
-        theme: currentTheme || themes.dark,
-      });
+      if (axis === "y" || axis === "both") {
+        const newScaleY = Math.max(
+          0.1,
+          Math.min(5, viewState.scaleY * zoomFactor)
+        );
+
+        if (centerY !== undefined) {
+          // Adjust Y offset to maintain mouse position
+          const chartHeight =
+            dimensions.height -
+            dimensions.padding.top -
+            dimensions.padding.bottom;
+          const mouseYRatio = (centerY - dimensions.padding.top) / chartHeight;
+          const oldRange = chartHeight / viewState.scaleY;
+          const newRange = chartHeight / newScaleY;
+          const rangeDiff = oldRange - newRange;
+          newState.offsetY += rangeDiff * mouseYRatio;
+        }
+
+        newState.scaleY = newScaleY;
+      }
+
+      animateViewState(newState);
     },
     [viewState, dimensions, combinedData.length, currentTheme, animateViewState]
   );
@@ -503,12 +612,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, [handleZoom, handlePan]);
 
   // Touch support
-  const [touchState, setTouchState] = useState<{
-    startTouches?: Touch[];
-    startDistance?: number;
-    startScale?: number;
-  }>({});
-
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
 
@@ -520,11 +623,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       setTouchState({
         startTouches: Array.from(e.touches) as unknown as Touch[],
         startDistance: distance,
-        startScale: viewState.scale,
+        startScale: viewState.scaleX,
       });
     } else if (e.touches.length === 1 && e.touches[0]) {
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setDragState({
+        mode: "pan",
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        startScaleX: viewState.scaleX,
+        startScaleY: viewState.scaleY,
+      });
     }
   };
 
@@ -543,17 +651,21 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         e.touches[0].clientY - e.touches[1].clientY
       );
       const scale = distance / touchState.startDistance;
-      handleZoom((scale / viewState.scale) * touchState.startScale);
-    } else if (e.touches.length === 1 && e.touches[0] && isDragging) {
-      const dx = e.touches[0].clientX - dragStart.x;
-      const barsToMove = Math.floor(dx / (10 * viewState.scale));
+      handleZoom((scale / viewState.scaleX) * touchState.startScale);
+    } else if (e.touches.length === 1 && e.touches[0] && dragState) {
+      const dx = e.touches[0].clientX - dragState.startX;
+      const barsToMove = Math.floor(dx / (10 * viewState.scaleX));
       handlePan(-barsToMove);
-      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setDragState({
+        ...dragState,
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+      });
     }
   };
 
   const handleTouchEnd = () => {
-    setIsDragging(false);
+    setDragState(null);
     setTouchState({});
   };
 
@@ -586,41 +698,56 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
       const mouseX =
         e.clientX - (containerRef.current?.getBoundingClientRect().left || 0);
+      const mouseY =
+        e.clientY - (containerRef.current?.getBoundingClientRect().top || 0);
 
-      // Calculate new scale with bounds
-      const newScale = Math.max(0.1, Math.min(5, viewState.scale * zoomFactor));
-      const newVisibleBars = Math.floor(
-        (dimensions.width -
-          dimensions.padding.left -
-          dimensions.padding.right) /
-          (10 * newScale)
-      );
+      // Determine if mouse is over axes
+      const isOverYAxis = mouseX > dimensions.width - dimensions.padding.right;
+      const isOverXAxis =
+        mouseY > dimensions.height - dimensions.padding.bottom;
 
-      // Calculate new start index based on mouse position
-      const chartX = mouseX - dimensions.padding.left;
-      const mouseBarPosition = chartX / (10 * viewState.scale);
-      const barOffset =
-        mouseBarPosition - mouseBarPosition * (newScale / viewState.scale);
+      let zoomAxis: "x" | "y" | "both" = "both";
+      if (isOverYAxis) zoomAxis = "y";
+      if (isOverXAxis) zoomAxis = "x";
 
-      const newStartIndex = Math.max(
-        0,
-        Math.min(
-          combinedData.length - newVisibleBars,
-          viewState.startIndex + Math.floor(barOffset)
-        )
-      );
+      // Calculate new bar width when zooming X axis
+      if (zoomAxis === "x" || zoomAxis === "both") {
+        const chartWidth =
+          dimensions.width - dimensions.padding.left - dimensions.padding.right;
+        const newScaleX = Math.max(
+          0.1,
+          Math.min(5, viewState.scaleX * zoomFactor)
+        );
+        const newBarWidth = BASE_CANDLE_WIDTH * newScaleX;
+        const newVisibleBars = Math.floor(chartWidth / newBarWidth);
 
-      // Update view state with animation
-      animateViewState({
-        scale: newScale,
-        offsetX: viewState.offsetX,
-        offsetY: viewState.offsetY,
-        startIndex: newStartIndex,
-        visibleBars: newVisibleBars,
-        theme: viewState.theme, // Use the current theme from viewState
-      });
+        // Maintain zoom center
+        const mouseBarPosition =
+          (mouseX - dimensions.padding.left) /
+          (BASE_CANDLE_WIDTH * viewState.scaleX);
+        const barOffset =
+          mouseBarPosition - mouseBarPosition * (newScaleX / viewState.scaleX);
+
+        setViewState((prev) => ({
+          ...prev,
+          scaleX: newScaleX,
+          visibleBars: newVisibleBars,
+          startIndex: Math.max(
+            0,
+            Math.min(
+              combinedData.length - newVisibleBars,
+              prev.startIndex + Math.floor(barOffset)
+            )
+          ),
+        }));
+      }
+
+      // Handle Y axis zoom as before
+      if (zoomAxis === "y" || zoomAxis === "both") {
+        // ... existing Y axis zoom code
+      }
     },
-    [viewState, dimensions, combinedData.length, animateViewState]
+    [handleZoom, dimensions, combinedData.length, viewState.scaleX]
   );
 
   // Add the missing double click handler
@@ -630,7 +757,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update the drawCrosshair function
   const drawCrosshair = useCallback(() => {
-    if (!overlayCanvasRef.current || !mousePosition.visible) return;
+    if (!overlayCanvasRef.current || !mousePosition.visible || !currentTheme)
+      return;
 
     const canvas = overlayCanvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -648,7 +776,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Set crosshair style
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = currentTheme.crosshair;
+    ctx.strokeStyle = currentTheme?.crosshair || defaultTheme.crosshair;
 
     // Draw vertical line (extend through RSI)
     ctx.beginPath();
@@ -717,7 +845,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       mousePosition.x,
       dimensions.height - 15 // Center in label area
     );
-  }, [mousePosition, dimensions, timeframeConfig, currentTheme]);
+  }, [mousePosition, dimensions, timeframeConfig, currentTheme, defaultTheme]);
 
   // Update mouse position handler
   const handleMouseMoveForCrosshair = useCallback(
@@ -914,6 +1042,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     for (let i = 1; i < labels.length; i++) {
       const prevLabel = labels[i - 1];
       const currentLabel = labels[i];
+      if (!prevLabel || !currentLabel) continue;
       const prevWidth = ctx.measureText(prevLabel.text).width;
       const spacing = currentLabel.x - (prevLabel.x + prevWidth);
       if (spacing < minSpacing) return true;
@@ -929,14 +1058,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       adjustedMaxPrice: number,
       chartHeight: number
     ) => {
-      const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
+      const adjustedPriceRange =
+        (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
       return (
         dimensions.padding.top +
         chartHeight -
         ((price - adjustedMinPrice) / adjustedPriceRange) * chartHeight
       );
     },
-    [dimensions.padding.top]
+    [dimensions.padding.top, viewState.scaleY]
   );
 
   // Update calculateGridPrices to accept getY function
@@ -1014,10 +1144,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const chartHeight =
       dimensions.height - dimensions.padding.top - dimensions.padding.bottom;
 
-    // Calculate candle dimensions
-    const barSpacing = chartWidth / viewState.visibleBars;
-    const candleWidth = barSpacing * 0.8;
-    const spacing = barSpacing * 0.2;
+    // Calculate candle dimensions using scaleX
+    const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
+    const candleWidth = barWidth * 0.8; // Candle body width
+    const spacing = barWidth * 0.2; // Space between candles
 
     // Get visible data
     const visibleStartIndex = Math.max(0, viewState.startIndex);
@@ -1070,7 +1200,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Draw vertical grid lines
     visibleData.forEach((candle, i) => {
       const candleCenterX =
-        dimensions.padding.left + i * barSpacing + barSpacing / 2;
+        dimensions.padding.left + i * barWidth + barWidth / 2;
       const date = new Date(candle.timestamp);
       const minutes = date.getMinutes();
       const hours = date.getHours();
@@ -1092,7 +1222,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     // Draw candlesticks
     visibleData.forEach((candle, i) => {
-      const x = dimensions.padding.left + i * barSpacing;
+      const x = dimensions.padding.left + i * barWidth;
       const openY = getY(
         candle.open,
         adjustedMinPrice,
@@ -1171,6 +1301,77 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add new ref for x-axis canvas
   const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Add new state for x-axis drag
+  const [xAxisDragState, setXAxisDragState] = useState<{
+    startX: number;
+    startScaleX: number;
+  } | null>(null);
+
+  // Add separate handler for x-axis canvas
+  const handleXAxisMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!xAxisCanvasRef.current) return;
+
+    const rect = xAxisCanvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+
+    if (
+      x >= dimensions.padding.left &&
+      x <= dimensions.width - dimensions.padding.right
+    ) {
+      setXAxisDragState({
+        startX: e.clientX,
+        startScaleX: viewState.scaleX,
+      });
+      e.currentTarget.style.cursor = "ew-resize";
+    }
+  };
+
+  const handleXAxisMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!xAxisDragState) return;
+
+    const dx = e.clientX - xAxisDragState.startX;
+    const scaleFactor = 1 - dx / 200;
+    const newScaleX = Math.max(
+      0.1,
+      Math.min(5, xAxisDragState.startScaleX * scaleFactor)
+    );
+
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const newBarWidth = BASE_CANDLE_WIDTH * newScaleX;
+    const newVisibleBars = Math.floor(chartWidth / newBarWidth);
+
+    setViewState((prev) => {
+      const centerBarIndex = prev.startIndex + prev.visibleBars / 2;
+      const newStartIndex = Math.max(
+        0,
+        Math.min(
+          combinedData.length - newVisibleBars,
+          Math.floor(centerBarIndex - newVisibleBars / 2)
+        )
+      );
+
+      return {
+        ...prev,
+        scaleX: newScaleX,
+        visibleBars: newVisibleBars,
+        startIndex: newStartIndex,
+      };
+    });
+  };
+
+  const handleXAxisMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setXAxisDragState(null);
+    e.currentTarget.style.cursor = "default";
+  };
+
+  const handleXAxisMouseLeave = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (xAxisDragState) {
+      setXAxisDragState(null);
+      e.currentTarget.style.cursor = "default";
+    }
+  };
+
   // Add new effect to draw x-axis
   useEffect(() => {
     if (!xAxisCanvasRef.current || !data.length) return;
@@ -1189,13 +1390,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.clearRect(0, 0, dimensions.width, 30);
 
     // Draw time labels
-    ctx.fillStyle = currentTheme.text;
+    ctx.fillStyle = currentTheme?.text || defaultTheme.text;
     ctx.textAlign = "center";
     ctx.font = "10px sans-serif";
 
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const barWidth = chartWidth / viewState.visibleBars;
+    const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
 
     // Get visible data
     const visibleData = combinedData.slice(
@@ -1203,40 +1404,98 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       viewState.startIndex + viewState.visibleBars
     );
 
+    // Draw scaling handles at the edges
+    const handleWidth = 10;
+    const handleHeight = 15;
+
+    // Left handle
+    ctx.fillStyle = currentTheme?.grid || defaultTheme.grid;
+    ctx.fillRect(
+      dimensions.padding.left - handleWidth / 2,
+      0,
+      handleWidth,
+      handleHeight
+    );
+
+    // Right handle
+    ctx.fillRect(
+      dimensions.width - dimensions.padding.right - handleWidth / 2,
+      0,
+      handleWidth,
+      handleHeight
+    );
+
+    // Draw time labels with proper spacing
     visibleData.forEach((candle, i) => {
       const x = dimensions.padding.left + i * barWidth + barWidth / 2;
       const date = new Date(candle.timestamp);
       const hours = date.getHours();
       const minutes = date.getMinutes();
 
+      // Draw time labels at significant points
       if (minutes === 0 || (hours === 9 && minutes === 15)) {
-        const timeLabel = timeframeConfig.tickFormat(candle.timestamp);
+        let timeLabel;
+
+        // Show full date at market open (9:15)
+        if (hours === 9 && minutes === 15) {
+          timeLabel = `${date.toLocaleDateString()} ${date.toLocaleTimeString(
+            undefined,
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }
+          )}`;
+        } else {
+          timeLabel = date.toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+        }
+
+        // Draw vertical grid line indicator
+        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 8);
+        ctx.stroke();
+
+        // Draw time label
+        ctx.fillStyle = currentTheme?.text || defaultTheme.text;
         ctx.fillText(timeLabel, x, 20);
       }
     });
-  }, [combinedData, dimensions, viewState, timeframeConfig, currentTheme]);
 
-  // Update theme-related style properties to include fallback
-  const themeStyles = useMemo(
-    () => ({
-      background: currentTheme?.background || themes.dark.background,
-      grid: currentTheme?.grid || themes.dark.grid,
-      text: currentTheme?.text || themes.dark.text,
-      // ... other theme properties
-    }),
-    [currentTheme]
-  );
+    // Draw drag hint if in scale mode
+    if (xAxisDragState) {
+      ctx.fillStyle = currentTheme?.buttonHover || defaultTheme.buttonHover;
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(dimensions.padding.left, 0, chartWidth, 30);
+      ctx.globalAlpha = 1;
+    }
+  }, [
+    combinedData,
+    dimensions,
+    viewState,
+    timeframeConfig,
+    currentTheme,
+    defaultTheme,
+    xAxisDragState,
+    viewState.startIndex,
+    viewState.visibleBars,
+    viewState.scaleX,
+  ]);
 
-  // Find if RSI is enabled
-  const isRSIEnabled = indicators.find((i) => i.id === "rsi")?.enabled || false;
-
+  // Update the return JSX
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
         height: "100%",
-        background: themeStyles.background,
+        background: currentTheme?.background || defaultTheme.background,
         display: "flex",
         flexDirection: "column",
       }}
@@ -1287,7 +1546,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         <div
           style={{
             height: "100px",
-            borderTop: `1px solid ${themeStyles.grid}`,
+            borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
           }}
         >
           <RSIIndicator
@@ -1308,11 +1567,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         </div>
       )}
 
-      {/* X-Axis Area */}
+      {/* X-Axis Area with visual feedback */}
       <div
         style={{
           height: "30px",
-          borderTop: `1px solid ${themeStyles.grid}`,
+          borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
           position: "relative",
         }}
       >
@@ -1322,7 +1581,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             width: "100%",
             height: "100%",
             position: "absolute",
+            cursor: xAxisDragState ? "ew-resize" : "default",
           }}
+          onMouseDown={handleXAxisMouseDown}
+          onMouseMove={handleXAxisMouseMove}
+          onMouseUp={handleXAxisMouseUp}
+          onMouseLeave={handleXAxisMouseLeave}
         />
       </div>
     </div>
@@ -1336,7 +1600,9 @@ const ActionButton: React.FC<{
   icon: React.ReactNode;
 }> = ({ onClick, title, icon }) => {
   const { theme } = useTheme();
-  const currentTheme = themes[theme as keyof typeof themes] || themes.dark;
+  const defaultTheme: ChartTheme = themes.dark!;
+  const currentTheme: ChartTheme =
+    themes[theme as keyof typeof themes] || defaultTheme;
 
   return (
     <button
@@ -1348,7 +1614,7 @@ const ActionButton: React.FC<{
       style={{
         background: "transparent",
         border: "none",
-        color: currentTheme.text,
+        color: currentTheme.text || defaultTheme.text,
         padding: "6px",
         borderRadius: "4px",
         cursor: "pointer",
@@ -1360,7 +1626,8 @@ const ActionButton: React.FC<{
         transition: "background-color 0.2s ease",
       }}
       onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
-        e.currentTarget.style.backgroundColor = currentTheme.buttonHover;
+        e.currentTarget.style.backgroundColor =
+          currentTheme.buttonHover || defaultTheme.buttonHover;
       }}
       onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.currentTarget.style.backgroundColor = "transparent";

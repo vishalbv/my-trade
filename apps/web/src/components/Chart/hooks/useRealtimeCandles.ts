@@ -108,7 +108,6 @@ export const useRealtimeCandles = ({
             low: lastCandle.close,
             close: lastCandle.close,
             volume: 0,
-            index: lastCandle.index + 1,
           };
           return [...prevCandles, newCandle];
         });

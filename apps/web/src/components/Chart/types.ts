@@ -4,7 +4,7 @@ export interface OHLCData {
   high: number;
   low: number;
   close: number;
-  volume?: number;
+  volume: number;
   display?: boolean;
 }
 
@@ -39,7 +39,8 @@ export interface ChartTheme {
 }
 
 export interface ViewState {
-  scale: number;
+  scaleX: number;
+  scaleY: number;
   offsetX: number;
   offsetY: number;
   startIndex: number;
@@ -53,4 +54,10 @@ export interface MousePosition {
   price: number;
   timestamp: number;
   visible: boolean;
+}
+
+export interface Indicator {
+  id: string;
+  label: string;
+  enabled: boolean;
 }
