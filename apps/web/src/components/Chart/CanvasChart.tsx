@@ -47,6 +47,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     (indicator) => indicator.id === "rsi" && indicator.enabled
   );
 
+  // Update the state declarations
+  const [rsiHeight, setRsiHeight] = useState<number>(100);
+  const [isDraggingRSI, setIsDraggingRSI] = useState(false);
+  const [dragStartY, setDragStartY] = useState<number>(0);
+  const [dragStartHeight, setDragStartHeight] = useState<number>(0);
+
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -240,22 +246,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     [timeframeConfig]
   );
 
-  // Combine real and dummy data
+  // Update the combinedData calculation in the useMemo hook
   const combinedData = useMemo(() => {
     if (!data.length) return [];
 
-    // Calculate number of dummy candles (90% of chart width)
-    const chartWidth =
-      dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const candleWidth = 10; // Base candle width
-    const totalPossibleCandles = Math.floor(chartWidth / candleWidth);
-    const dummyCount = Math.floor(totalPossibleCandles * 0.9);
-
-    const dummyCandles = createDummyCandles(data[data.length - 1], dummyCount);
+    // Always create 500 dummy candles regardless of chart width
+    const dummyCandles = createDummyCandles(data[data.length - 1], 500);
     return [...data, ...dummyCandles];
-  }, [data, dimensions, createDummyCandles]);
+  }, [data, createDummyCandles]);
 
-  // Update initialization effect
+  // Update the initialization effect
   useEffect(() => {
     if (!dimensions.width || !combinedData.length) return;
 
@@ -264,12 +264,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
-      const totalDummyCandles = combinedData.length - data.length;
-      const visibleDummyCandles = Math.floor(initialVisibleBars * 0.2);
-      const startIndex = Math.max(
-        0,
-        data.length - (initialVisibleBars - visibleDummyCandles)
-      );
+
+      // Calculate how many bars to show initially with 30% empty space
+      const visibleDataBars = Math.floor(initialVisibleBars * 0.7); // Show 70% of visible area
+      const emptySpaceBars = Math.floor(initialVisibleBars * 0.3); // 30% empty space
+
+      // Calculate start index to show the last portion of real data plus some dummy candles
+      const startIndex = Math.max(0, data.length - visibleDataBars);
 
       setViewState({
         scaleX: 1,
@@ -401,11 +402,26 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
         if (barsToMove !== 0 || Math.abs(dy) > 1) {
           setViewState((prev) => {
+            // Calculate the new start index
+            const proposedStartIndex = prev.startIndex - barsToMove;
+
+            // Ensure at least one real candle is visible
+            const realDataEndIndex = data.length;
+            const minStartIndex = Math.max(
+              0,
+              realDataEndIndex - prev.visibleBars
+            );
+            const maxStartIndex = realDataEndIndex - 5; // Ensure at least 1 candle visible
+
+            // Bound the start index
             const newStartIndex = Math.max(
               0,
               Math.min(
-                combinedData.length - prev.visibleBars,
-                prev.startIndex - barsToMove
+                maxStartIndex,
+                Math.min(
+                  combinedData.length - prev.visibleBars,
+                  proposedStartIndex
+                )
               )
             );
 
@@ -768,20 +784,23 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Clear previous crosshair
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
+    // Calculate actual chart height
+    const totalChartHeight =
+      dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+
     // Set crosshair style
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
     ctx.strokeStyle = currentTheme?.crosshair || defaultTheme.crosshair;
 
-    // Draw vertical line (extend through RSI)
+    // Draw vertical line
     ctx.beginPath();
     ctx.moveTo(mousePosition.x, dimensions.padding.top);
-    ctx.lineTo(mousePosition.x, dimensions.height - 30); // Extend to bottom, leaving space for x-axis
+    ctx.lineTo(mousePosition.x, totalChartHeight - dimensions.padding.bottom);
     ctx.stroke();
 
     // Draw horizontal line (only in main chart area)
-    if (mousePosition.y <= dimensions.height - 130) {
-      // Only draw if in main chart area
+    if (mousePosition.y <= totalChartHeight - dimensions.padding.bottom) {
       ctx.beginPath();
       ctx.moveTo(dimensions.padding.left, mousePosition.y);
       ctx.lineTo(dimensions.width - dimensions.padding.right, mousePosition.y);
@@ -791,8 +810,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Reset dash pattern
     ctx.setLineDash([]);
 
-    // Draw price label (only if in main chart area)
-    if (mousePosition.y <= dimensions.height - 130) {
+    // Draw price label
+    if (mousePosition.y <= totalChartHeight - dimensions.padding.bottom) {
       const priceLabel = mousePosition.price.toFixed(2);
       const priceLabelWidth = ctx.measureText(priceLabel).width + 10;
       const priceLabelHeight = 20;
@@ -826,7 +845,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.fillStyle = currentTheme.axisBackground;
     ctx.fillRect(
       mousePosition.x - timeLabelWidth / 2,
-      dimensions.height - 25, // Position above x-axis
+      totalChartHeight - 25,
       timeLabelWidth,
       timeLabelHeight
     );
@@ -835,12 +854,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.fillStyle = currentTheme.text;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(
-      timeLabel,
-      mousePosition.x,
-      dimensions.height - 15 // Center in label area
-    );
-  }, [mousePosition, dimensions, timeframeConfig, currentTheme, defaultTheme]);
+    ctx.fillText(timeLabel, mousePosition.x, totalChartHeight - 15);
+  }, [
+    mousePosition,
+    dimensions,
+    timeframeConfig,
+    currentTheme,
+    defaultTheme,
+    isRSIEnabled,
+    rsiHeight,
+  ]);
 
   // Update mouse position handler
   const handleMouseMoveForCrosshair = useCallback(
@@ -862,12 +885,18 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const displayX = (cssX * scaleX) / (window.devicePixelRatio || 1);
       const displayY = (cssY * scaleY) / (window.devicePixelRatio || 1);
 
+      // Calculate the actual chart height excluding RSI
+      const totalChartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+      const chartHeight =
+        totalChartHeight - dimensions.padding.top - dimensions.padding.bottom;
+
       // Check if mouse is within chart area
       if (
         displayX >= dimensions.padding.left &&
         displayX <= dimensions.width - dimensions.padding.right &&
         displayY >= dimensions.padding.top &&
-        displayY <= dimensions.height - dimensions.padding.bottom
+        displayY <= totalChartHeight - dimensions.padding.bottom
       ) {
         // Calculate bar index and center
         const chartWidth =
@@ -891,7 +920,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         )
           return;
 
-        // Calculate price from y position
+        // Calculate price from y position, considering scaleY
         const prices = visibleData.flatMap((candle) => [
           candle.high,
           candle.low,
@@ -901,16 +930,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const priceRange = maxPrice - minPrice;
         const pricePadding = priceRange * 0.1;
 
+        // Apply scale and offset adjustments
         const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
         const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-        const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
+        const adjustedPriceRange =
+          (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
 
+        // Calculate price considering scaleY and offset
         const price =
           adjustedMaxPrice -
-          ((displayY - dimensions.padding.top) /
-            (dimensions.height -
-              dimensions.padding.top -
-              dimensions.padding.bottom)) *
+          ((displayY - dimensions.padding.top) / chartHeight) *
             adjustedPriceRange;
 
         // Get timestamp from the exact candle
@@ -928,7 +957,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         setMousePosition((prev) => ({ ...prev, visible: false }));
       }
     },
-    [dimensions, data, viewState, combinedData]
+    [
+      dimensions,
+      data,
+      viewState,
+      combinedData,
+      isRSIEnabled,
+      rsiHeight,
+      viewState.scaleY,
+      viewState.offsetY,
+    ]
   );
 
   // Add effect to draw crosshair
@@ -1053,15 +1091,19 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       adjustedMaxPrice: number,
       chartHeight: number
     ) => {
+      const totalChartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
       const adjustedPriceRange =
         (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
       return (
         dimensions.padding.top +
-        chartHeight -
-        ((price - adjustedMinPrice) / adjustedPriceRange) * chartHeight
+        ((adjustedMaxPrice - price) / adjustedPriceRange) *
+          (totalChartHeight -
+            dimensions.padding.top -
+            dimensions.padding.bottom)
       );
     },
-    [dimensions.padding.top, viewState.scaleY]
+    [dimensions, viewState.scaleY, isRSIEnabled, rsiHeight]
   );
 
   // Update calculateGridPrices to accept getY function
@@ -1079,48 +1121,78 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         height: number
       ) => number
     ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
-      // Calculate nice grid step
+      // Calculate nice grid step based on scale
       const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
-      const maxPriceTicks = Math.max(4, Math.floor(chartHeight / 80));
-      const gridPriceStep = calculateNiceNumber(
-        visiblePriceRange,
-        maxPriceTicks
+
+      // Adjust number of ticks based on scale and chart height
+      const baseTickCount = Math.max(6, Math.floor(chartHeight / 50));
+      const scaleBasedTicks = Math.ceil(baseTickCount * viewState.scaleY);
+      const maxPriceTicks = Math.min(
+        20,
+        Math.max(baseTickCount, scaleBasedTicks)
       );
+
+      // Calculate initial grid step
+      let gridPriceStep = calculateNiceNumber(visiblePriceRange, maxPriceTicks);
+
+      // Adjust step size based on price range and scale
+      const minStepSize = visiblePriceRange * 0.001;
+      const maxStepSize = visiblePriceRange * 0.2;
+
+      gridPriceStep = Math.max(
+        minStepSize,
+        Math.min(maxStepSize, gridPriceStep / viewState.scaleY)
+      );
+
+      // Extend the range for grid lines (especially below)
+      const extendedMinPrice = adjustedMinPrice - gridPriceStep * 100; // Extend 100 steps below
+      const extendedMaxPrice = adjustedMaxPrice + gridPriceStep * 2;
 
       // Calculate grid prices
       const firstGridPrice =
-        Math.ceil(adjustedMinPrice / gridPriceStep) * gridPriceStep;
+        Math.floor(extendedMinPrice / gridPriceStep) * gridPriceStep;
       const gridPrices: number[] = [];
       const priceLabels: { y: number; text: string }[] = [];
 
+      // Add grid lines with dynamic spacing
       for (
         let price = firstGridPrice;
-        price <= adjustedMaxPrice;
+        price <= extendedMaxPrice;
         price += gridPriceStep
       ) {
-        gridPrices.push(price);
         const y = getYFunc(
           price,
           adjustedMinPrice,
           adjustedMaxPrice,
           chartHeight
         );
-        priceLabels.push({
-          y,
-          text: price.toFixed(2),
-        });
+
+        // Include prices with extended visibility range, especially below
+        const extendedPadding = 50 * viewState.scaleY;
+        const extendedBottomPadding = chartHeight * 2; // Allow more space below
+
+        if (
+          y >= dimensions.padding.top - extendedPadding &&
+          y <= chartHeight + dimensions.padding.bottom + extendedBottomPadding
+        ) {
+          // Check minimum spacing between lines
+          const minSpacing = 20 / viewState.scaleY;
+          const lastY = priceLabels[priceLabels.length - 1]?.y;
+
+          if (!lastY || Math.abs(y - lastY) >= minSpacing) {
+            gridPrices.push(price);
+            priceLabels.push({
+              y,
+              text: price.toFixed(2),
+            });
+          }
+        }
       }
 
       return { gridPrices, priceLabels };
     },
-    []
+    [dimensions, viewState.scaleY]
   );
-
-  // Update the state declarations
-  const [rsiHeight, setRsiHeight] = useState<number>(100);
-  const [isDraggingRSI, setIsDraggingRSI] = useState(false);
-  const [dragStartY, setDragStartY] = useState<number>(0);
-  const [dragStartHeight, setDragStartHeight] = useState<number>(0);
 
   // Update the RSI separator mouse down handler
   const handleRSISeparatorMouseDown = (e: React.MouseEvent) => {
@@ -1139,11 +1211,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Calculate chart dimensions
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
+
+      // Update this part to properly calculate chart height when RSI is enabled
+      const totalHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
       const chartHeight =
-        dimensions.height -
-        dimensions.padding.top -
-        dimensions.padding.bottom -
-        (isRSIEnabled ? rsiHeight + 4 : 0); // Add 4px for separator
+        totalHeight - dimensions.padding.top - dimensions.padding.bottom;
 
       // Calculate candle dimensions using scaleX
       const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
@@ -1167,14 +1240,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
       const priceRange = maxPrice - minPrice;
-      const pricePadding = priceRange * 0.1;
+      const pricePadding = priceRange * 0.15; // Increased padding
 
-      // Calculate adjusted price range with offset
+      // Calculate adjusted price range with extended padding
       const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
       const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
       const adjustedPriceRange = adjustedMaxPrice - adjustedMinPrice;
 
-      // Calculate grid prices and labels
+      // Get grid prices and labels
       const { gridPrices, priceLabels } = calculateGridPrices(
         minPrice,
         maxPrice,
@@ -1184,23 +1257,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         getY
       );
 
-      // Draw grid lines
-      gridPrices.forEach((price) => {
-        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
-        if (
-          y >= dimensions.padding.top &&
-          y <= dimensions.height - dimensions.padding.bottom
-        ) {
-          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(dimensions.padding.left, y);
-          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-          ctx.stroke();
-        }
-      });
-
-      // Draw vertical grid lines
+      // Draw vertical grid lines first (before candlesticks)
       visibleData.forEach((candle, i) => {
         const candleCenterX =
           dimensions.padding.left + i * barWidth + barWidth / 2;
@@ -1213,12 +1270,38 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           ctx.lineWidth = 0.5;
           ctx.setLineDash([]);
           ctx.beginPath();
-          ctx.moveTo(candleCenterX, dimensions.padding.top);
+          ctx.moveTo(candleCenterX, 0); // Start from very top
           ctx.lineTo(
             candleCenterX,
-            dimensions.height - dimensions.padding.bottom
+            dimensions.height // Extend to full height
           );
           ctx.stroke();
+        }
+      });
+
+      // Draw horizontal grid lines
+      gridPrices.forEach((price, i) => {
+        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+
+        // Ensure grid line is within chart area
+        if (y <= totalHeight - dimensions.padding.bottom) {
+          // Draw grid line
+          ctx.beginPath();
+          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(dimensions.padding.left, y);
+          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+          ctx.stroke();
+
+          // Draw price label
+          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            price.toFixed(2),
+            dimensions.width - dimensions.padding.right + 5,
+            y
+          );
         }
       });
 
@@ -1275,21 +1358,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Reset opacity
       ctx.globalAlpha = 1;
-
-      // Draw price labels
-      const skipFactor = Math.ceil(priceLabels.length / 8);
-      priceLabels.forEach((label, i) => {
-        if (i % skipFactor === 0) {
-          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText(
-            label.text,
-            dimensions.width - dimensions.padding.right + 5,
-            label.y
-          );
-        }
-      });
     },
     [
       dimensions,
