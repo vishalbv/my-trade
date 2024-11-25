@@ -1195,7 +1195,30 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     setDragStartHeight(rsiHeight);
   };
 
-  // First declare drawChart
+  // Add this function to calculate clip boundaries
+  const getClipBoundaries = useCallback(() => {
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const totalHeight =
+      dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+    const chartHeight =
+      totalHeight - dimensions.padding.top - dimensions.padding.bottom;
+
+    return {
+      left: chartWidth, // 1x chart width to the left
+      right: chartWidth, // 1x chart width to the right
+      top: chartHeight, // 1x chart height to the top
+      bottom: chartHeight, // 1x chart height to the bottom
+    };
+  }, [
+    dimensions.width,
+    dimensions.height,
+    dimensions.padding,
+    isRSIEnabled,
+    rsiHeight,
+  ]);
+
+  // Update the drawChart function to use dynamic clip boundaries
   const drawChart = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       // Clear canvas
@@ -1389,6 +1412,26 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
         ctx.restore();
       }
+
+      // Get current clip boundaries
+      const clipBoundaries = getClipBoundaries();
+
+      // Add clipping with extended boundaries
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(
+        dimensions.padding.left - clipBoundaries.left,
+        -clipBoundaries.top,
+        chartWidth + clipBoundaries.left + clipBoundaries.right,
+        totalHeight + clipBoundaries.top + clipBoundaries.bottom
+      );
+      ctx.clip();
+
+      // Draw elements that should be outside clipping (like axis labels)
+      // ... price labels, time labels, etc.
+
+      // Restore context to remove clipping
+      ctx.restore();
     },
     [
       dimensions,
@@ -1400,6 +1443,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       defaultTheme,
       calculateGridPrices,
       getY,
+      getClipBoundaries,
     ]
   );
 
@@ -1704,10 +1748,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { height } = entry.contentRect;
+        const { width, height } = entry.contentRect;
         setDimensions((prev) => ({
           ...prev,
-          height: height,
+          width,
+          height,
         }));
       }
     });
@@ -1765,6 +1810,98 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     return data.length - currentLastVisibleIndex > 10;
   }, [data.length, dimensions, viewState.startIndex, viewState.scaleX]);
 
+  // Add this function to handle x-axis double click
+  const handleXAxisDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const chartWidth =
+        dimensions.width - dimensions.padding.left - dimensions.padding.right;
+
+      // Calculate scale needed for ~10px candle width
+      const targetCandleWidth = 8;
+      const newScaleX = targetCandleWidth / BASE_CANDLE_WIDTH;
+      const newVisibleBars = Math.floor(chartWidth / targetCandleWidth);
+
+      // Calculate new start index to center around current view
+      const currentCenterIndex =
+        viewState.startIndex + viewState.visibleBars / 2;
+      const newStartIndex = Math.max(
+        0,
+        Math.min(
+          combinedData.length - newVisibleBars,
+          Math.floor(currentCenterIndex - newVisibleBars / 2)
+        )
+      );
+
+      // Create target state for animation
+      const targetState: ViewState = {
+        ...viewState,
+        scaleX: newScaleX,
+        visibleBars: newVisibleBars,
+        startIndex: newStartIndex,
+      };
+
+      // Animate to new state
+      animateViewState(targetState);
+    },
+    [dimensions, viewState, combinedData.length, animateViewState]
+  );
+
+  // Update the handleYAxisDoubleClick function
+  const handleYAxisDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+
+      // Only handle double click on y-axis area
+      if (x < dimensions.width - dimensions.padding.right) return;
+
+      // Get visible data
+      const visibleData = combinedData.slice(
+        viewState.startIndex,
+        viewState.startIndex + viewState.visibleBars
+      );
+
+      // Calculate price range from visible data
+      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice;
+
+      // Calculate padding (5% of price range)
+      const padding = priceRange * 0.05;
+
+      // Calculate chart height
+      const chartHeight =
+        dimensions.height -
+        dimensions.padding.top -
+        dimensions.padding.bottom -
+        (isRSIEnabled ? rsiHeight + 34 : 30);
+
+      // Calculate base scale (inverse relationship with chart height)
+      const baseScale = 650 / chartHeight; // 400 is a reference height
+      const targetRange = priceRange + padding * 2;
+      const newScaleY = baseScale * (chartHeight / targetRange) - 4;
+      console.log(chartHeight, baseScale, newScaleY);
+      // Create target state for animation
+      const targetState: ViewState = {
+        ...viewState,
+        scaleY: baseScale,
+        offsetY: 0, // Reset vertical offset
+      };
+
+      // Animate to new state
+      animateViewState(targetState);
+    },
+    [
+      dimensions,
+      viewState,
+      combinedData,
+      isRSIEnabled,
+      rsiHeight,
+      animateViewState,
+    ]
+  );
+
   // Update the return JSX
   return (
     <div
@@ -1798,7 +1935,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
-        onDoubleClick={handleDoubleClick}
+        onDoubleClick={handleYAxisDoubleClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1899,6 +2036,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           onMouseMove={handleXAxisMouseMove}
           onMouseUp={handleXAxisMouseUp}
           onMouseLeave={handleXAxisMouseLeave}
+          onDoubleClick={handleXAxisDoubleClick}
         />
       </div>
     </div>
