@@ -387,14 +387,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const chartHeight =
           dimensions.height -
           dimensions.padding.top -
-          dimensions.padding.bottom;
+          dimensions.padding.bottom -
+          (isRSIEnabled ? rsiHeight + 34 : 30);
 
         if (Math.abs(dx) > 0 || Math.abs(dy) > 1) {
           setViewState((prev) => {
-            // Get visible data for the initial view (when drag started)
+            // Get visible data for price range calculation
             const visibleData = combinedData.slice(
-              dragState.startIndex,
-              dragState.startIndex + prev.visibleBars
+              Math.floor(dragState.startIndex),
+              Math.floor(dragState.startIndex) + prev.visibleBars
             );
 
             // Calculate price range from visible data
@@ -405,30 +406,35 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
             const priceRange = maxPrice - minPrice;
+            const pricePadding = priceRange * 0.1;
+
+            // Calculate the price movement considering scale and chart height
+            const pricePerPixel =
+              (priceRange + 2 * pricePadding) / (chartHeight * prev.scaleY);
+            const priceMove = dy * pricePerPixel;
 
             // Calculate new start index while maintaining current scale
-            // Use float values for smoother movement
             const proposedStartIndex = dragState.startIndex - barsToMove;
-
-            // Ensure we don't scroll past data boundaries, but keep decimal precision
-            const maxStartIndex = combinedData.length - prev.visibleBars;
+            const maxStartIndex = Math.max(
+              0,
+              combinedData.length - prev.visibleBars
+            );
             const newStartIndex = Math.max(
               0,
               Math.min(maxStartIndex, proposedStartIndex)
             );
 
-            // Calculate price movement based on drag distance
-            const priceMove = (dy / chartHeight) * priceRange;
+            // Update offsetY considering the scale
             const newOffsetY = dragState.startOffsetY + priceMove;
 
             return {
               ...prev,
-              // Store the exact float value for startIndex
               startIndex: newStartIndex,
               offsetY: newOffsetY,
-              // Keep the original scales from when the drag started
+              // Keep all scales and other properties exactly as they were at drag start
               scaleX: dragState.startScaleX,
               scaleY: dragState.startScaleY,
+              visibleBars: prev.visibleBars,
             };
           });
         }
@@ -770,7 +776,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
     // Calculate actual chart height
-    const totalChartHeight =
+    const mainChartHeight =
       dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
 
     // Set crosshair style
@@ -781,11 +787,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Draw vertical line
     ctx.beginPath();
     ctx.moveTo(mousePosition.x, dimensions.padding.top);
-    ctx.lineTo(mousePosition.x, totalChartHeight - dimensions.padding.bottom);
+    ctx.lineTo(mousePosition.x, mainChartHeight);
     ctx.stroke();
 
     // Draw horizontal line (only in main chart area)
-    if (mousePosition.y <= totalChartHeight - dimensions.padding.bottom) {
+    if (mousePosition.y <= mainChartHeight) {
       ctx.beginPath();
       ctx.moveTo(dimensions.padding.left, mousePosition.y);
       ctx.lineTo(dimensions.width - dimensions.padding.right, mousePosition.y);
@@ -796,7 +802,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.setLineDash([]);
 
     // Draw price label
-    if (mousePosition.y <= totalChartHeight - dimensions.padding.bottom) {
+    if (mousePosition.y <= mainChartHeight) {
       const priceLabel = mousePosition.price.toFixed(2);
       const priceLabelWidth = ctx.measureText(priceLabel).width + 10;
       const priceLabelHeight = 20;
@@ -830,7 +836,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.fillStyle = currentTheme.axisBackground;
     ctx.fillRect(
       mousePosition.x - timeLabelWidth / 2,
-      totalChartHeight - 25,
+      mainChartHeight - timeLabelHeight,
       timeLabelWidth,
       timeLabelHeight
     );
@@ -839,7 +845,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.fillStyle = currentTheme.text;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(timeLabel, mousePosition.x, totalChartHeight - 15);
+    ctx.fillText(
+      timeLabel,
+      mousePosition.x,
+      mainChartHeight - timeLabelHeight / 2
+    );
   }, [
     mousePosition,
     dimensions,
@@ -871,17 +881,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const displayY = (cssY * scaleY) / (window.devicePixelRatio || 1);
 
       // Calculate the actual chart height excluding RSI
-      const totalChartHeight =
+      const mainChartHeight =
         dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
       const chartHeight =
-        totalChartHeight - dimensions.padding.top - dimensions.padding.bottom;
+        mainChartHeight - dimensions.padding.top - dimensions.padding.bottom;
 
       // Check if mouse is within chart area
       if (
         displayX >= dimensions.padding.left &&
         displayX <= dimensions.width - dimensions.padding.right &&
         displayY >= dimensions.padding.top &&
-        displayY <= totalChartHeight - dimensions.padding.bottom
+        displayY <= mainChartHeight
       ) {
         // Calculate bar index and center
         const chartWidth =
@@ -1076,16 +1086,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       adjustedMaxPrice: number,
       chartHeight: number
     ) => {
-      const totalChartHeight =
+      const mainChartHeight =
         dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
       const adjustedPriceRange =
         (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
       return (
         dimensions.padding.top +
         ((adjustedMaxPrice - price) / adjustedPriceRange) *
-          (totalChartHeight -
-            dimensions.padding.top -
-            dimensions.padding.bottom)
+          (mainChartHeight - dimensions.padding.top - dimensions.padding.bottom)
       );
     },
     [dimensions, viewState.scaleY, isRSIEnabled, rsiHeight]
@@ -1256,42 +1264,36 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           ctx.lineWidth = 0.5;
           ctx.setLineDash([]);
           ctx.beginPath();
-          ctx.moveTo(candleCenterX, 0); // Start from very top
-          ctx.lineTo(
-            candleCenterX,
-            dimensions.height // Extend to full height
-          );
+          ctx.moveTo(candleCenterX, 0);
+          ctx.lineTo(candleCenterX, dimensions.height);
           ctx.stroke();
         }
       });
 
-      // Update horizontal grid lines to use the same smooth scaling
+      // Update horizontal grid lines to remove boundary checks
       gridPrices.forEach((price) => {
         const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
 
-        // Ensure grid line is within chart area
-        if (y <= totalHeight - dimensions.padding.bottom) {
-          // Draw grid line
-          ctx.beginPath();
-          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-          ctx.lineWidth = 0.5;
-          ctx.moveTo(dimensions.padding.left, y);
-          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-          ctx.stroke();
+        // Draw grid line without boundary check
+        ctx.beginPath();
+        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+        ctx.stroke();
 
-          // Draw price label with smooth movement
-          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText(
-            price.toFixed(2),
-            dimensions.width - dimensions.padding.right + 5,
-            y
-          );
-        }
+        // Draw price label
+        ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          price.toFixed(2),
+          dimensions.width - dimensions.padding.right + 5,
+          y
+        );
       });
 
-      // Draw candlesticks
+      // Draw candlesticks without boundary checks
       visibleData.forEach((candle, i) => {
         const fractionalOffset =
           viewState.startIndex - Math.floor(viewState.startIndex);
@@ -1328,10 +1330,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           candle.close >= candle.open
             ? currentTheme?.upColor || defaultTheme.upColor
             : currentTheme?.downColor || defaultTheme.downColor;
-        ctx.strokeStyle =
-          candle.close >= candle.open
-            ? currentTheme?.upColor || defaultTheme.upColor
-            : currentTheme?.downColor || defaultTheme.downColor;
+        ctx.strokeStyle = ctx.fillStyle;
 
         // Draw wick
         ctx.beginPath();

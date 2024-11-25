@@ -154,7 +154,7 @@ export default function GlobalChart() {
   const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
   const [selectedLayout, setSelectedLayout] = useState<LayoutType>("single");
   const [indicators, setIndicators] = useState<Indicator[]>([
-    { id: "rsi", label: "RSI", enabled: false },
+    { id: "rsi", label: "RSI", enabled: true },
   ]);
 
   const currentTimeframe = timeframeOptions.find((t) => t.value === timeframe);
