@@ -15,7 +15,7 @@ interface SymbolSearchProps {
 
 const INDICES = [
   { symbol: "NSE:NIFTY50-INDEX", description: "NIFTY 50" },
-  { symbol: "NSE:BANKNIFTY-INDEX", description: "BANK NIFTY" },
+  { symbol: "NSE:NIFTYBANK-INDEX", description: "BANK NIFTY" },
   { symbol: "NSE:FINNIFTY-INDEX", description: "FIN NIFTY" },
   { symbol: "NSE:MIDCPNIFTY-INDEX", description: "MIDCAP NIFTY" },
 ];

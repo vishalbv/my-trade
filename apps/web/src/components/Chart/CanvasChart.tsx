@@ -10,6 +10,8 @@ import {
 import { themes } from "./constants/themes";
 import { useTheme } from "next-themes";
 import { RSIIndicator } from "./components/RSIIndicator";
+import { getStrokeColor } from "./utils/dataTransformations";
+import { ScrollToRightButton } from "./components/ScrollToRightButton";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -34,6 +36,8 @@ interface DragState {
   startY: number;
   startScaleX: number;
   startScaleY: number;
+  startIndex: number;
+  startOffsetY: number;
 }
 
 const BASE_CANDLE_WIDTH = 10;
@@ -326,6 +330,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         startY: e.clientY,
         startScaleX: viewState.scaleX,
         startScaleY: viewState.scaleY,
+        startIndex: viewState.startIndex,
+        startOffsetY: viewState.offsetY,
       });
       e.currentTarget.style.cursor = "ns-resize";
     } else if (
@@ -338,6 +344,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         startY: e.clientY,
         startScaleX: viewState.scaleX,
         startScaleY: viewState.scaleY,
+        startIndex: viewState.startIndex,
+        startOffsetY: viewState.offsetY,
       });
       e.currentTarget.style.cursor = "grabbing";
     }
@@ -365,88 +373,63 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         break;
       }
       case "pan": {
-        // Calculate horizontal movement with scale-based sensitivity
+        // Calculate horizontal movement
         const dx = e.clientX - dragState.startX;
         const chartWidth =
           dimensions.width - dimensions.padding.left - dimensions.padding.right;
         const barWidth = chartWidth / viewState.visibleBars;
 
-        // Adjust horizontal movement speed based on scale
-        const horizontalSensitivity = 1 / Math.max(0.2, viewState.scaleX);
-        const barsToMove = Math.round((dx * horizontalSensitivity) / barWidth);
+        // Calculate bars to move as a float without rounding
+        const barsToMove = dx / barWidth;
 
-        // Calculate vertical movement with scale-based sensitivity
+        // Calculate vertical movement
         const dy = e.clientY - dragState.startY;
         const chartHeight =
           dimensions.height -
           dimensions.padding.top -
           dimensions.padding.bottom;
 
-        // Get visible data for price calculations
-        const visibleData = combinedData.slice(
-          viewState.startIndex,
-          viewState.startIndex + viewState.visibleBars
-        );
-        const prices = visibleData.flatMap((candle) => [
-          candle.high,
-          candle.low,
-        ]);
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        const priceRange = maxPrice - minPrice;
-
-        // Adjust vertical movement speed based on scale
-        const verticalSensitivity = 1 / Math.max(0.2, viewState.scaleY);
-        const priceMove =
-          ((dy * verticalSensitivity) / chartHeight) * priceRange;
-
-        if (barsToMove !== 0 || Math.abs(dy) > 1) {
+        if (Math.abs(dx) > 0 || Math.abs(dy) > 1) {
           setViewState((prev) => {
-            // Calculate the new start index
-            const proposedStartIndex = prev.startIndex - barsToMove;
-
-            // Ensure at least one real candle is visible
-            const realDataEndIndex = data.length;
-            const minStartIndex = Math.max(
-              0,
-              realDataEndIndex - prev.visibleBars
+            // Get visible data for the initial view (when drag started)
+            const visibleData = combinedData.slice(
+              dragState.startIndex,
+              dragState.startIndex + prev.visibleBars
             );
-            const maxStartIndex = realDataEndIndex - 5; // Ensure at least 1 candle visible
 
-            // Bound the start index
+            // Calculate price range from visible data
+            const prices = visibleData.flatMap((candle) => [
+              candle.high,
+              candle.low,
+            ]);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice;
+
+            // Calculate new start index while maintaining current scale
+            // Use float values for smoother movement
+            const proposedStartIndex = dragState.startIndex - barsToMove;
+
+            // Ensure we don't scroll past data boundaries, but keep decimal precision
+            const maxStartIndex = combinedData.length - prev.visibleBars;
             const newStartIndex = Math.max(
               0,
-              Math.min(
-                maxStartIndex,
-                Math.min(
-                  combinedData.length - prev.visibleBars,
-                  proposedStartIndex
-                )
-              )
+              Math.min(maxStartIndex, proposedStartIndex)
             );
 
-            // Update vertical offset with increased range and sensitivity
-            const newOffsetY = (prev.offsetY || 0) + priceMove;
-
-            // Increase the offset limit based on scale
-            const maxOffset = priceRange * (2.5 / Math.max(0.2, prev.scaleY));
-            const boundedOffsetY = Math.max(
-              -maxOffset,
-              Math.min(maxOffset, newOffsetY)
-            );
+            // Calculate price movement based on drag distance
+            const priceMove = (dy / chartHeight) * priceRange;
+            const newOffsetY = dragState.startOffsetY + priceMove;
 
             return {
               ...prev,
+              // Store the exact float value for startIndex
               startIndex: newStartIndex,
-              offsetY: boundedOffsetY,
+              offsetY: newOffsetY,
+              // Keep the original scales from when the drag started
+              scaleX: dragState.startScaleX,
+              scaleY: dragState.startScaleY,
             };
-          });
-
-          // Update drag start position
-          setDragState({
-            ...dragState,
-            startX: e.clientX,
-            startY: e.clientY,
           });
         }
         break;
@@ -643,6 +626,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         startY: e.touches[0].clientY,
         startScaleX: viewState.scaleX,
         startScaleY: viewState.scaleY,
+        startIndex: viewState.startIndex,
+        startOffsetY: viewState.offsetY,
       });
     }
   };
@@ -1223,14 +1208,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const candleWidth = barWidth * 0.8;
 
       // Get visible data
-      const visibleStartIndex = Math.max(0, viewState.startIndex);
-      const visibleEndIndex = Math.min(
-        combinedData.length,
-        visibleStartIndex + viewState.visibleBars
-      );
+      const visibleStartIndex = Math.floor(viewState.startIndex);
       const visibleData = combinedData.slice(
         visibleStartIndex,
-        visibleEndIndex
+        visibleStartIndex + viewState.visibleBars
       );
 
       if (!visibleData.length) return;
@@ -1258,9 +1239,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       // Draw vertical grid lines first (before candlesticks)
+      const fractionalOffset =
+        viewState.startIndex - Math.floor(viewState.startIndex);
+
       visibleData.forEach((candle, i) => {
         const candleCenterX =
-          dimensions.padding.left + i * barWidth + barWidth / 2;
+          dimensions.padding.left +
+          (i - fractionalOffset) * barWidth +
+          barWidth / 2;
         const date = new Date(candle.timestamp);
         const minutes = date.getMinutes();
         const hours = date.getHours();
@@ -1279,8 +1265,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         }
       });
 
-      // Draw horizontal grid lines
-      gridPrices.forEach((price, i) => {
+      // Update horizontal grid lines to use the same smooth scaling
+      gridPrices.forEach((price) => {
         const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
 
         // Ensure grid line is within chart area
@@ -1293,7 +1279,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           ctx.lineTo(dimensions.width - dimensions.padding.right, y);
           ctx.stroke();
 
-          // Draw price label
+          // Draw price label with smooth movement
           ctx.fillStyle = currentTheme?.text || defaultTheme.text;
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
@@ -1307,7 +1293,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Draw candlesticks
       visibleData.forEach((candle, i) => {
-        const x = dimensions.padding.left + i * barWidth;
+        const fractionalOffset =
+          viewState.startIndex - Math.floor(viewState.startIndex);
+        const x = dimensions.padding.left + (i - fractionalOffset) * barWidth;
         const openY = getY(
           candle.open,
           adjustedMinPrice,
@@ -1358,6 +1346,50 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Reset opacity
       ctx.globalAlpha = 1;
+
+      // After drawing all candles, draw the last price line
+      if (data.length > 0) {
+        const lastCandle = data[data.length - 1];
+        const previousCandle = data[data.length - 2];
+
+        // Calculate line color based on previous close
+        const lineColor = previousCandle
+          ? lastCandle.close >= previousCandle.close
+            ? "#26a69a"
+            : "#ef5350"
+          : "#26a69a";
+
+        // Calculate y position using the same scale as candlesticks
+        const y = getY(
+          lastCandle.close,
+          adjustedMinPrice,
+          adjustedMaxPrice,
+          chartHeight
+        );
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([2, 2]); // Create dashed line effect
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 0.4;
+
+        // Draw line from left to right of the chart
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+        ctx.stroke();
+
+        // Draw last price text
+        // ctx.font = "12px Arial";
+        // ctx.fillStyle = lineColor;
+        // ctx.textAlign = "right";
+        // ctx.fillText(
+        //   lastCandle.close.toFixed(2),
+        //   dimensions.width - dimensions.padding.right - 5, // 5px padding from right
+        //   y - 5 // 5px above the line
+        // );
+
+        ctx.restore();
+      }
     },
     [
       dimensions,
@@ -1565,7 +1597,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     }
   };
 
-  // Add new effect to draw x-axis
+  // Add this effect to draw x-axis
   useEffect(() => {
     if (!xAxisCanvasRef.current || !data.length) return;
 
@@ -1589,38 +1621,25 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const barWidth = BASE_CANDLE_WIDTH * viewState.scaleX;
+    const barWidth = chartWidth / viewState.visibleBars;
 
     // Get visible data
+    const visibleStartIndex = Math.floor(viewState.startIndex);
     const visibleData = combinedData.slice(
-      viewState.startIndex,
-      viewState.startIndex + viewState.visibleBars
+      visibleStartIndex,
+      visibleStartIndex + viewState.visibleBars
     );
 
-    // Draw scaling handles at the edges
-    const handleWidth = 10;
-    const handleHeight = 15;
-
-    // Left handle
-    ctx.fillStyle = currentTheme?.grid || defaultTheme.grid;
-    ctx.fillRect(
-      dimensions.padding.left - handleWidth / 2,
-      0,
-      handleWidth,
-      handleHeight
-    );
-
-    // Right handle
-    ctx.fillRect(
-      dimensions.width - dimensions.padding.right - handleWidth / 2,
-      0,
-      handleWidth,
-      handleHeight
-    );
+    // Calculate fractional offset for smooth movement
+    const fractionalOffset =
+      viewState.startIndex - Math.floor(viewState.startIndex);
 
     // Draw time labels with proper spacing
     visibleData.forEach((candle, i) => {
-      const x = dimensions.padding.left + i * barWidth + barWidth / 2;
+      const x =
+        dimensions.padding.left +
+        (i - fractionalOffset) * barWidth +
+        barWidth / 2;
       const date = new Date(candle.timestamp);
       const hours = date.getHours();
       const minutes = date.getMinutes();
@@ -1671,14 +1690,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, [
     combinedData,
     dimensions,
-    viewState,
+    viewState.startIndex,
+    viewState.visibleBars,
+    viewState.scaleX,
     timeframeConfig,
     currentTheme,
     defaultTheme,
     xAxisDragState,
-    viewState.startIndex,
-    viewState.visibleBars,
-    viewState.scaleX,
   ]);
 
   // Add this effect for resize handling
@@ -1702,6 +1720,52 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     };
   }, []);
 
+  const scrollToRight = useCallback(() => {
+    if (!data.length) return;
+
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const visibleBars = Math.floor(
+      chartWidth / (BASE_CANDLE_WIDTH * viewState.scaleX)
+    );
+
+    // Calculate position to show last 70% of visible bars with real data
+    const visibleDataBars = Math.floor(visibleBars * 0.7); // Show 70% of visible area
+    const targetStartIndex = Math.max(0, data.length - visibleDataBars);
+
+    // Create target state for animation
+    const targetState: ViewState = {
+      ...viewState,
+      startIndex: targetStartIndex,
+      visibleBars,
+      offsetY: 0,
+    };
+
+    // Trigger animation
+    animateViewState(targetState);
+  }, [
+    data.length,
+    dimensions.width,
+    dimensions.padding.left,
+    dimensions.padding.right,
+    viewState,
+    animateViewState,
+  ]);
+
+  const shouldShowScrollButton = useMemo(() => {
+    if (!data.length) return false;
+
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const visibleBars = Math.floor(
+      chartWidth / (BASE_CANDLE_WIDTH * viewState.scaleX)
+    );
+    const currentLastVisibleIndex = viewState.startIndex + visibleBars;
+
+    // Show button if there are more than 10 candles to scroll to
+    return data.length - currentLastVisibleIndex > 10;
+  }, [data.length, dimensions, viewState.startIndex, viewState.scaleX]);
+
   // Update the return JSX
   return (
     <div
@@ -1714,6 +1778,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         flexDirection: "column",
       }}
     >
+      <ScrollToRightButton
+        onClick={scrollToRight}
+        theme={currentTheme || defaultTheme}
+        isVisible={shouldShowScrollButton}
+      />
+
       {/* Main Chart Area */}
       <div
         ref={containerRef}

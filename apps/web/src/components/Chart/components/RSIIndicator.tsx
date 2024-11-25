@@ -44,27 +44,43 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
     // Get visible data
     const visibleRSI = rsiValues.slice(startIndex, startIndex + visibleBars);
 
-    // Calculate dimensions
+    // Calculate dimensions with fractional offset for smooth movement
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
     const chartHeight =
       height - dimensions.padding.top - dimensions.padding.bottom;
     const barWidth = chartWidth / visibleBars;
 
-    // Draw filled area between 30 and 70
-    const y30 = dimensions.padding.top + ((100 - 30) / 100) * chartHeight;
-    const y70 = dimensions.padding.top + ((100 - 70) / 100) * chartHeight;
+    // Calculate fractional offset for smooth movement
+    const fractionalOffset = startIndex - Math.floor(startIndex);
+
+    // Adjust padding to remove extra space
+    const effectivePadding = {
+      ...dimensions.padding,
+      top: 5, // Reduced from default padding
+      bottom: 5, // Reduced from default padding
+    };
+
+    // Adjust the scale to show only 10-90 range
+    const scaleRSI = (value: number) => {
+      // Map RSI value from 10-90 range to 0-100% of chart height
+      return effectivePadding.top + ((90 - value) / 80) * chartHeight;
+    };
+
+    // Draw filled area between 30 and 70 with adjusted padding
+    const y30 = scaleRSI(30);
+    const y70 = scaleRSI(70);
 
     // Fill area between 30-70 with semi-transparent purple
-    ctx.fillStyle = "rgba(155, 89, 182, 0.1)"; // Light purple with opacity
+    ctx.fillStyle = "rgba(155, 89, 182, 0.1)";
     ctx.beginPath();
     ctx.rect(dimensions.padding.left, y70, chartWidth, y30 - y70);
     ctx.fill();
 
-    // Draw grid lines and labels
-    const gridLevels = [20, 30, 50, 70, 80];
+    // Update grid lines to show 10-90 range
+    const gridLevels = [10, 30, 50, 70, 90];
     gridLevels.forEach((level) => {
-      const y = dimensions.padding.top + ((100 - level) / 100) * chartHeight;
+      const y = scaleRSI(level);
 
       // Draw grid line
       ctx.beginPath();
@@ -73,7 +89,7 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
 
       // Make 30 and 70 lines more prominent
       if (level === 30 || level === 70) {
-        ctx.strokeStyle = "rgba(155, 89, 182, 0.5)"; // Semi-transparent purple
+        ctx.strokeStyle = "rgba(155, 89, 182, 0.5)";
         ctx.lineWidth = 1;
       }
 
@@ -81,30 +97,36 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
       ctx.lineTo(dimensions.width - dimensions.padding.right, y);
       ctx.stroke();
 
-      // Draw label
+      // Draw label with smaller font and closer to the line
       ctx.fillStyle = theme.text;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
+      ctx.font = "10px sans-serif";
       ctx.fillText(
         level.toString(),
-        dimensions.width - dimensions.padding.right + 5,
+        dimensions.width - dimensions.padding.right + 2,
         y
       );
     });
 
-    // Draw RSI line with gradient based on value
-    visibleRSI.forEach((rsi, i) => {
-      const x = dimensions.padding.left + i * barWidth + barWidth / 2;
-      const y = dimensions.padding.top + ((100 - rsi) / 100) * chartHeight;
+    // Update RSI line drawing to use fractional offset
+    let lastValidX: number | null = null;
+    let lastValidY: number | null = null;
 
-      if (i === 0) {
+    visibleRSI.forEach((rsi, i) => {
+      if (isNaN(rsi)) return;
+
+      // Apply fractional offset to x position for smooth movement
+      const x =
+        dimensions.padding.left +
+        (i - fractionalOffset) * barWidth +
+        barWidth / 2;
+      const y = scaleRSI(rsi);
+
+      if (lastValidX === null) {
         ctx.beginPath();
         ctx.moveTo(x, y);
       } else {
-        const prevRSI = visibleRSI[i - 1];
-        const prevY =
-          dimensions.padding.top + ((100 - prevRSI) / 100) * chartHeight;
-
         // Set line color based on RSI value and direction
         if (rsi > 70) {
           ctx.strokeStyle = theme.downColor; // Overbought - red
@@ -116,33 +138,38 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
 
         ctx.beginPath();
         ctx.lineWidth = 1.5;
-        ctx.moveTo(x - barWidth / 2, prevY);
-        ctx.lineTo(x + barWidth / 2, y);
+        ctx.moveTo(lastValidX, lastValidY!);
+        ctx.lineTo(x, y);
         ctx.stroke();
       }
+
+      lastValidX = x;
+      lastValidY = y;
     });
 
-    // Draw RSI value label at the top left
+    // Update RSI value label position
     if (visibleRSI.length > 0) {
-      const currentRSI = visibleRSI[visibleRSI.length - 1];
+      const lastValidRSI = [...visibleRSI].reverse().find((rsi) => !isNaN(rsi));
 
-      // Set color based on RSI value
-      if (currentRSI > 70) {
-        ctx.fillStyle = theme.downColor;
-      } else if (currentRSI < 30) {
-        ctx.fillStyle = theme.upColor;
-      } else {
-        ctx.fillStyle = "#9B59B6";
+      if (lastValidRSI !== undefined) {
+        // Set color based on RSI value
+        if (lastValidRSI > 70) {
+          ctx.fillStyle = theme.downColor;
+        } else if (lastValidRSI < 30) {
+          ctx.fillStyle = theme.upColor;
+        } else {
+          ctx.fillStyle = "#9B59B6";
+        }
+
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(
+          `RSI ${period} ${lastValidRSI.toFixed(2)}`,
+          dimensions.padding.left + 2,
+          effectivePadding.top + 2
+        );
       }
-
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      ctx.font = "12px sans-serif";
-      ctx.fillText(
-        `RSI ${period} ${currentRSI.toFixed(2)}`,
-        dimensions.padding.left + 5,
-        dimensions.padding.top + 5
-      );
     }
   }, [data, dimensions, theme, period, height, startIndex, visibleBars]);
 
@@ -163,9 +190,12 @@ function calculateRSI(data: OHLCData[], period: number): number[] {
   let gains: number[] = [];
   let losses: number[] = [];
 
-  // Calculate price changes
-  for (let i = 1; i < data.length; i++) {
-    const change = data[i].close - data[i - 1].close;
+  // Filter out dummy candles first
+  const realData = data.filter((candle) => candle.display !== false);
+
+  // Calculate price changes only for real candles
+  for (let i = 1; i < realData.length; i++) {
+    const change = realData[i].close - realData[i - 1].close;
     gains.push(Math.max(0, change));
     losses.push(Math.max(0, -change));
   }
@@ -180,7 +210,7 @@ function calculateRSI(data: OHLCData[], period: number): number[] {
   rsi.push(100 - 100 / (1 + avgGain / avgLoss));
 
   // Calculate subsequent RSI values
-  for (let i = period + 1; i < data.length; i++) {
+  for (let i = period + 1; i < realData.length; i++) {
     avgGain = (avgGain * (period - 1) + gains[i - 1]) / period;
     avgLoss = (avgLoss * (period - 1) + losses[i - 1]) / period;
     rsi.push(100 - 100 / (1 + avgGain / avgLoss));
@@ -192,5 +222,18 @@ function calculateRSI(data: OHLCData[], period: number): number[] {
     rsi.unshift(firstRSI);
   }
 
-  return rsi;
+  // Create final RSI array matching the original data length
+  const finalRSI: number[] = [];
+  let rsiIndex = 0;
+
+  // Map RSI values back to original data positions, setting undefined for dummy candles
+  data.forEach((candle) => {
+    if (candle.display === false) {
+      finalRSI.push(NaN); // Use NaN for dummy candles
+    } else {
+      finalRSI.push(rsi[rsiIndex++] || NaN);
+    }
+  });
+
+  return finalRSI;
 }
