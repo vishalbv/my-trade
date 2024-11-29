@@ -47,24 +47,23 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
     // Calculate dimensions with fractional offset for smooth movement
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const chartHeight =
-      height - dimensions.padding.top - dimensions.padding.bottom;
+    const chartHeight = height;
     const barWidth = chartWidth / visibleBars;
 
     // Calculate fractional offset for smooth movement
     const fractionalOffset = startIndex - Math.floor(startIndex);
 
-    // Adjust padding to remove extra space
+    // Remove all padding
     const effectivePadding = {
       ...dimensions.padding,
-      top: 5, // Reduced from default padding
-      bottom: 5, // Reduced from default padding
+      top: 0, // Remove top padding
+      bottom: 0, // Remove bottom padding
     };
 
-    // Adjust the scale to show only 10-90 range
+    // Update scale function to use full height
     const scaleRSI = (value: number) => {
-      // Map RSI value from 10-90 range to 0-100% of chart height
-      return effectivePadding.top + ((90 - value) / 80) * chartHeight;
+      // Map RSI value from 0-100 range to full chart height
+      return value === 0 ? height : height * (1 - value / 100);
     };
 
     // Draw filled area between 30 and 70 with adjusted padding
@@ -77,7 +76,7 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
     ctx.rect(dimensions.padding.left, y70, chartWidth, y30 - y70);
     ctx.fill();
 
-    // Update grid lines to show 10-90 range
+    // Update grid lines to show full range (0-100)
     const gridLevels = [10, 30, 50, 70, 90];
     gridLevels.forEach((level) => {
       const y = scaleRSI(level);
@@ -179,6 +178,8 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
       style={{
         width: "100%",
         height: "100%",
+        display: "block",
+        backgroundColor: theme.background,
       }}
     />
   );

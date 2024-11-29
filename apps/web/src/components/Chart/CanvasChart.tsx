@@ -715,7 +715,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     (e: React.WheelEvent) => {
       if (!combinedData.length || !dimensions.width) return;
 
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const zoomFactor = e.deltaY > 0 ? 0.99 : 1.01;
       const mouseX =
         e.clientX - (containerRef.current?.getBoundingClientRect().left || 0);
       const mouseY =
@@ -1217,26 +1217,26 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       // Draw horizontal grid lines
-      gridPrices.forEach((price) => {
-        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+      // gridPrices.forEach((price) => {
+      //   const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
 
-        ctx.beginPath();
-        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-        ctx.lineWidth = 0.5;
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
+      //   ctx.beginPath();
+      //   ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+      //   ctx.lineWidth = 0.5;
+      //   ctx.moveTo(dimensions.padding.left, y);
+      //   ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+      //   ctx.stroke();
 
-        // Draw price label
-        ctx.fillStyle = currentTheme?.text || defaultTheme.text;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          price.toFixed(2),
-          dimensions.width - dimensions.padding.right + 5,
-          y
-        );
-      });
+      //   // Draw price label
+      //   ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+      //   ctx.textAlign = "left";
+      //   ctx.textBaseline = "middle";
+      //   ctx.fillText(
+      //     price.toFixed(2),
+      //     dimensions.width - dimensions.padding.right + 5,
+      //     y
+      //   );
+      // });
 
       // Calculate fractional offset for smooth scrolling
       const fractionalOffset =
@@ -1358,7 +1358,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       const newHeight = Math.max(
         50,
-        Math.min(containerHeight * 0.4, dragStartHeight + dy)
+        Math.min(containerHeight * 0.8, dragStartHeight + dy)
       );
 
       requestAnimationFrame(() => {
@@ -1408,8 +1408,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update the RSI container style to use transform for smoother animation
   const rsiContainerStyle = {
-    zIndex: 3,
-    position: "relative",
+    zIndex: 7,
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
     height: `${rsiHeight}px`,
     borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
     transform: "translate3d(0, 0, 0)", // Enable hardware acceleration
@@ -1425,7 +1427,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             height: "4px",
             backgroundColor: currentTheme?.grid || defaultTheme.grid,
             cursor: "ns-resize",
-            position: "relative",
+            width: "100%",
+            position: "absolute",
+            bottom: `${rsiHeight}px`,
             zIndex: 3,
             transform: "translate3d(0, 0, 0)", // Enable hardware acceleration
           }}
@@ -2115,31 +2119,31 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       });
 
       // Draw horizontal grid lines
-      const chartHeight =
-        dimensions.height -
-        (isRSIEnabled ? rsiHeight + 34 : 30) -
-        dimensions.padding.top -
-        dimensions.padding.bottom;
+      // const chartHeight =
+      //   dimensions.height -
+      //   (isRSIEnabled ? rsiHeight + 34 : 30) -
+      //   dimensions.padding.top -
+      //   dimensions.padding.bottom;
 
-      const { gridPrices } = calculateGridPrices(
-        minPrice,
-        maxPrice,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight,
-        getY
-      );
+      // const { gridPrices } = calculateGridPrices(
+      //   minPrice,
+      //   maxPrice,
+      //   adjustedMinPrice,
+      //   adjustedMaxPrice,
+      //   chartHeight,
+      //   getY
+      // );
 
-      gridPrices.forEach((price) => {
-        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
-        ctx.beginPath();
-        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-        ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.2;
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
-      });
+      // gridPrices.forEach((price) => {
+      //   const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+      //   ctx.beginPath();
+      //   ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+      //   ctx.lineWidth = 0.5;
+      //   ctx.globalAlpha = 0.2;
+      //   ctx.moveTo(dimensions.padding.left, y);
+      //   ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+      //   ctx.stroke();
+      // });
     },
     [
       dimensions,
@@ -2159,41 +2163,185 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ]
   );
 
-  // Update the main render effect to include grid canvas
+  // Add new canvas ref for y-axis
+  const yAxisCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Create new function to draw y-axis grid lines and labels
+  const drawYAxisLabels = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+      // If no data, draw default grid lines at regular intervals
+      if (!data.length) {
+        const defaultPrices = Array.from({ length: 5 }, (_, i) => i * 100);
+        defaultPrices.forEach((price) => {
+          const y =
+            dimensions.padding.top +
+            (price / 400) *
+              (dimensions.height -
+                dimensions.padding.top -
+                dimensions.padding.bottom);
+
+          // Draw grid line
+          ctx.beginPath();
+          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+          ctx.lineWidth = 0.5;
+          ctx.globalAlpha = 0.8;
+          ctx.moveTo(dimensions.padding.left, y);
+          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+          ctx.stroke();
+
+          // Draw price label
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = "10px sans-serif";
+          ctx.fillText(
+            price.toFixed(2),
+            dimensions.width - dimensions.padding.right + 5,
+            y
+          );
+        });
+        return;
+      }
+
+      const visibleData = combinedData.slice(
+        Math.floor(viewState.startIndex),
+        Math.floor(viewState.startIndex) + viewState.visibleBars
+      );
+
+      if (!visibleData.length) return;
+
+      // Calculate price ranges
+      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice;
+      const pricePadding = priceRange * 0.15;
+
+      const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
+      const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
+
+      const chartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+
+      // Get grid prices and labels
+      const { gridPrices } = calculateGridPrices(
+        minPrice,
+        maxPrice,
+        adjustedMinPrice,
+        adjustedMaxPrice,
+        chartHeight,
+        getY
+      );
+
+      // Draw horizontal grid lines and price labels
+      gridPrices.forEach((price) => {
+        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+
+        // Draw grid line
+        ctx.beginPath();
+        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.8;
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+        ctx.stroke();
+
+        // Draw price label
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(
+          price.toFixed(2),
+          dimensions.width - dimensions.padding.right + 5,
+          y
+        );
+      });
+    },
+    [
+      dimensions,
+      viewState.startIndex,
+      viewState.visibleBars,
+      viewState.offsetY,
+      viewState.scaleY,
+      combinedData,
+      data.length,
+      currentTheme,
+      defaultTheme,
+      calculateGridPrices,
+      getY,
+      isRSIEnabled,
+      rsiHeight,
+    ]
+  );
+
+  // Update the main render effect to ensure it runs when needed
   useEffect(() => {
-    if (!gridCanvasRef.current || !mainCanvasRef.current || !data.length)
+    if (
+      !gridCanvasRef.current ||
+      !yAxisCanvasRef.current ||
+      !mainCanvasRef.current
+    )
       return;
 
     const gridCtx = gridCanvasRef.current.getContext("2d");
     const mainCtx = mainCanvasRef.current.getContext("2d");
+    const yAxisCtx = yAxisCanvasRef.current.getContext("2d");
 
-    if (!gridCtx || !mainCtx) return;
+    if (!gridCtx || !mainCtx || !yAxisCtx) return;
 
     // Set canvas sizes with device pixel ratio
     const dpr = window.devicePixelRatio || 1;
 
-    // Setup grid canvas
-    gridCanvasRef.current.width = dimensions.width * dpr;
-    gridCanvasRef.current.height = dimensions.height * dpr;
-    gridCtx.scale(dpr, dpr);
+    // Setup all canvases
+    [
+      gridCanvasRef.current,
+      mainCanvasRef.current,
+      yAxisCanvasRef.current,
+    ].forEach((canvas) => {
+      canvas.width = dimensions.width * dpr;
+      canvas.height = dimensions.height * dpr;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+    });
 
-    // Setup main canvas
-    mainCanvasRef.current.width = dimensions.width * dpr;
-    mainCanvasRef.current.height = dimensions.height * dpr;
-    mainCtx.scale(dpr, dpr);
+    // Clear all canvases
+    [gridCtx, mainCtx, yAxisCtx].forEach((ctx) => {
+      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+    });
 
-    // Clear both canvases
-    gridCtx.clearRect(0, 0, dimensions.width, dimensions.height);
-    mainCtx.clearRect(0, 0, dimensions.width, dimensions.height);
+    // Draw in correct order
+    requestAnimationFrame(() => {
+      // 1. Grid lines (background)
+      drawGridLines(gridCtx);
+      // 2. Y-axis labels and grid lines
+      drawYAxisLabels(yAxisCtx);
+      // 3. Candlesticks (foreground)
+      drawChart(mainCtx);
+    });
+  }, [
+    dimensions.width,
+    dimensions.height,
+    viewState.startIndex,
+    viewState.visibleBars,
+    viewState.scaleY,
+    viewState.offsetY,
+    data.length,
+    drawChart,
+    drawGridLines,
+    drawYAxisLabels,
+  ]);
 
-    // Draw in correct order:
-    // 1. Grid lines (background)
-    drawGridLines(gridCtx);
-    // 2. Candlesticks (foreground)
-    drawChart(mainCtx);
-  }, [drawChart, drawGridLines, dimensions, data.length]);
-
-  // Update the return JSX
+  // Update JSX to include y-axis canvas
   return (
     <div
       style={{
@@ -2233,7 +2381,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Grid Canvas - Below everything */}
+          {/* Grid Canvas - Bottom layer */}
           <canvas
             ref={gridCanvasRef}
             style={{
@@ -2246,24 +2394,31 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             }}
           />
 
-          {/* Main Chart Canvas */}
-          <div
+          {/* Y-axis Canvas - Middle layer */}
+          <canvas
+            ref={yAxisCanvasRef}
             style={{
-              height: `${dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30)}px`,
+              width: "100%",
+              height: "100%",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              zIndex: 2,
             }}
-          >
-            <canvas
-              ref={mainCanvasRef}
-              style={{
-                width: "100%",
-                height: "100%",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                zIndex: 2,
-              }}
-            />
-          </div>
+          />
+
+          {/* Main Chart Canvas - Top layer */}
+          <canvas
+            ref={mainCanvasRef}
+            style={{
+              width: "100%",
+              height: "100%",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              zIndex: 3,
+            }}
+          />
 
           {/* RSI Section */}
           {isRSIEnabled && (
@@ -2273,8 +2428,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
                   height: "4px",
                   backgroundColor: currentTheme?.grid || defaultTheme.grid,
                   cursor: "ns-resize",
-                  position: "relative",
-                  zIndex: 2,
+                  position: "absolute",
+                  bottom: `${rsiHeight}px`,
+                  width: "100%",
+                  zIndex: 20,
                 }}
                 onMouseDown={handleRSISeparatorMouseDown}
               >
@@ -2322,7 +2479,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               position: "absolute",
               top: 0,
               left: 0,
-              zIndex: 3,
+              zIndex: 18,
               pointerEvents: "none",
             }}
           />
