@@ -28,13 +28,13 @@ export interface ChartDimensions {
 
 export interface ChartTheme {
   background: string;
-  grid: string;
   text: string;
-  upColor: string;
-  downColor: string;
+  textSecondary: string;
+  grid: string;
   crosshair: string;
   axisBackground: string;
-  controlsBackground: string;
+  upColor: string;
+  downColor: string;
   buttonHover: string;
 }
 
