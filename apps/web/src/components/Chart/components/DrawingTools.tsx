@@ -37,9 +37,10 @@ export function DrawingTools({
   setShowDrawings,
 }: DrawingToolsProps) {
   const dispatch = useDispatch();
-  const selectedChartKey = useSelector(
-    (state: RootState) => state.globalChart.selectedChartKey
-  );
+  const currentSymbol = useSelector((state: RootState) => {
+    const selectedKey = state.globalChart.selectedChartKey;
+    return state.globalChart.layouts[selectedKey]?.symbol;
+  });
 
   const tools = [
     { id: "cursor" as DrawingTool, icon: CursorIcon, label: "Cursor" },
@@ -87,7 +88,9 @@ export function DrawingTools({
   };
 
   const handleClearDrawings = () => {
-    dispatch(clearDrawings(selectedChartKey));
+    if (currentSymbol) {
+      dispatch(clearDrawings(currentSymbol));
+    }
   };
 
   return (

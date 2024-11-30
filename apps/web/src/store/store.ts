@@ -2,7 +2,9 @@ import { configureStore, ThunkAction, Action, Store } from "@reduxjs/toolkit";
 import stateReducer from "./slices/stateSlice";
 import drawerReducer from "./slices/drawerSlice";
 import ticksReducer from "./slices/ticksSlice";
-import globalChartReducer from "./slices/globalChartSlice";
+import globalChartReducer, {
+  globalChartLocalStorageMiddleware,
+} from "./slices/globalChartSlice";
 
 export const store: Store = configureStore({
   reducer: {
@@ -14,7 +16,7 @@ export const store: Store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }),
+    }).concat(globalChartLocalStorageMiddleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

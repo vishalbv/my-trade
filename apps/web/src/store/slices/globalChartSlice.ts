@@ -1,6 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { DrawingTool, LayoutType, Drawing } from "../../components/Chart/types";
 import { DEFAULT_CHART_LAYOUT } from "../../utils/constants";
+import { Middleware } from "@reduxjs/toolkit";
+import { RootState } from "../store";
 
 interface Indicator {
   id: string;
@@ -11,7 +13,6 @@ interface Indicator {
 interface ChartState {
   symbol: string;
   timeframe: string;
-  drawings: Drawing[];
 }
 
 interface GlobalChartState {
@@ -23,9 +24,44 @@ interface GlobalChartState {
   layouts: {
     [key: string]: ChartState;
   };
+  symbolDrawings: {
+    [symbol: string]: Drawing[];
+  };
 }
 
-const defaultLayout: ChartState = DEFAULT_CHART_LAYOUT;
+const defaultLayout: ChartState = {
+  ...DEFAULT_CHART_LAYOUT,
+};
+
+const getLocalStorageData = () => {
+  const stored = localStorage.getItem("globalChartState");
+  return stored ? JSON.parse(stored) : {};
+};
+
+const keysToSaveInLocalStorage = [
+  "selectedLayout",
+  "indicators",
+  "showDrawings",
+  "layouts",
+  "symbolDrawings",
+];
+
+export const globalChartLocalStorageMiddleware: Middleware =
+  (store) => (next) => (action) => {
+    const result = next(action);
+
+    // Only save if the action is from globalChart slice
+    if (action.type.startsWith("globalChart/")) {
+      const state = store.getState() as RootState;
+      const dataToSave = keysToSaveInLocalStorage.reduce((acc, key) => {
+        acc[key] = state.globalChart[key];
+        return acc;
+      }, {});
+      localStorage.setItem("globalChartState", JSON.stringify(dataToSave));
+    }
+
+    return result;
+  };
 
 const initialState: GlobalChartState = {
   selectedLayout: "single" as LayoutType,
@@ -36,6 +72,8 @@ const initialState: GlobalChartState = {
   layouts: {
     "0": defaultLayout,
   },
+  symbolDrawings: {},
+  ...getLocalStorageData(),
 };
 
 const globalChartSlice = createSlice({
@@ -56,12 +94,13 @@ const globalChartSlice = createSlice({
     },
     addDrawing: (
       state,
-      action: PayloadAction<{ chartKey: string; drawing: Drawing }>
+      action: PayloadAction<{ symbol: string; drawing: Drawing }>
     ) => {
-      const { chartKey, drawing } = action.payload;
-      if (state.layouts[chartKey]) {
-        state.layouts[chartKey].drawings.push(drawing);
+      const { symbol, drawing } = action.payload;
+      if (!state.symbolDrawings[symbol]) {
+        state.symbolDrawings[symbol] = [];
       }
+      state.symbolDrawings[symbol].push(drawing);
     },
     updateLayoutSymbol: (
       state,
@@ -91,9 +130,21 @@ const globalChartSlice = createSlice({
       state.selectedChartKey = action.payload;
     },
     clearDrawings: (state, action: PayloadAction<string>) => {
-      const chartKey = action.payload;
-      if (state.layouts[chartKey]) {
-        state.layouts[chartKey].drawings = [];
+      const symbol = action.payload;
+      state.symbolDrawings[symbol] = [];
+    },
+    updateDrawing: (
+      state,
+      action: PayloadAction<{ symbol: string; drawing: Drawing }>
+    ) => {
+      const { symbol, drawing } = action.payload;
+      if (state.symbolDrawings[symbol]) {
+        const index = state.symbolDrawings[symbol].findIndex(
+          (d) => d.id === drawing.id
+        );
+        if (index !== -1) {
+          state.symbolDrawings[symbol][index] = drawing;
+        }
       }
     },
   },
@@ -110,6 +161,7 @@ export const {
   initializeLayout,
   setSelectedChartKey,
   clearDrawings,
+  updateDrawing,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

@@ -20,6 +20,7 @@ import {
   updateLayoutSymbol,
   updateLayoutTimeframe,
   setSelectedChartKey,
+  updateDrawing,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 
@@ -81,6 +82,11 @@ export const ChartContainer = ({
     (t) => t.value === chartState.timeframe
   );
 
+  const symbolDrawings = useSelector(
+    (state: RootState) =>
+      state.globalChart.symbolDrawings[chartState.symbol] || []
+  );
+
   useEffect(() => {
     if (containerRef.current) {
       const resizeEvent = new Event("resize");
@@ -89,7 +95,11 @@ export const ChartContainer = ({
   }, [chartKey, indicators]);
 
   const handleDrawingComplete = (drawing: Drawing) => {
-    dispatch(addDrawing({ chartKey, drawing }));
+    dispatch(addDrawing({ symbol: chartState.symbol, drawing }));
+  };
+
+  const handleDrawingUpdate = (drawing: Drawing) => {
+    dispatch(updateDrawing({ symbol: chartState.symbol, drawing }));
   };
 
   const handleChartClick = () => {
@@ -106,7 +116,7 @@ export const ChartContainer = ({
           : "border-transparent border dark:border-0.5",
         className
       )}
-      onClick={handleChartClick}
+      onMouseDown={handleChartClick}
     >
       {/* Chart Header */}
       <div className="flex items-center p-1 border-b border-border">
@@ -177,8 +187,9 @@ export const ChartContainer = ({
           indicators={indicators}
           selectedTool={selectedTool}
           showDrawings={showDrawings}
-          drawings={chartState.drawings}
+          drawings={symbolDrawings}
           onDrawingComplete={handleDrawingComplete}
+          onDrawingUpdate={handleDrawingUpdate}
         />
       </div>
     </div>

@@ -23,6 +23,7 @@ interface CanvasChartProps {
   showDrawings: boolean;
   drawings: Drawing[];
   onDrawingComplete: (drawing: Drawing) => void;
+  onDrawingUpdate: (drawing: Drawing) => void; // Make this required, not optional
 }
 
 interface MousePosition {
@@ -62,6 +63,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   showDrawings,
   drawings,
   onDrawingComplete,
+  onDrawingUpdate,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -138,6 +140,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const [xAxisDragState, setXAxisDragState] = useState<XAxisDragState | null>(
     null
   );
+  const [drawingCanvasMousePos, setDrawingCanvasMousePos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Animate view state changes
   const animateViewState = useCallback(
@@ -836,6 +842,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      setDrawingCanvasMousePos({ x, y });
 
       // Check if mouse is within chart bounds
       if (
@@ -930,6 +937,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       isRSIEnabled,
       rsiHeight,
       currentTheme,
+
       calculateBarX,
     ]
   );
@@ -2387,6 +2395,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           rsiHeight: isRSIEnabled ? rsiHeight + 34 : 0,
         }}
         onDrawingComplete={onDrawingComplete}
+        onDrawingUpdate={onDrawingUpdate}
+        mousePosition={drawingCanvasMousePos}
+        handleMouseMoveForCrosshair={handleMouseMoveForCrosshair}
       />
     );
   };
