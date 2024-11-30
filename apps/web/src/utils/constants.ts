@@ -59,3 +59,9 @@ export const LINKS = [
     ],
   },
 ];
+
+export const DEFAULT_CHART_LAYOUT = {
+  symbol: "NSE:NIFTY50-INDEX",
+  timeframe: "1",
+  drawings: [],
+};

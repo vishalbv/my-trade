@@ -25,7 +25,7 @@ export const ChartLayout = ({
           <div className="h-full w-full">
             <ChartContainer
               timeframeConfigs={timeframeConfigs}
-              layoutKey={`${layout}-0`}
+              chartKey="0"
               indicators={indicators}
             />
           </div>
@@ -37,14 +37,14 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-0`}
+                chartKey="0"
                 indicators={indicators}
               />
             </div>
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-1`}
+                chartKey="1"
                 indicators={indicators}
               />
             </div>
@@ -57,14 +57,14 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-0`}
+                chartKey="0"
                 indicators={indicators}
               />
             </div>
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-1`}
+                chartKey="1"
                 indicators={indicators}
               />
             </div>
@@ -78,14 +78,14 @@ export const ChartLayout = ({
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-0`}
+                  chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-1`}
+                  chartKey="1"
                   indicators={indicators}
                 />
               </div>
@@ -93,7 +93,7 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-2`}
+                chartKey="2"
                 indicators={indicators}
               />
             </div>
@@ -106,7 +106,7 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-0`}
+                chartKey="0"
                 indicators={indicators}
               />
             </div>
@@ -114,14 +114,14 @@ export const ChartLayout = ({
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-1`}
+                  chartKey="1"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-2`}
+                  chartKey="2"
                   indicators={indicators}
                 />
               </div>
@@ -136,14 +136,14 @@ export const ChartLayout = ({
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-0`}
+                  chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
                 <ChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  layoutKey={`${layout}-1`}
+                  chartKey="1"
                   indicators={indicators}
                 />
               </div>
@@ -151,7 +151,7 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-2`}
+                chartKey="2"
                 indicators={indicators}
               />
             </div>
@@ -164,28 +164,28 @@ export const ChartLayout = ({
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-0`}
+                chartKey="0"
                 indicators={indicators}
               />
             </div>
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-1`}
+                chartKey="1"
                 indicators={indicators}
               />
             </div>
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-2`}
+                chartKey="2"
                 indicators={indicators}
               />
             </div>
             <div className="bg-background h-full">
               <ChartContainer
                 timeframeConfigs={timeframeConfigs}
-                layoutKey={`${layout}-3`}
+                chartKey="3"
                 indicators={indicators}
               />
             </div>

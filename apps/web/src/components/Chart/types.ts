@@ -46,6 +46,9 @@ export interface ViewState {
   startIndex: number;
   visibleBars: number;
   theme: ChartTheme;
+  minPrice?: number;
+  maxPrice?: number;
+  rsiHeight?: number;
 }
 
 export interface MousePosition {
@@ -60,4 +63,42 @@ export interface Indicator {
   id: string;
   label: string;
   enabled: boolean;
+}
+
+export type LayoutType =
+  | "single"
+  | "horizontal"
+  | "vertical"
+  | "verticalLeft"
+  | "verticalRight"
+  | "topTwo"
+  | "grid";
+
+export type DrawingTool =
+  | "cursor"
+  | "horizontalLine"
+  | "trendline"
+  | "fibonacci"
+  | "rect"
+  | "shortPosition"
+  | "longPosition";
+
+export interface Drawing {
+  id: string;
+  type: DrawingTool;
+  points: Point[];
+  visible: boolean;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+  price?: number;
+  timestamp?: number;
+}
+
+export interface DrawingState {
+  tool: DrawingTool | null;
+  showDrawings: boolean;
+  drawings: Drawing[];
 }

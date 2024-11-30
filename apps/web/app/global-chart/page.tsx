@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setSelectedLayout,
+  setIndicators,
+  setSelectedTool,
+  setShowDrawings,
+} from "../../src/store/slices/globalChartSlice";
+import { RootState } from "../../src/store/store";
 
 import {
   DropdownMenu,
@@ -29,6 +36,8 @@ import {
 } from "../../src/components/Chart/icons/layoutIcons";
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
 import { SymbolSearch } from "../../src/components/Chart/components/SymbolSearch";
+import { ChartTools } from "../../src/components/Chart/components/ChartTools";
+import { DrawingTool } from "../../src/components/Chart/components/DrawingTools";
 
 interface TimeframeConfig {
   resolution: string;
@@ -142,121 +151,39 @@ const layoutOptions: LayoutOption[] = [
   },
 ];
 
-interface Indicator {
-  id: string;
-  label: string;
-  enabled: boolean;
-}
-
 export default function GlobalChart() {
-  const [timeframe, setTimeframe] = useState<string>("1");
-  const [symbol, setSymbol] = useState<string>("NSE:NIFTY50-INDEX");
-  const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
-  const [selectedLayout, setSelectedLayout] = useState<LayoutType>("single");
-  const [indicators, setIndicators] = useState<Indicator[]>([
-    { id: "rsi", label: "RSI", enabled: true },
-  ]);
-
-  const currentTimeframe = timeframeOptions.find((t) => t.value === timeframe);
-  const currentLayout = layoutOptions.find((l) => l.id === selectedLayout);
+  const dispatch = useDispatch();
+  const { selectedLayout, indicators, selectedTool, showDrawings } =
+    useSelector((state: RootState) => state.globalChart);
 
   return (
     <div className="flex flex-col h-full relative">
-      <div className="flex items-center absolute top-0 right-0 z-10">
-        <div className="flex items-center ml-auto gap-2">
-          {/* Indicators Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="light" className="h-8 px-2 font-normal">
-                <span className="flex items-center gap-2">
-                  <LineChart className="h-4 w-4" />
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              {indicators.map((indicator) => (
-                <DropdownMenuItem
-                  key={indicator.id}
-                  className="flex items-center justify-between"
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setIndicators((prev) =>
-                      prev.map((ind) =>
-                        ind.id === indicator.id
-                          ? { ...ind, enabled: !ind.enabled }
-                          : ind
-                      )
-                    );
-                  }}
-                >
-                  <span>{indicator.label}</span>
-                  <div className="flex items-center h-4 w-4 rounded-sm border border-primary">
-                    {indicator.enabled && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-3 w-3"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="flex h-full">
+        <div className="flex flex-col items-center py-2 border-r border-border">
+          <ChartTools
+            indicators={indicators}
+            setIndicators={(newIndicators) =>
+              dispatch(setIndicators(newIndicators))
+            }
+            selectedLayout={selectedLayout}
+            setSelectedLayout={(layout) => dispatch(setSelectedLayout(layout))}
+            layoutOptions={layoutOptions}
+            currentLayout={layoutOptions.find((l) => l.id === selectedLayout)}
+            selectedTool={selectedTool}
+            setSelectedTool={(tool) => dispatch(setSelectedTool(tool))}
+            showDrawings={showDrawings}
+            setShowDrawings={(show) => dispatch(setShowDrawings(show))}
+          />
+        </div>
 
-          {/* Layout Selector Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="light" className="h-8 px-2 font-normal">
-                <span className="flex items-center gap-2">
-                  {currentLayout?.icon}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[144px] p-2">
-              <div className="grid grid-cols-3 gap-2">
-                {layoutOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.id}
-                    onClick={() => setSelectedLayout(option.id)}
-                    className={cn(
-                      selectedLayout === option.id
-                        ? "bg-muted"
-                        : "hover:bg-muted",
-                      "flex items-center justify-center p-2 h-8 w-8"
-                    )}
-                    title={option.label}
-                  >
-                    {option.icon}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex-1 min-h-0">
+          <ChartLayout
+            layout={selectedLayout}
+            timeframeConfigs={timeframeConfigs}
+            indicators={indicators}
+          />
         </div>
       </div>
-
-      {/* Chart container - flex-1 to take remaining height */}
-      <div className="flex-1 min-h-0">
-        <ChartLayout
-          layout={selectedLayout}
-          timeframeConfigs={timeframeConfigs}
-          indicators={indicators}
-        />
-      </div>
-
-      <SymbolSearch
-        isOpen={isSymbolSearchOpen}
-        onClose={() => setIsSymbolSearchOpen(false)}
-        onSymbolSelect={setSymbol}
-      />
     </div>
   );
 }

@@ -10,8 +10,18 @@ import {
 } from "@repo/ui/dropdown-menu";
 import { Separator } from "@repo/ui/separator";
 import { cn } from "@repo/utils/ui/helpers";
-import { TimeframeConfig } from "../types";
+import { TimeframeConfig, Drawing } from "../types";
 import { SymbolSearch } from "./SymbolSearch";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
+import {
+  addDrawing,
+  initializeLayout,
+  updateLayoutSymbol,
+  updateLayoutTimeframe,
+  setSelectedChartKey,
+} from "../../../store/slices/globalChartSlice";
+import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 
 interface Indicator {
   id: string;
@@ -19,13 +29,17 @@ interface Indicator {
   enabled: boolean;
 }
 
+interface ChartLayout {
+  symbol: string;
+  timeframe: string;
+  drawings: Drawing[];
+}
+
 interface ChartContainerProps {
   timeframeConfigs: { [key: string]: TimeframeConfig };
-  initialSymbol?: string;
-  initialTimeframe?: string;
-  className?: string;
-  layoutKey: string;
+  chartKey: string;
   indicators: Indicator[];
+  className?: string;
 }
 
 const timeframeOptions = [
@@ -37,33 +51,63 @@ const timeframeOptions = [
 
 export const ChartContainer = ({
   timeframeConfigs,
-  initialSymbol = "NSE:NIFTY50-INDEX",
-  initialTimeframe = "1",
-  className,
-  layoutKey,
+  chartKey,
   indicators,
+  className,
 }: ChartContainerProps) => {
-  const [symbol, setSymbol] = useState(initialSymbol);
-  const [timeframe, setTimeframe] = useState(initialTimeframe);
-  const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const { chartData } = useRealtimeCandles({
-    symbol,
-    timeframe,
+  const dispatch = useDispatch();
+  const { selectedTool, showDrawings, selectedChartKey } = useSelector(
+    (state: RootState) => state.globalChart
+  );
+  const chartState = useSelector((state: RootState) => {
+    if (!state.globalChart.layouts[chartKey]) {
+      dispatch(initializeLayout({ chartKey }));
+      return state.globalChart.layouts[0] || DEFAULT_CHART_LAYOUT;
+    }
+    return state.globalChart.layouts[chartKey];
   });
 
-  const currentTimeframe = timeframeOptions.find((t) => t.value === timeframe);
+  const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { selectedLayout } = useSelector(
+    (state: RootState) => state.globalChart
+  );
+  const { chartData } = useRealtimeCandles({
+    symbol: chartState.symbol,
+    timeframe: chartState.timeframe,
+  });
+
+  const currentTimeframe = timeframeOptions.find(
+    (t) => t.value === chartState.timeframe
+  );
 
   useEffect(() => {
     if (containerRef.current) {
       const resizeEvent = new Event("resize");
       window.dispatchEvent(resizeEvent);
     }
-  }, [layoutKey, indicators]);
+  }, [chartKey, indicators]);
+
+  const handleDrawingComplete = (drawing: Drawing) => {
+    dispatch(addDrawing({ chartKey, drawing }));
+  };
+
+  const handleChartClick = () => {
+    dispatch(setSelectedChartKey(chartKey));
+  };
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col h-full", className)}>
+    <div
+      ref={containerRef}
+      className={cn(
+        "flex flex-col h-full",
+        selectedChartKey === chartKey && selectedLayout !== "single"
+          ? "border-blue-500 border dark:border-0.5"
+          : "border-transparent border dark:border-0.5",
+        className
+      )}
+      onClick={handleChartClick}
+    >
       {/* Chart Header */}
       <div className="flex items-center p-1 border-b border-border">
         <div className="flex items-center">
@@ -74,7 +118,7 @@ export const ChartContainer = ({
             className="h-6 px-2 text-sm hover:bg-muted"
           >
             <span className="mr-1">
-              {symbol.split(":")[1]?.replace("-INDEX", "") || ""}
+              {chartState.symbol.split(":")[1]?.replace("-INDEX", "") || ""}
             </span>
             <span className="text-xs text-muted-foreground">NSE</span>
           </Button>
@@ -95,9 +139,18 @@ export const ChartContainer = ({
               {timeframeOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
-                  onClick={() => setTimeframe(option.value)}
+                  onClick={() =>
+                    dispatch(
+                      updateLayoutTimeframe({
+                        chartKey,
+                        timeframe: option.value,
+                      })
+                    )
+                  }
                   className={cn(
-                    timeframe === option.value ? "bg-muted" : "hover:bg-muted"
+                    chartState.timeframe === option.value
+                      ? "bg-muted"
+                      : "hover:bg-muted"
                   )}
                 >
                   <span>{option.label}</span>
@@ -112,14 +165,20 @@ export const ChartContainer = ({
       <SymbolSearch
         isOpen={isSymbolSearchOpen}
         onClose={() => setIsSymbolSearchOpen(false)}
-        onSymbolSelect={setSymbol}
+        onSymbolSelect={(symbol) =>
+          dispatch(updateLayoutSymbol({ chartKey, symbol }))
+        }
       />
       <div className="flex-1 min-h-0">
         <CanvasChart
-          key={`${layoutKey}-${symbol}-${timeframe}`}
+          key={`${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
           data={chartData}
-          timeframeConfig={timeframeConfigs[timeframe]}
+          timeframeConfig={timeframeConfigs[chartState.timeframe]}
           indicators={indicators}
+          selectedTool={selectedTool}
+          showDrawings={showDrawings}
+          drawings={chartState.drawings}
+          onDrawingComplete={handleDrawingComplete}
         />
       </div>
     </div>

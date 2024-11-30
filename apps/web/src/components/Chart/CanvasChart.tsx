@@ -6,16 +6,23 @@ import {
   ChartTheme,
   ViewState,
   Indicator,
+  Drawing,
+  DrawingTool,
 } from "./types";
 import { themes } from "./constants/themes";
 import { useTheme } from "next-themes";
 import { RSIIndicator } from "./components/RSIIndicator";
 import { ScrollToRightButton } from "./components/ScrollToRightButton";
+import { DrawingCanvas } from "./components/DrawingCanvas";
 
 interface CanvasChartProps {
   data: OHLCData[];
   timeframeConfig: TimeframeConfig;
   indicators: Indicator[];
+  selectedTool: DrawingTool | null;
+  showDrawings: boolean;
+  drawings: Drawing[];
+  onDrawingComplete: (drawing: Drawing) => void;
 }
 
 interface MousePosition {
@@ -51,6 +58,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   data,
   timeframeConfig,
   indicators,
+  selectedTool,
+  showDrawings,
+  drawings,
+  onDrawingComplete,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -1038,6 +1049,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
       const adjustedPriceRange =
         (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
+
       return (
         dimensions.padding.top +
         ((adjustedMaxPrice - price) / adjustedPriceRange) *
@@ -1193,7 +1205,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       if (!visibleData.length) return;
 
-      // Calculate price range from visible data
+      // Calculate price ranges first
       const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
@@ -2341,7 +2353,45 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     drawYAxisLabels,
   ]);
 
-  // Update JSX to include y-axis canvas
+  // Add these calculations before the return statement, where we have access to the data
+  const renderDrawingCanvas = () => {
+    // Get visible data for price calculations
+    const visibleData = combinedData.slice(
+      Math.floor(viewState.startIndex),
+      Math.floor(viewState.startIndex) + viewState.visibleBars
+    );
+
+    // Calculate price ranges
+    const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    const pricePadding = priceRange * 0.15;
+
+    // Calculate adjusted price range with padding and offset
+    // Note: We're not dividing by scaleY here since we handle it in the DrawingCanvas
+    const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
+    const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
+
+    return (
+      <DrawingCanvas
+        drawings={drawings}
+        dimensions={dimensions}
+        theme={currentTheme || defaultTheme}
+        selectedTool={selectedTool}
+        showDrawings={showDrawings}
+        viewState={{
+          ...viewState,
+          minPrice: adjustedMinPrice,
+          maxPrice: adjustedMaxPrice,
+          rsiHeight: isRSIEnabled ? rsiHeight + 34 : 0,
+        }}
+        onDrawingComplete={onDrawingComplete}
+      />
+    );
+  };
+
+  // Then in the return statement, replace the DrawingCanvas component with:
   return (
     <div
       style={{
@@ -2410,6 +2460,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           {/* Main Chart Canvas - Top layer */}
           <canvas
             ref={mainCanvasRef}
+            id="mainCanvasRef"
             style={{
               width: "100%",
               height: "100%",
@@ -2513,6 +2564,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           onDoubleClick={handleXAxisDoubleClick}
         />
       </div>
+
+      {renderDrawingCanvas()}
     </div>
   );
 };
