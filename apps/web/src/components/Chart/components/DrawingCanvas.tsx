@@ -79,7 +79,7 @@ export const DrawingCanvas = ({
     (point: Point) => {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
-      const mainChartHeight = dimensions.height - (viewState.rsiHeight || 0);
+      const mainChartHeight = dimensions.height - (viewState.rsiHeight || 30);
 
       // Calculate x position based on viewState
       const barWidth = chartWidth / viewState.visibleBars;
@@ -108,7 +108,7 @@ export const DrawingCanvas = ({
     (x: number, y: number) => {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
-      const mainChartHeight = dimensions.height - (viewState.rsiHeight || 0);
+      const mainChartHeight = dimensions.height - (viewState.rsiHeight || 30);
 
       // Calculate x position in chart coordinates
       const barWidth = chartWidth / viewState.visibleBars;
