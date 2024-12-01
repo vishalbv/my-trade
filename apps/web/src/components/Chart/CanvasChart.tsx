@@ -14,6 +14,8 @@ import { useTheme } from "next-themes";
 import { RSIIndicator } from "./components/RSIIndicator";
 import { ScrollToRightButton } from "./components/ScrollToRightButton";
 import { DrawingCanvas } from "./components/DrawingCanvas";
+import { RootState } from "../../store/store";
+import { useSelector } from "react-redux";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -229,6 +231,40 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, []);
 
   // Update the createDummyCandles function
+  const holidays = useSelector(
+    (state: RootState) => state.states.app?.holidays || []
+  );
+
+  // Helper function to check if date is weekend
+  const isWeekend = (date: Date): boolean => {
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+  };
+
+  const isHoliday = (date: Date): boolean => {
+    const formattedDate = date
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+      .replace(/ /g, "-");
+
+    return holidays.includes(formattedDate) || isWeekend(date);
+  };
+
+  // Add this helper function at the top
+  const isMarketOpen = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    // Market is open between 9:15 AM and 3:30 PM
+    return (
+      ((hours === 9 && minutes >= 15) || (hours === 15 && minutes <= 29)) &&
+      !isHoliday(date)
+    );
+  };
+
   const createDummyCandles = useCallback(
     (lastCandle: OHLCData | undefined, count: number): OHLCData[] => {
       if (!lastCandle) return [];
@@ -257,30 +293,24 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             nextDate.setMinutes(nextDate.getMinutes() + 1);
         }
 
-        // Skip non-trading hours (before 9:15 AM and after 3:30 PM)
-        const hours = nextDate.getHours();
-        const minutes = nextDate.getMinutes();
-
-        if (
-          hours < 9 ||
-          (hours === 9 && minutes < 15) ||
-          hours > 15 ||
-          (hours === 15 && minutes > 29)
-        ) {
-          // Set to next trading day at 9:15 AM
-          nextDate.setDate(nextDate.getDate() + 1);
-          nextDate.setHours(9, 15, 0, 0);
+        // Only add candles during market hours
+        if (isMarketOpen(nextDate)) {
+          dummyCandles.push({
+            timestamp: nextDate.getTime(),
+            open: lastCandle.close,
+            high: lastCandle.close,
+            low: lastCandle.close,
+            close: lastCandle.close,
+            volume: 0,
+            display: false,
+          });
         }
 
-        dummyCandles.push({
-          timestamp: nextDate.getTime(),
-          open: lastCandle.close,
-          high: lastCandle.close,
-          low: lastCandle.close,
-          close: lastCandle.close,
-          volume: 0,
-          display: false,
-        });
+        // If outside market hours, set to next trading day at 9:15 AM
+        if (!isMarketOpen(nextDate)) {
+          nextDate.setDate(nextDate.getDate() + 1);
+          nextDate.setHours(9, 14, 0, 0);
+        }
 
         currentDate = nextDate;
       }
