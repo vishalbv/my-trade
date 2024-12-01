@@ -62,6 +62,7 @@ interface DragState {
 
 const BASE_CANDLE_WIDTH = 10;
 
+let prevTimeframeValue: string = "";
 const CanvasChart: React.FC<CanvasChartProps> = ({
   data,
   timeframeConfig,
@@ -608,15 +609,20 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     if (data.length && dimensions.width) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
-      const visibleBars = Math.floor(chartWidth / (10 * viewState.scaleX));
+      const initialVisibleBars = Math.floor(
+        chartWidth / (10 * viewState.scaleX)
+      );
+      const visibleDataBars = Math.floor(initialVisibleBars * 0.7); // Show 70% of visible area
 
       setViewState((prev) => ({
         ...prev,
         offsetX: 0,
         offsetY: 0,
-        startIndex: Math.max(0, data.length - visibleBars),
-        visibleBars,
+        startIndex: Math.max(0, data.length - visibleDataBars), // Position to show 70% real data
+        visibleBars: initialVisibleBars,
         theme: currentTheme,
+        scaleX: 1,
+        scaleY: 1,
       }));
     }
   };
@@ -1607,6 +1613,51 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       </>
     );
   }
+
+  const getIntervalFrom2Candles = (
+    candle1?: OHLCData,
+    candle2?: OHLCData
+  ): string => {
+    if (!candle1 || !candle2) return "unknown";
+
+    const timestamp1 = new Date(candle1.timestamp);
+    const timestamp2 = new Date(candle2.timestamp);
+
+    // Calculate difference in minutes
+    const diffInMinutes = Math.abs(
+      (timestamp2.getTime() - timestamp1.getTime()) / (1000 * 60)
+    );
+
+    // Check for daily timeframe first
+    if (diffInMinutes >= 1440) {
+      // 24 hours
+      return "1D";
+    }
+
+    // Round to nearest minute and match common timeframes
+    const roundedMinutes = Math.round(diffInMinutes);
+
+    switch (roundedMinutes) {
+      case 1:
+        return "1";
+      case 5:
+        return "5";
+      case 15:
+        return "15";
+      default:
+        return `D`;
+    }
+  };
+
+  //added temproary reset on timeframe change
+  useEffect(() => {
+    if (
+      prevTimeframeValue !== getIntervalFrom2Candles(data.at(-10), data.at(-9))
+    ) {
+      resetView();
+      prevTimeframeValue = timeframeConfig.resolution;
+    }
+  }, [data.length]);
 
   // Add new ref for x-axis canvas
   const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
