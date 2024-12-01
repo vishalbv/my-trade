@@ -831,11 +831,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const barWidth = chartWidth / viewState.visibleBars;
-      return (
-        dimensions.padding.left +
-        (index - fractionalOffset) * barWidth +
-        barWidth / 2
-      );
+      return dimensions.padding.left + (index - fractionalOffset) * barWidth;
     },
     [
       dimensions.width,
@@ -888,12 +884,30 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const chartWidth =
           dimensions.width - dimensions.padding.left - dimensions.padding.right;
         const barWidth = chartWidth / viewState.visibleBars;
-
-        // Calculate which bar we're hovering over
         const mouseX = x - dimensions.padding.left;
 
-        // Calculate the exact bar position including fractional part
-        const exactBarIndex = mouseX / barWidth;
+        // Get the fractional offset of the first visible candle
+        const startIndexFraction =
+          viewState.startIndex - Math.floor(viewState.startIndex);
+
+        // Adjust exactBarIndex by accounting for the fractional start
+        const exactBarIndex = mouseX / barWidth + startIndexFraction;
+
+        // Add detailed logging
+        console.log("Crosshair Details:", {
+          mouseX,
+          barWidth,
+          startIndexFraction,
+          exactBarIndex,
+          roundedIndex: Math.floor(exactBarIndex),
+          nextCandleThreshold: exactBarIndex % 1 >= 0.5,
+          finalIndex:
+            Math.floor(exactBarIndex) + (exactBarIndex % 1 >= 0.5 ? 1 : 0),
+          viewState: {
+            startIndex: viewState.startIndex,
+            flooredStartIndex: Math.floor(viewState.startIndex),
+          },
+        });
 
         // Get the nearest bar index based on which half of the bar we're in
         const barIndex = Math.floor(exactBarIndex);
@@ -903,7 +917,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const adjustedBarIndex =
           fractionalPart >= 0.5 ? barIndex + 1 : barIndex;
 
-        // Get the data for this bar
+        // Calculate the final data index by using the floored start index
         const dataIndex = Math.floor(viewState.startIndex) + adjustedBarIndex;
         const candle = combinedData[dataIndex];
 

@@ -5,6 +5,8 @@ export const findDataIndexFromTimestamp = (
   timestamp: number,
   data: OHLCData[]
 ): number => {
+  if (!data.length) return 0;
+
   // Binary search for better performance with large datasets
   let left = 0;
   let right = data.length - 1;
@@ -13,8 +15,11 @@ export const findDataIndexFromTimestamp = (
     const mid = Math.floor((left + right) / 2);
     const midTimestamp = data[mid]?.timestamp;
 
+    if (!midTimestamp) continue;
+
     if (midTimestamp === timestamp) {
-      return mid + 0.5;
+      // Return exact index when found
+      return mid;
     }
 
     if (midTimestamp < timestamp) {
@@ -24,7 +29,18 @@ export const findDataIndexFromTimestamp = (
     }
   }
 
-  return Math.min(left, data.length - 1) + 0.5;
+  // If not exact match, calculate fractional position
+  if (left > 0 && left < data.length) {
+    const leftTimestamp = data[left - 1]?.timestamp || 0;
+    const rightTimestamp = data[left]?.timestamp || 0;
+    const timestampRange = rightTimestamp - leftTimestamp;
+    if (timestampRange > 0) {
+      const fraction = (timestamp - leftTimestamp) / timestampRange;
+      return left - 1 + fraction;
+    }
+  }
+
+  return Math.min(left, data.length - 1);
 };
 
 // Convert data index to timestamp
@@ -32,14 +48,26 @@ export const findTimestampFromDataIndex = (
   index: number,
   data: OHLCData[]
 ): number => {
-  // Subtract 0.5 to get back to candle start index
-  const adjustedIndex = Math.floor(index - 0.5);
+  if (!data.length) return Date.now();
 
-  if (adjustedIndex < 0) return data[0]?.timestamp || Date.now();
-  if (adjustedIndex >= data.length)
-    return data[data.length - 1]?.timestamp || Date.now();
+  const floorIndex = Math.floor(index);
+  const fraction = index - floorIndex;
 
-  return data[adjustedIndex]?.timestamp || Date.now();
+  // Handle exact indices
+  if (fraction === 0) {
+    return data[floorIndex]?.timestamp || Date.now();
+  }
+
+  // Handle fractional indices by interpolating between timestamps
+  if (floorIndex >= 0 && floorIndex < data.length - 1) {
+    const leftTimestamp = data[floorIndex]?.timestamp || 0;
+    const rightTimestamp = data[floorIndex + 1]?.timestamp || 0;
+    return leftTimestamp + (rightTimestamp - leftTimestamp) * fraction;
+  }
+
+  // Handle edge cases
+  if (floorIndex < 0) return data[0]?.timestamp || Date.now();
+  return data[data.length - 1]?.timestamp || Date.now();
 };
 
 // Convert drawing points from timestamp to data index coordinates

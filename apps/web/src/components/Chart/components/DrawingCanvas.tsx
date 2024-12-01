@@ -92,11 +92,7 @@ export const DrawingCanvas = ({
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const barWidth = chartWidth / viewState.visibleBars;
-      return (
-        dimensions.padding.left +
-        (index - fractionalOffset) * barWidth +
-        barWidth / 2
-      );
+      return dimensions.padding.left + (index - fractionalOffset) * barWidth;
     },
     [dimensions, viewState.visibleBars]
   );
@@ -107,12 +103,14 @@ export const DrawingCanvas = ({
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const barWidth = chartWidth / viewState.visibleBars;
-
-      // Calculate which bar we're hovering over
       const mouseX = x - dimensions.padding.left;
 
+      // Get the fractional offset of the first visible candle
+      const startIndexFraction =
+        viewState.startIndex - Math.floor(viewState.startIndex);
+
       // Calculate the exact bar position including fractional part
-      const exactBarIndex = mouseX / barWidth;
+      const exactBarIndex = mouseX / barWidth + startIndexFraction;
 
       // Get the nearest bar index based on which half of the bar we're in
       const barIndex = Math.floor(exactBarIndex);
@@ -121,7 +119,6 @@ export const DrawingCanvas = ({
       // If we're past the midpoint of the current bar, move to the next bar
       const adjustedBarIndex = fractionalPart >= 0.5 ? barIndex + 1 : barIndex;
 
-      // Calculate the x position using calculateBarX for consistency
       return calculateBarX(
         adjustedBarIndex,
         viewState.startIndex - Math.floor(viewState.startIndex)
