@@ -16,6 +16,10 @@ import { ScrollToRightButton } from "./components/ScrollToRightButton";
 import { DrawingCanvas } from "./components/DrawingCanvas";
 import { RootState } from "../../store/store";
 import { useSelector } from "react-redux";
+import {
+  convertDrawingsToDataIndex,
+  convertDrawingToTimestamp,
+} from "./utils/drawingCoordinateUtils";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -2411,9 +2415,40 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
     const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
 
+    // Convert drawings to data index coordinates for rendering
+    const drawingsForCanvas = useMemo(() => {
+      return convertDrawingsToDataIndex(drawings, combinedData);
+    }, [drawings, combinedData]);
+
+    // Wrap the drawing handlers to convert coordinates
+    const handleDrawingComplete = useCallback(
+      (drawing: Drawing) => {
+        console.log("drawing", drawing);
+        const timestampDrawing = convertDrawingToTimestamp(
+          drawing,
+          combinedData
+        );
+        onDrawingComplete(timestampDrawing);
+      },
+      [combinedData, onDrawingComplete]
+    );
+
+    const handleDrawingUpdate = useCallback(
+      (drawing: Drawing) => {
+        console.log("drawing update", drawing);
+
+        const timestampDrawing = convertDrawingToTimestamp(
+          drawing,
+          combinedData
+        );
+        onDrawingUpdate(timestampDrawing);
+      },
+      [combinedData, onDrawingUpdate]
+    );
+
     return (
       <DrawingCanvas
-        drawings={drawings}
+        drawings={drawingsForCanvas}
         dimensions={dimensions}
         theme={currentTheme || defaultTheme}
         selectedTool={selectedTool}
@@ -2424,10 +2459,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           maxPrice: adjustedMaxPrice,
           rsiHeight: isRSIEnabled ? rsiHeight + 34 : 0,
         }}
-        onDrawingComplete={onDrawingComplete}
-        onDrawingUpdate={onDrawingUpdate}
         mousePosition={drawingCanvasMousePos}
         handleMouseMoveForCrosshair={handleMouseMoveForCrosshair}
+        onDrawingComplete={handleDrawingComplete}
+        onDrawingUpdate={handleDrawingUpdate}
+        xAxisCrosshair={xAxisCrosshair} // Add this prop
       />
     );
   };

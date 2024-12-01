@@ -36,6 +36,11 @@ interface DrawingCanvasProps {
   handleMouseMoveForCrosshair?: (
     e: React.MouseEvent<HTMLCanvasElement>
   ) => void;
+  xAxisCrosshair?: {
+    x: number;
+    timestamp: number;
+    visible: boolean;
+  };
 }
 
 export const DrawingCanvas = ({
@@ -48,10 +53,12 @@ export const DrawingCanvas = ({
   onDrawingUpdate,
   mousePosition,
   handleMouseMoveForCrosshair,
+  xAxisCrosshair,
 }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
   const { selectedTool } = useSelector((state: RootState) => state.globalChart);
+  const [localDrawings, setLocalDrawings] = useState<Drawing[]>(drawings);
   const [drawingInProgress, setDrawingInProgress] = useState<{
     type: DrawingTool;
     points: Point[];
@@ -73,6 +80,55 @@ export const DrawingCanvas = ({
   );
   const POINT_RADIUS = 6;
   const POINT_BORDER_WIDTH = 2;
+
+  // Update local drawings when props change
+  useEffect(() => {
+    setLocalDrawings(drawings);
+  }, [drawings]);
+
+  // Add calculateBarX function to match CanvasChart
+  const calculateBarX = useCallback(
+    (index: number, fractionalOffset = 0) => {
+      const chartWidth =
+        dimensions.width - dimensions.padding.left - dimensions.padding.right;
+      const barWidth = chartWidth / viewState.visibleBars;
+      return (
+        dimensions.padding.left +
+        (index - fractionalOffset) * barWidth +
+        barWidth / 2
+      );
+    },
+    [dimensions, viewState.visibleBars]
+  );
+
+  // Update snapToNearestCandle function to match crosshair logic
+  const snapToNearestCandle = useCallback(
+    (x: number): number => {
+      const chartWidth =
+        dimensions.width - dimensions.padding.left - dimensions.padding.right;
+      const barWidth = chartWidth / viewState.visibleBars;
+
+      // Calculate which bar we're hovering over
+      const mouseX = x - dimensions.padding.left;
+
+      // Calculate the exact bar position including fractional part
+      const exactBarIndex = mouseX / barWidth;
+
+      // Get the nearest bar index based on which half of the bar we're in
+      const barIndex = Math.floor(exactBarIndex);
+      const fractionalPart = exactBarIndex - barIndex;
+
+      // If we're past the midpoint of the current bar, move to the next bar
+      const adjustedBarIndex = fractionalPart >= 0.5 ? barIndex + 1 : barIndex;
+
+      // Calculate the x position using calculateBarX for consistency
+      return calculateBarX(
+        adjustedBarIndex,
+        viewState.startIndex - Math.floor(viewState.startIndex)
+      );
+    },
+    [dimensions, viewState.visibleBars, viewState.startIndex, calculateBarX]
+  );
 
   // Helper function to convert chart coordinates to canvas coordinates
   const toCanvasCoords = useCallback(
@@ -103,17 +159,20 @@ export const DrawingCanvas = ({
     [dimensions, viewState]
   );
 
-  // Helper function to convert canvas coordinates to chart coordinates
+  // Update toChartCoords to handle snapping correctly
   const toChartCoords = useCallback(
     (x: number, y: number) => {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const mainChartHeight = dimensions.height - (viewState.rsiHeight || 30);
 
+      // Snap x to nearest candle position
+      const snappedX = snapToNearestCandle(x);
+
       // Calculate x position in chart coordinates
       const barWidth = chartWidth / viewState.visibleBars;
       const chartX =
-        viewState.startIndex + (x - dimensions.padding.left) / barWidth;
+        viewState.startIndex + (snappedX - dimensions.padding.left) / barWidth;
 
       // Match exactly with inverse of getY function calculation
       const adjustedPriceRange =
@@ -130,10 +189,8 @@ export const DrawingCanvas = ({
 
       return { x: chartX, y: chartY };
     },
-    [dimensions, viewState]
+    [dimensions, viewState, snapToNearestCandle]
   );
-
-  console.log({ drawingInProgress, isDraggingLine, draggingPoint });
 
   const isPointNearby = useCallback(
     (x: number, y: number, point: Point) => {
@@ -158,7 +215,7 @@ export const DrawingCanvas = ({
     } = checkDrawingInteraction(
       x,
       y,
-      drawings,
+      localDrawings,
       isPointNearby,
       isPointNearLine,
       toCanvasCoords,
@@ -185,33 +242,38 @@ export const DrawingCanvas = ({
   const handleFibonacciDragging = (
     chartCoords: Point,
     drawing: Drawing,
-    pointIndex: number
+    pointIndex: number,
+    setLocalDrawings: React.Dispatch<React.SetStateAction<Drawing[]>>
   ) => {
     const newPoints = [...drawing.points];
     newPoints[pointIndex] = chartCoords;
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
+    setLocalDrawings((drawings) =>
+      drawings.map((d) =>
+        d.id === drawing.id ? { ...d, points: newPoints } : d
+      )
+    );
   };
 
   const handleTrendLineDragging = (
     chartCoords: Point,
     drawing: Drawing,
-    pointIndex: number
+    pointIndex: number,
+    setLocalDrawings: React.Dispatch<React.SetStateAction<Drawing[]>>
   ) => {
     const newPoints = [...drawing.points];
     newPoints[pointIndex] = chartCoords;
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
+    setLocalDrawings((drawings) =>
+      drawings.map((d) =>
+        d.id === drawing.id ? { ...d, points: newPoints } : d
+      )
+    );
   };
 
   const handlePositionDragging = (
     chartCoords: Point,
     drawing: Drawing,
-    pointIndex: number
+    pointIndex: number,
+    setLocalDrawings: React.Dispatch<React.SetStateAction<Drawing[]>>
   ) => {
     const newPoints = [...drawing.points];
     const rightPointIndex = pointIndex + 3; // Since right points are 3 positions ahead
@@ -238,15 +300,16 @@ export const DrawingCanvas = ({
       };
     }
 
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
+    setLocalDrawings((drawings) =>
+      drawings.map((d) =>
+        d.id === drawing.id ? { ...d, points: newPoints } : d
+      )
+    );
   };
 
-  // Update handlePointDragging to use specific handlers
+  // Update handlePointDragging to use local state
   const handlePointDragging = (chartCoords: Point) => {
-    const updatedDrawing = drawings.find(
+    const updatedDrawing = localDrawings.find(
       (d) => d.id === draggingPoint?.drawingId
     );
     if (updatedDrawing && draggingPoint) {
@@ -257,23 +320,26 @@ export const DrawingCanvas = ({
             updatedDrawing.points,
             draggingPoint.pointIndex
           );
-          onDrawingUpdate({
-            ...updatedDrawing,
-            points: newPoints,
-          });
+          setLocalDrawings((drawings) =>
+            drawings.map((d) =>
+              d.id === updatedDrawing.id ? { ...d, points: newPoints } : d
+            )
+          );
           break;
         case "fibonacci":
           handleFibonacciDragging(
             chartCoords,
             updatedDrawing,
-            draggingPoint.pointIndex
+            draggingPoint.pointIndex,
+            setLocalDrawings
           );
           break;
         case "trendline":
           handleTrendLineDragging(
             chartCoords,
             updatedDrawing,
-            draggingPoint.pointIndex
+            draggingPoint.pointIndex,
+            setLocalDrawings
           );
           break;
         case "longPosition":
@@ -281,7 +347,8 @@ export const DrawingCanvas = ({
           handlePositionDragging(
             chartCoords,
             updatedDrawing,
-            draggingPoint.pointIndex
+            draggingPoint.pointIndex,
+            setLocalDrawings
           );
           break;
       }
@@ -346,9 +413,9 @@ export const DrawingCanvas = ({
     });
   };
 
-  // Update handleLineDragging to use specific handlers
+  // Update handleLineDragging to only use local state
   const handleLineDragging = (chartCoords: Point) => {
-    const drawing = drawings.find((d) => d.id === hoveredLine);
+    const drawing = localDrawings.find((d) => d.id === hoveredLine);
     if (drawing && dragStartPosition) {
       switch (drawing.type) {
         case "rect":
@@ -357,33 +424,49 @@ export const DrawingCanvas = ({
             dragStartPosition,
             drawing.points
           );
-          onDrawingUpdate({
-            ...drawing,
-            points: rectPoints,
-          });
+          setLocalDrawings((drawings) =>
+            drawings.map((d) =>
+              d.id === drawing.id ? { ...d, points: rectPoints } : d
+            )
+          );
           break;
         case "fibonacci":
-          handleFibonacciLineDragging(chartCoords, drawing, dragStartPosition);
-          break;
         case "trendline":
-          handleTrendLineLineDragging(chartCoords, drawing, dragStartPosition);
-          break;
         case "longPosition":
         case "shortPosition":
-          handlePositionLineDragging(chartCoords, drawing, dragStartPosition);
+          const dx = chartCoords.x - dragStartPosition.x;
+          const dy = chartCoords.y - dragStartPosition.y;
+
+          const newPoints = drawing.points.map((point) => ({
+            x: point.x + dx,
+            y: point.y + dy,
+          }));
+
+          setLocalDrawings((drawings) =>
+            drawings.map((d) =>
+              d.id === drawing.id ? { ...d, points: newPoints } : d
+            )
+          );
           break;
         case "horizontalLine":
           if (drawing.points[0]) {
-            onDrawingUpdate({
-              ...drawing,
-              points: [
-                {
-                  x: drawing.points[0].x,
-                  y:
-                    drawing.points[0].y + (chartCoords.y - dragStartPosition.y),
-                },
-              ],
-            });
+            setLocalDrawings((drawings) =>
+              drawings.map((d) =>
+                d.id === drawing.id
+                  ? {
+                      ...d,
+                      points: [
+                        {
+                          x: drawing.points[0]?.x ?? chartCoords.x,
+                          y:
+                            (drawing.points[0]?.y ?? chartCoords.y) +
+                            (chartCoords.y - dragStartPosition.y),
+                        },
+                      ],
+                    }
+                  : d
+              )
+            );
           }
           break;
       }
@@ -419,6 +502,7 @@ export const DrawingCanvas = ({
     }
   };
 
+  // Update handleMouseMove to use the new snapping logic
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     handleMouseMoveForCrosshair?.(e);
@@ -426,7 +510,13 @@ export const DrawingCanvas = ({
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const chartCoords = toChartCoords(x, y);
+
+    // Use xAxisCrosshair position if available, otherwise use snapped position
+    const xPosition = xAxisCrosshair?.visible
+      ? xAxisCrosshair.x
+      : snapToNearestCandle(x);
+
+    const chartCoords = toChartCoords(xPosition, y);
 
     if (draggingPoint) {
       handlePointDragging(chartCoords);
@@ -435,7 +525,7 @@ export const DrawingCanvas = ({
     } else if (drawingInProgress) {
       handleDrawingInProgress(chartCoords);
     } else {
-      handleInteraction(x, y);
+      handleInteraction(xPosition, y);
     }
   };
 
@@ -445,11 +535,19 @@ export const DrawingCanvas = ({
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const chartCoords = toChartCoords(x, y);
+
+    // Use xAxisCrosshair position if available, otherwise use snapped position
+    const xPosition = xAxisCrosshair?.visible
+      ? xAxisCrosshair.x
+      : snapToNearestCandle(x);
+
+    const chartCoords = toChartCoords(xPosition, y);
 
     if (hoveredPoint) {
       // Handle point dragging
-      const drawing = drawings.find((d) => d.id === hoveredPoint.drawingId);
+      const drawing = localDrawings.find(
+        (d) => d.id === hoveredPoint.drawingId
+      );
       if (
         drawing &&
         (drawing.type === "trendline" ||
@@ -537,7 +635,24 @@ export const DrawingCanvas = ({
     }
   };
 
-  const handleMouseUp = () => {
+  // Update handleMouseUp to sync with parent only when dragging ends
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (draggingPoint) {
+      // Find the modified drawing
+      const modifiedDrawing = localDrawings.find(
+        (d) => d.id === draggingPoint.drawingId
+      );
+      if (modifiedDrawing) {
+        onDrawingUpdate(modifiedDrawing);
+      }
+    } else if (isDraggingLine) {
+      // Find the modified drawing
+      const modifiedDrawing = localDrawings.find((d) => d.id === hoveredLine);
+      if (modifiedDrawing) {
+        onDrawingUpdate(modifiedDrawing);
+      }
+    }
+
     setDraggingPoint(null);
     setIsDraggingLine(false);
     setDragStartPosition(null);
@@ -561,8 +676,8 @@ export const DrawingCanvas = ({
     ctx.scale(dpr, dpr);
 
     if (showDrawings) {
-      // Draw all completed drawings
-      drawings.forEach((drawing) => {
+      // Draw all completed drawings using localDrawings instead of drawings
+      localDrawings.forEach((drawing) => {
         if (!drawing.visible) return;
 
         const commonProps = {
@@ -570,7 +685,7 @@ export const DrawingCanvas = ({
           points: drawing.points,
           drawingId: drawing.id,
           hoveredLine,
-          hoveredPoint,
+          hoveredPoint: draggingPoint ? null : hoveredPoint,
           theme,
           toCanvasCoords,
           dimensions,
@@ -618,7 +733,7 @@ export const DrawingCanvas = ({
           ctx,
           points: [drawingInProgress.points[0], drawingInProgress.currentPoint],
           hoveredLine,
-          hoveredPoint,
+          hoveredPoint: draggingPoint ? null : hoveredPoint,
           theme,
           toCanvasCoords,
           dimensions,
@@ -658,20 +773,19 @@ export const DrawingCanvas = ({
       }
     }
   }, [
-    drawings,
+    localDrawings,
     dimensions,
     showDrawings,
     viewState,
     drawingInProgress,
     hoveredLine,
     hoveredPoint,
+    draggingPoint,
     theme,
     toCanvasCoords,
   ]);
 
   useEffect(() => {
-    console.log("useEffect last", mousePosition);
-
     if (!mousePosition || !canvasRef.current) return;
 
     if (
@@ -687,7 +801,7 @@ export const DrawingCanvas = ({
     handleInteraction(mousePosition.x, mousePosition.y);
   }, [
     mousePosition,
-    drawings,
+    localDrawings,
     isPointNearby,
     isPointNearLine,
     draggingPoint,
@@ -710,19 +824,21 @@ export const DrawingCanvas = ({
         width: "100%",
         height: `calc(100% - ${30}px)`,
         pointerEvents: "auto",
-        cursor: hoveredPoint
-          ? "move"
-          : hoveredLine
-            ? isDraggingLine
-              ? "grabbing"
-              : "grab"
-            : selectedTool === "trendline" ||
-                selectedTool === "fibonacci" ||
-                selectedTool === "horizontalLine" ||
-                selectedTool === "longPosition" ||
-                selectedTool === "shortPosition"
-              ? "crosshair"
-              : "default",
+        cursor: draggingPoint
+          ? "default"
+          : hoveredPoint
+            ? "move"
+            : hoveredLine
+              ? isDraggingLine
+                ? "grabbing"
+                : "grab"
+              : selectedTool === "trendline" ||
+                  selectedTool === "fibonacci" ||
+                  selectedTool === "horizontalLine" ||
+                  selectedTool === "longPosition" ||
+                  selectedTool === "shortPosition"
+                ? "crosshair"
+                : "default",
         zIndex: 1,
       }}
       onMouseDown={handleMouseDown}
