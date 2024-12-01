@@ -106,6 +106,12 @@ export const ChartContainer = ({
     dispatch(setSelectedChartKey(chartKey));
   };
 
+  const currentTimeframeConfig = timeframeConfigs[chartState.timeframe];
+  if (!currentTimeframeConfig) {
+    console.error(`No timeframe config found for ${chartState.timeframe}`);
+    return null; // Or render an error state
+  }
+
   return (
     <div
       ref={containerRef}
@@ -183,7 +189,7 @@ export const ChartContainer = ({
         <CanvasChart
           key={`${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
           data={chartData}
-          timeframeConfig={timeframeConfigs[chartState.timeframe]}
+          timeframeConfig={currentTimeframeConfig}
           indicators={indicators}
           selectedTool={selectedTool}
           showDrawings={showDrawings}

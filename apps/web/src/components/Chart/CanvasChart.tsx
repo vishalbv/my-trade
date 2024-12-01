@@ -20,6 +20,7 @@ import {
   convertDrawingsToDataIndex,
   convertDrawingToTimestamp,
 } from "./utils/drawingCoordinateUtils";
+import { ActionButtons } from "./ActionButtons";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -151,6 +152,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     y: number;
   } | null>(null);
 
+  // Add a ref to store the calculated label positions
+  const labelPositionsRef = useRef<{ x: number; timestamp: number }[]>([]);
+
   // Animate view state changes
   const animateViewState = useCallback(
     (targetState: ViewState) => {
@@ -276,6 +280,24 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const dummyCandles: OHLCData[] = [];
       let currentDate = new Date(lastCandle.timestamp);
 
+      // Helper function to get next valid trading time
+      const getNextTradingTime = (date: Date): Date => {
+        const nextDate = new Date(date.getTime());
+
+        // If outside trading hours (9:15 AM - 3:30 PM), move to next trading day
+        const hours = nextDate.getHours();
+        const minutes = nextDate.getMinutes();
+        const totalMinutes = hours * 60 + minutes;
+
+        if (totalMinutes < 9 * 60 + 15 || totalMinutes > 15 * 60 + 29) {
+          nextDate.setDate(nextDate.getDate() + 1);
+          nextDate.setHours(9, 15, 0, 0);
+          return nextDate;
+        }
+
+        return nextDate;
+      };
+
       for (let i = 1; i <= count; i++) {
         const nextDate = new Date(currentDate.getTime());
 
@@ -292,36 +314,32 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             break;
           case "D":
             nextDate.setDate(nextDate.getDate() + 1);
+            nextDate.setHours(9, 15, 0, 0); // Set to market open
             break;
           default:
             nextDate.setMinutes(nextDate.getMinutes() + 1);
         }
 
-        // Only add candles during market hours
-        if (isMarketOpen(nextDate)) {
-          dummyCandles.push({
-            timestamp: nextDate.getTime(),
-            open: lastCandle.close,
-            high: lastCandle.close,
-            low: lastCandle.close,
-            close: lastCandle.close,
-            volume: 0,
-            display: false,
-          });
-        }
+        // Ensure we're within trading hours
+        const validTradingTime = getNextTradingTime(nextDate);
 
-        // If outside market hours, set to next trading day at 9:15 AM
-        if (!isMarketOpen(nextDate)) {
-          nextDate.setDate(nextDate.getDate() + 1);
-          nextDate.setHours(9, 14, 0, 0);
-        }
+        // Add the candle with valid timestamp
+        dummyCandles.push({
+          timestamp: validTradingTime.getTime(),
+          open: lastCandle.close,
+          high: lastCandle.close,
+          low: lastCandle.close,
+          close: lastCandle.close,
+          volume: 0,
+          display: false,
+        });
 
-        currentDate = nextDate;
+        currentDate = validTradingTime;
       }
 
       return dummyCandles;
     },
-    [timeframeConfig]
+    [timeframeConfig.resolution]
   );
 
   // Update the combinedData calculation in the useMemo hook
@@ -333,41 +351,92 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     return [...data, ...dummyCandles];
   }, [data, createDummyCandles]);
 
+  // Add this at the top of the component with other refs
+  const prevTimeframe = useRef(timeframeConfig.resolution);
+
   // Update the initialization effect
   useEffect(() => {
     if (!dimensions.width || !combinedData.length) return;
 
-    // Only set initial view state if it hasn't been set before
-    if (viewState.visibleBars === 0) {
+    // Reset view state when timeframe changes or when it hasn't been set before
+    if (
+      viewState.visibleBars === 0 ||
+      timeframeConfig.resolution !== prevTimeframe.current
+    ) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
+      const visibleDataBars = Math.floor(initialVisibleBars * 0.7);
 
-      // Calculate how many bars to show initially with 30% empty space
-      const visibleDataBars = Math.floor(initialVisibleBars * 0.7); // Show 70% of visible area
-      const emptySpaceBars = Math.floor(initialVisibleBars * 0.3); // 30% empty space
-
-      // Calculate start index to show the last portion of real data plus some dummy candles
-      const startIndex = Math.max(0, data.length - visibleDataBars);
-
-      setViewState({
+      // Reset to initial state
+      const initialState: ViewState = {
         scaleX: 1,
         scaleY: 1,
         offsetX: 0,
         offsetY: 0,
-        startIndex,
+        startIndex: Math.max(0, data.length - visibleDataBars),
         visibleBars: initialVisibleBars,
         theme: currentTheme,
+        minPrice: undefined, // Change null to undefined
+        maxPrice: undefined, // Change null to undefined
+        rsiHeight: isRSIEnabled ? 100 : 0,
+      };
+
+      // Reset animation state
+      setAnimation(null);
+
+      // Reset drag states
+      setDragState(null);
+      setIsDragging(false);
+      setDragStart({ x: 0, y: 0 });
+      setTouchState({});
+      setXAxisDragState(null);
+
+      // Reset mouse position states
+      setMousePosition({
+        x: 0,
+        y: 0,
+        price: 0,
+        timestamp: 0,
+        visible: false,
       });
-    } else {
-      // When new data arrives, adjust startIndex to maintain current view position
-      setViewState((prev) => ({
-        ...prev,
-        startIndex: Math.max(0, prev.startIndex + 1), // Shift one candle to maintain position
-        theme: currentTheme,
-      }));
+
+      setXAxisCrosshair({
+        x: 0,
+        timestamp: 0,
+        visible: false,
+      });
+
+      // Reset view state
+      setViewState(initialState);
+
+      // Clear all canvases
+      [
+        mainCanvasRef,
+        overlayCanvasRef,
+        gridCanvasRef,
+        yAxisCanvasRef,
+        xAxisCanvasRef,
+      ].forEach((canvasRef) => {
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+          }
+        }
+      });
     }
-  }, [combinedData.length, dimensions.width, currentTheme, data.length]);
+
+    // Update previous timeframe reference
+    prevTimeframe.current = timeframeConfig.resolution;
+  }, [
+    combinedData.length,
+    dimensions.width,
+    currentTheme,
+    data.length,
+    timeframeConfig.resolution,
+    isRSIEnabled,
+  ]);
 
   // Add a new effect to handle automatic scrolling when at the right edge
   useEffect(() => {
@@ -1014,6 +1083,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update formatTimeLabel function to be more intelligent
   const formatTimeLabel = useCallback((date: Date, prevDate: Date | null) => {
+    if (!date.getTime()) return ""; // Don't format invalid dates
+
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const isMarketOpen = hours === 9 && minutes === 15;
@@ -1028,22 +1099,19 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     // Format based on changes
     if (isYearChange) {
-      return date.getFullYear().toString();
+      return date.toLocaleString("default", { year: "numeric" });
     }
 
     if (isMonthChange) {
-      return date.toLocaleString("default", {
-        month: "short",
-        day: "2-digit",
-      });
+      return date.toLocaleString("default", { month: "short", day: "2-digit" });
     }
 
     if (isDateChange || isMarketOpen) {
-      return date.getDate().toString().padStart(2, "0");
+      return date.toLocaleString("default", { day: "2-digit" });
     }
 
     // For regular time labels
-    return date.toLocaleTimeString(undefined, {
+    return date.toLocaleTimeString("default", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -1616,13 +1684,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add a function to calculate optimal label interval
   const calculateLabelInterval = useCallback(
     (barWidth: number) => {
-      // Base minimum pixels needed between labels
-      const minPixelsBetweenLabels = 80;
+      // Reduce the minimum pixels between labels
+      const minPixelsBetweenLabels = 200; // Reduced from 500 to 200
 
       // Calculate how many bars we need between labels
       const barsNeeded = Math.ceil(minPixelsBetweenLabels / barWidth);
 
-      // Get timeframe in minutes for easier calculation
+      // Get timeframe in minutes
       const timeframeMinutes = (() => {
         switch (timeframeConfig.resolution) {
           case "1":
@@ -1632,7 +1700,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           case "15":
             return 15;
           case "D":
-            return 1440; // 24 * 60
+            return 1440;
           default:
             return 1;
         }
@@ -1643,35 +1711,48 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Define intervals based on timeframe
       if (timeframeConfig.resolution === "D") {
-        // For daily timeframe
         if (minutesNeeded <= 1440) return 1; // 1 day
         if (minutesNeeded <= 7200) return 5; // 5 days
         if (minutesNeeded <= 14400) return 10; // 10 days
         return 20; // 20 days
       }
 
-      if (timeframeConfig.resolution === "15") {
-        // For 15-minute timeframe
-        if (minutesNeeded <= 60) return 4; // 1 hour (4 bars)
-        if (minutesNeeded <= 240) return 12; // 3 hours (12 bars)
-        if (minutesNeeded <= 720) return 24; // 6 hours (24 bars)
-        return 96; // 1 day (96 bars)
-      }
+      // For intraday timeframes, use dynamic calculation based on bar width
+      const getIntraDayInterval = () => {
+        // When bars are wide (zoomed in), show more granular labels
+        if (barWidth >= 30) {
+          // Increased threshold
+          return 1;
+        } else if (barWidth >= 20) {
+          // Increased threshold
+          return 2;
+        } else if (barWidth >= 10) {
+          // Increased threshold
+          return 3;
+        }
 
-      if (timeframeConfig.resolution === "5") {
-        // For 5-minute timeframe
-        if (minutesNeeded <= 30) return 6; // 30 mins (6 bars)
-        if (minutesNeeded <= 60) return 12; // 1 hour (12 bars)
-        if (minutesNeeded <= 240) return 36; // 3 hours (36 bars)
-        return 144; // 12 hours (144 bars)
-      }
+        // For more zoomed out views, calculate based on minutesNeeded
+        if (minutesNeeded <= 30) return 5;
+        if (minutesNeeded <= 60) return 10;
+        if (minutesNeeded <= 120) return 20;
+        if (minutesNeeded <= 240) return 40;
+        if (minutesNeeded <= 480) return 80;
+        if (minutesNeeded <= 960) return 160;
 
-      // For 1-minute timeframe
-      if (minutesNeeded <= 15) return 15; // 15 mins
-      if (minutesNeeded <= 30) return 30; // 30 mins
-      if (minutesNeeded <= 60) return 60; // 1 hour
-      if (minutesNeeded <= 240) return 120; // 2 hours
-      return 360; // 6 hours
+        return 320; // Reduced from 320 to 160
+      };
+
+      // Apply the interval based on timeframe resolution
+      switch (timeframeConfig.resolution) {
+        case "1":
+          return getIntraDayInterval() * 2.5;
+        case "5":
+          return getIntraDayInterval() * 1; // Reduced multiplier from 5 to 3
+        case "15":
+          return getIntraDayInterval() * 2; // Reduced multiplier from 15 to 6
+        default:
+          return getIntraDayInterval();
+      }
     },
     [timeframeConfig.resolution]
   );
@@ -1679,15 +1760,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Update the shouldDrawLabel logic in drawXAxisLabels
   const shouldDrawLabel = useCallback(
     (date: Date, barWidth: number) => {
+      if (!date.getTime()) return false;
+
       const hours = date.getHours();
       const minutes = date.getMinutes();
       const totalMinutes = hours * 60 + minutes;
       const interval = calculateLabelInterval(barWidth);
 
-      // Always show market open
+      // Always show market open (9:15 AM)
       if (hours === 9 && minutes === 15) return true;
 
-      // Always show day change
+      // Always show day change (midnight)
       if (hours === 0 && minutes === 0) return true;
 
       // For daily timeframe
@@ -1695,8 +1778,28 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         return date.getDate() % interval === 0;
       }
 
-      // For intraday timeframes
-      return totalMinutes % (interval * timeframeConfig.resolution) === 0;
+      // Get resolution in minutes
+      const resolutionMinutes =
+        {
+          "1": 1,
+          "5": 5,
+          "15": 15,
+          D: 1440,
+        }[timeframeConfig.resolution] || 1;
+
+      // Calculate candle index from market open
+      const marketOpenMinutes = 9 * 60 + 15;
+      const minutesSinceMarketOpen =
+        totalMinutes >= marketOpenMinutes
+          ? totalMinutes - marketOpenMinutes
+          : totalMinutes + (24 * 60 - marketOpenMinutes);
+
+      const candleIndex = Math.floor(
+        minutesSinceMarketOpen / resolutionMinutes
+      );
+
+      // Show label based on candle index and interval
+      return candleIndex % interval === 0;
     },
     [timeframeConfig.resolution, calculateLabelInterval]
   );
@@ -1725,6 +1828,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       ctx.textAlign = "center";
       let lastDate: Date | null = null;
+      let lastLabelX: number | null = null;
+      const minLabelSpacing = 80;
+
+      // Calculate label positions first
+      const newLabelPositions: { x: number; timestamp: number }[] = [];
 
       visibleData.forEach((candle, i) => {
         const x = calculateBarX(i, fractionalOffset);
@@ -1740,40 +1848,60 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           x >= dimensions.padding.left &&
           x <= dimensions.width - dimensions.padding.right
         ) {
-          // Draw tick mark
-          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, 8);
-          ctx.stroke();
-
-          // Format and draw time label
-          const timeLabel = formatTimeLabel(date, lastDate);
-
-          // Set style based on label type
-          const hours = date.getHours();
-          const minutes = date.getMinutes();
-          const isMarketOpen = hours === 9 && minutes === 15;
-          const isDateChange =
-            lastDate &&
-            (date.getDate() !== lastDate.getDate() ||
-              date.getMonth() !== lastDate.getMonth() ||
-              date.getFullYear() !== lastDate.getFullYear());
-
-          if (isDateChange || isMarketOpen) {
-            // Use bold and primary color for date changes and market open
-            ctx.font = "bold 10px sans-serif";
-            ctx.fillStyle = currentTheme?.text || defaultTheme.text;
-          } else {
-            // Use regular weight and secondary color for time labels
-            ctx.font = "10px sans-serif";
-            ctx.fillStyle = currentTheme?.textSecondary; // Fallback color
+          // Check for minimum spacing between labels
+          if (lastLabelX && x - lastLabelX < minLabelSpacing) {
+            return;
           }
 
-          ctx.fillText(timeLabel, x, 20);
+          newLabelPositions.push({ x, timestamp: candle.timestamp });
+          lastLabelX = x;
+        }
+      });
+
+      // Store the new label positions
+      labelPositionsRef.current = newLabelPositions;
+
+      // Draw labels and grid lines
+      labelPositionsRef.current.forEach(({ x, timestamp }) => {
+        const date = new Date(timestamp);
+
+        // Draw grid line
+        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, dimensions.height - 30); // Draw line up to x-axis
+        ctx.stroke();
+
+        // Draw tick mark
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 8);
+        ctx.stroke();
+
+        // Format and draw time label
+        const timeLabel = formatTimeLabel(date, lastDate);
+
+        // Set style based on label type
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const isMarketOpen = hours === 9 && minutes === 15;
+        const isDateChange =
+          lastDate &&
+          (date.getDate() !== lastDate.getDate() ||
+            date.getMonth() !== lastDate.getMonth() ||
+            date.getFullYear() !== lastDate.getFullYear());
+
+        if (isDateChange || isMarketOpen) {
+          ctx.font = "bold 10px sans-serif";
+          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+        } else {
+          ctx.font = "10px sans-serif";
+          ctx.fillStyle =
+            currentTheme?.textSecondary || defaultTheme.textSecondary;
         }
 
+        ctx.fillText(timeLabel, x, 20);
         lastDate = date;
       });
     },
@@ -2132,103 +2260,20 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Clear the grid canvas
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-      const visibleData = combinedData.slice(
-        Math.floor(viewState.startIndex),
-        Math.ceil(viewState.startIndex + viewState.visibleBars)
-      );
-
-      if (!visibleData.length) return;
-
-      // Calculate price ranges first
-      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      const priceRange = maxPrice - minPrice;
-      const pricePadding = priceRange * 0.15;
-
-      // Calculate adjusted price range with padding
-      const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
-      const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-
-      const fractionalOffset =
-        viewState.startIndex - Math.floor(viewState.startIndex);
-
-      // Draw vertical grid lines
-      visibleData.forEach((candle, i) => {
-        const x = calculateBarX(i, fractionalOffset);
-        const date = new Date(candle.timestamp);
-        const hours = date.getHours();
-        const minutes = date.getMinutes();
-        const totalMinutes = hours * 60 + minutes;
-
-        const isMarketOpen = hours === 9 && minutes === 15;
-        const isDayChange = hours === 0 && minutes === 0;
-        const barWidth =
-          (dimensions.width -
-            dimensions.padding.left -
-            dimensions.padding.right) /
-          viewState.visibleBars;
-
-        const shouldDrawGrid = (() => {
-          if (isMarketOpen) return true;
-          if (isDayChange) return true;
-          return shouldDrawLabel(date, barWidth);
-        })();
-
-        if (shouldDrawGrid) {
-          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-          ctx.lineWidth = 0.5;
-          ctx.globalAlpha = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, dimensions.height - 0);
-          ctx.stroke();
-        }
+      // Draw vertical grid lines only at label positions
+      labelPositionsRef.current.forEach(({ x }) => {
+        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, dimensions.height - 30); // Don't draw through x-axis
+        ctx.stroke();
       });
 
-      // Draw horizontal grid lines
-      // const chartHeight =
-      //   dimensions.height -
-      //   (isRSIEnabled ? rsiHeight + 34 : 30) -
-      //   dimensions.padding.top -
-      //   dimensions.padding.bottom;
-
-      // const { gridPrices } = calculateGridPrices(
-      //   minPrice,
-      //   maxPrice,
-      //   adjustedMinPrice,
-      //   adjustedMaxPrice,
-      //   chartHeight,
-      //   getY
-      // );
-
-      // gridPrices.forEach((price) => {
-      //   const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
-      //   ctx.beginPath();
-      //   ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-      //   ctx.lineWidth = 0.5;
-      //   ctx.globalAlpha = 0.2;
-      //   ctx.moveTo(dimensions.padding.left, y);
-      //   ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-      //   ctx.stroke();
-      // });
+      // Draw horizontal grid lines as before...
     },
-    [
-      dimensions,
-      viewState.startIndex,
-      viewState.visibleBars,
-      viewState.offsetY,
-      combinedData,
-      calculateBarX,
-      currentTheme,
-      defaultTheme,
-      isRSIEnabled,
-      rsiHeight,
-      calculateGridPrices,
-      getY,
-      calculateLabelInterval,
-      shouldDrawLabel,
-    ]
+    [dimensions, currentTheme, defaultTheme]
   );
 
   // Add new canvas ref for y-axis
@@ -2657,52 +2702,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       </div>
 
       {renderDrawingCanvas()}
+
+      {/* Bottom Action Bar Container */}
+      <ActionButtons
+        handleZoom={handleZoom}
+        handlePan={handlePan}
+        resetView={resetView}
+        rsiHeight={rsiHeight}
+      />
     </div>
-  );
-};
-
-// Action Button Component
-const ActionButton: React.FC<{
-  onClick: () => void;
-  title: string;
-  icon: React.ReactNode;
-}> = ({ onClick, title, icon }) => {
-  const { theme } = useTheme();
-  const defaultTheme: ChartTheme = themes.dark!;
-  const currentTheme: ChartTheme =
-    themes[theme as keyof typeof themes] || defaultTheme;
-
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      title={title}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: currentTheme.text || defaultTheme.text,
-        padding: "6px",
-        borderRadius: "4px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "28px",
-        height: "28px",
-        transition: "background-color 0.2s ease",
-      }}
-      onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
-        e.currentTarget.style.backgroundColor =
-          currentTheme.buttonHover || defaultTheme.buttonHover;
-      }}
-      onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-      }}
-    >
-      {icon}
-    </button>
   );
 };
 

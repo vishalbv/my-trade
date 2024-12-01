@@ -11,6 +11,8 @@ export const themes: { [key: string]: ChartTheme } = {
     upColor: "#26A69A",
     downColor: "#EF5350",
     buttonHover: "#2A2E39",
+    accent: "#2962FF",
+    controlsBackground: "#1E222D",
   },
   light: {
     background: "#FFFFFF",
@@ -22,5 +24,7 @@ export const themes: { [key: string]: ChartTheme } = {
     upColor: "#26A69A",
     downColor: "#EF5350",
     buttonHover: "#F0F3FA",
+    accent: "#2962FF",
+    controlsBackground: "#F8F9FD",
   },
 };

@@ -37,6 +37,7 @@ export interface ChartTheme {
   downColor: string;
   buttonHover: string;
   accent: string;
+  controlsBackground: string;
 }
 
 export interface ViewState {
