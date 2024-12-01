@@ -10,6 +10,18 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../../store/store";
 import { setSelectedTool } from "../../../store/slices/globalChartSlice";
+import {
+  checkDrawingInteraction,
+  drawingMethods,
+  isPointNearby as isPointNearbyUtil,
+  isPointNearLine as isPointNearLineUtil,
+} from "../utils/drawingUtils";
+import { createInitialPositionPoints } from "../drawings/PositionDrawing";
+import {
+  handleRectanglePointDragging,
+  handleRectangleAreaDragging,
+  createInitialRectanglePoints,
+} from "../drawings/RectangleDrawing";
 
 interface DrawingCanvasProps {
   drawings: Drawing[];
@@ -121,176 +133,291 @@ export const DrawingCanvas = ({
     [dimensions, viewState]
   );
 
-  const drawHorizontalLine = useCallback(
-    (ctx: CanvasRenderingContext2D, points: Point[], drawingId?: string) => {
-      if (!points[0]) return;
-
-      const canvasPoint = toCanvasCoords(points[0]);
-
-      // Save context state
-      ctx.save();
-
-      // Set line style
-      ctx.beginPath();
-      ctx.strokeStyle = theme.text;
-      ctx.lineWidth = hoveredLine === drawingId ? 3 : 1;
-      //   ctx.setLineDash([2, 2]);
-
-      // Draw line from left to right
-      ctx.moveTo(dimensions.padding.left, canvasPoint.y);
-      ctx.lineTo(dimensions.width - dimensions.padding.right, canvasPoint.y);
-      ctx.stroke();
-
-      // Draw price label with background for better visibility
-      ctx.setLineDash([]); // Reset line dash
-      const price = points[0].y.toFixed(2);
-      const textWidth = ctx.measureText(price).width;
-      const padding = 4;
-
-      // Draw label background
-      ctx.fillStyle =
-        hoveredLine === drawingId ? theme.accent : theme.background;
-      ctx.fillRect(
-        dimensions.width - dimensions.padding.right + 40 - textWidth - padding,
-        canvasPoint.y - 8,
-        textWidth + padding * 2,
-        16
-      );
-
-      // Draw price text
-      ctx.fillStyle = theme.text;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      ctx.font = "10px sans-serif";
-      ctx.fillText(
-        price,
-        dimensions.width - dimensions.padding.right + 40,
-        canvasPoint.y
-      );
-
-      // Restore context state
-      ctx.restore();
-    },
-    [dimensions, theme, toCanvasCoords, hoveredLine]
-  );
-
-  const drawTrendLine = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      points: Point[],
-      isHovered: boolean = false,
-      drawingId?: string
-    ) => {
-      if (points.length < 2) return;
-
-      const point1 = points[0];
-      const point2 = points[1];
-      if (!point1 || !point2) return;
-
-      const startPoint = toCanvasCoords(point1);
-      const endPoint = toCanvasCoords(point2);
-
-      ctx.save();
-
-      // Draw line with thicker stroke when hovered
-      ctx.beginPath();
-      ctx.strokeStyle = theme.text;
-      ctx.lineWidth =
-        hoveredLine === drawingId ||
-        hoveredPoint?.drawingId === drawingId ||
-        isHovered
-          ? 2
-          : 1;
-      ctx.moveTo(startPoint.x, startPoint.y);
-      ctx.lineTo(endPoint.x, endPoint.y);
-      ctx.stroke();
-
-      // Draw endpoints if line is hovered or any point is hovered
-      if (
-        hoveredLine === drawingId ||
-        hoveredPoint?.drawingId === drawingId ||
-        isHovered
-      ) {
-        [startPoint, endPoint].forEach((point, index) => {
-          // Draw white fill
-          ctx.beginPath();
-          ctx.fillStyle = theme.background;
-          ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Draw border with accent color
-          ctx.beginPath();
-          ctx.strokeStyle = theme.accent;
-          ctx.lineWidth = POINT_BORDER_WIDTH;
-          ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
-          ctx.stroke();
-        });
-      }
-
-      ctx.restore();
-    },
-    [dimensions, theme, toCanvasCoords, hoveredLine, hoveredPoint]
-  );
+  console.log({ drawingInProgress, isDraggingLine, draggingPoint });
 
   const isPointNearby = useCallback(
-    (canvasX: number, canvasY: number, point: Point) => {
-      const canvasPoint = toCanvasCoords(point);
-      const distance = Math.sqrt(
-        Math.pow(canvasX - canvasPoint.x, 2) +
-          Math.pow(canvasY - canvasPoint.y, 2)
-      );
-      return distance <= POINT_RADIUS;
+    (x: number, y: number, point: Point) => {
+      return isPointNearbyUtil(x, y, point, toCanvasCoords, POINT_RADIUS);
     },
-    [toCanvasCoords]
+    [toCanvasCoords, POINT_RADIUS]
   );
 
   const isPointNearLine = useCallback(
-    (mouseX: number, mouseY: number, point1: Point, point2?: Point) => {
-      if (!point2) {
-        // For horizontal line
-        const p1 = toCanvasCoords(point1);
-        return Math.abs(mouseY - p1.y) <= 10; // More generous threshold for horizontal lines
-      }
-
-      // Existing trend line logic
-      const p1 = toCanvasCoords(point1);
-      const p2 = toCanvasCoords(point2);
-
-      // Calculate distance from point to line segment
-      const A = mouseX - p1.x;
-      const B = mouseY - p1.y;
-      const C = p2.x - p1.x;
-      const D = p2.y - p1.y;
-
-      const dot = A * C + B * D;
-      const lenSq = C * C + D * D;
-      let param = -1;
-
-      if (lenSq !== 0) param = dot / lenSq;
-
-      let xx, yy;
-
-      if (param < 0) {
-        xx = p1.x;
-        yy = p1.y;
-      } else if (param > 1) {
-        xx = p2.x;
-        yy = p2.y;
-      } else {
-        xx = p1.x + param * C;
-        yy = p1.y + param * D;
-      }
-
-      const dx = mouseX - xx;
-      const dy = mouseY - yy;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      return distance <= 5; // 5px threshold for line hover
+    (x: number, y: number, point1: Point, point2?: Point) => {
+      return isPointNearLineUtil(x, y, point1, point2, toCanvasCoords);
     },
     [toCanvasCoords]
   );
 
-  console.log({ drawingInProgress, isDraggingLine, draggingPoint });
+  const handleInteraction = (x: number, y: number) => {
+    const {
+      foundPoint,
+      foundLine,
+      hoveredPoint: newHoveredPoint,
+      hoveredLine: newHoveredLine,
+    } = checkDrawingInteraction(
+      x,
+      y,
+      drawings,
+      isPointNearby,
+      isPointNearLine,
+      toCanvasCoords,
+      dimensions
+    );
+
+    if (canvasRef.current) {
+      canvasRef.current.style.zIndex =
+        foundPoint || foundLine || selectedTool !== "cursor" ? "100" : "1";
+    }
+
+    if (!foundPoint && !foundLine) {
+      setHoveredPoint(null);
+      setHoveredLine(null);
+    } else {
+      setHoveredPoint(newHoveredPoint);
+      setHoveredLine(newHoveredLine);
+    }
+
+    return { foundPoint, foundLine };
+  };
+
+  // Add separate handlers for each drawing type
+  const handleFibonacciDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    pointIndex: number
+  ) => {
+    const newPoints = [...drawing.points];
+    newPoints[pointIndex] = chartCoords;
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  const handleTrendLineDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    pointIndex: number
+  ) => {
+    const newPoints = [...drawing.points];
+    newPoints[pointIndex] = chartCoords;
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  const handlePositionDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    pointIndex: number
+  ) => {
+    const newPoints = [...drawing.points];
+    const rightPointIndex = pointIndex + 3; // Since right points are 3 positions ahead
+
+    if (pointIndex < 3) {
+      // If dragging left points
+      newPoints[pointIndex] = {
+        x: newPoints[pointIndex].x,
+        y: chartCoords.y,
+      };
+
+      // Update the corresponding right point
+      if (newPoints[rightPointIndex]) {
+        newPoints[rightPointIndex] = {
+          x: newPoints[rightPointIndex].x,
+          y: chartCoords.y,
+        };
+      }
+    } else {
+      // If dragging right points
+      newPoints[pointIndex] = {
+        x: chartCoords.x,
+        y: newPoints[pointIndex - 3].y, // Keep y-value synced with left point
+      };
+    }
+
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  // Update handlePointDragging to use specific handlers
+  const handlePointDragging = (chartCoords: Point) => {
+    const updatedDrawing = drawings.find(
+      (d) => d.id === draggingPoint?.drawingId
+    );
+    if (updatedDrawing && draggingPoint) {
+      switch (updatedDrawing.type) {
+        case "rect":
+          const newPoints = handleRectanglePointDragging(
+            chartCoords,
+            updatedDrawing.points,
+            draggingPoint.pointIndex
+          );
+          onDrawingUpdate({
+            ...updatedDrawing,
+            points: newPoints,
+          });
+          break;
+        case "fibonacci":
+          handleFibonacciDragging(
+            chartCoords,
+            updatedDrawing,
+            draggingPoint.pointIndex
+          );
+          break;
+        case "trendline":
+          handleTrendLineDragging(
+            chartCoords,
+            updatedDrawing,
+            draggingPoint.pointIndex
+          );
+          break;
+        case "longPosition":
+        case "shortPosition":
+          handlePositionDragging(
+            chartCoords,
+            updatedDrawing,
+            draggingPoint.pointIndex
+          );
+          break;
+      }
+    }
+  };
+
+  // Add separate line dragging handlers
+  const handleFibonacciLineDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    dragStartPosition: Point
+  ) => {
+    const dx = chartCoords.x - dragStartPosition.x;
+    const dy = chartCoords.y - dragStartPosition.y;
+
+    const newPoints = drawing.points.map((point) => ({
+      x: point.x + dx,
+      y: point.y + dy,
+    }));
+
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  const handleTrendLineLineDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    dragStartPosition: Point
+  ) => {
+    const dx = chartCoords.x - dragStartPosition.x;
+    const dy = chartCoords.y - dragStartPosition.y;
+
+    const newPoints = drawing.points.map((point) => ({
+      x: point.x + dx,
+      y: point.y + dy,
+    }));
+
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  const handlePositionLineDragging = (
+    chartCoords: Point,
+    drawing: Drawing,
+    dragStartPosition: Point
+  ) => {
+    const dx = chartCoords.x - dragStartPosition.x;
+    const dy = chartCoords.y - dragStartPosition.y;
+
+    const newPoints = drawing.points.map((point) => ({
+      x: point.x + dx,
+      y: point.y + dy,
+    }));
+
+    onDrawingUpdate({
+      ...drawing,
+      points: newPoints,
+    });
+  };
+
+  // Update handleLineDragging to use specific handlers
+  const handleLineDragging = (chartCoords: Point) => {
+    const drawing = drawings.find((d) => d.id === hoveredLine);
+    if (drawing && dragStartPosition) {
+      switch (drawing.type) {
+        case "rect":
+          const rectPoints = handleRectangleAreaDragging(
+            chartCoords,
+            dragStartPosition,
+            drawing.points
+          );
+          onDrawingUpdate({
+            ...drawing,
+            points: rectPoints,
+          });
+          break;
+        case "fibonacci":
+          handleFibonacciLineDragging(chartCoords, drawing, dragStartPosition);
+          break;
+        case "trendline":
+          handleTrendLineLineDragging(chartCoords, drawing, dragStartPosition);
+          break;
+        case "longPosition":
+        case "shortPosition":
+          handlePositionLineDragging(chartCoords, drawing, dragStartPosition);
+          break;
+        case "horizontalLine":
+          if (drawing.points[0]) {
+            onDrawingUpdate({
+              ...drawing,
+              points: [
+                {
+                  x: drawing.points[0].x,
+                  y:
+                    drawing.points[0].y + (chartCoords.y - dragStartPosition.y),
+                },
+              ],
+            });
+          }
+          break;
+      }
+      setDragStartPosition(chartCoords);
+    }
+  };
+
+  const handleDrawingInProgress = (chartCoords: Point) => {
+    if (
+      drawingInProgress?.type === "trendline" ||
+      drawingInProgress?.type === "fibonacci" ||
+      drawingInProgress?.type === "rect"
+    ) {
+      if (drawingInProgress.type === "rect" && drawingInProgress.points[0]) {
+        // For rectangle, create all 4 points dynamically while dragging
+        const points = [
+          drawingInProgress.points[0], // Top-left
+          { x: chartCoords.x, y: drawingInProgress.points[0].y }, // Top-right
+          chartCoords, // Bottom-right
+          { x: drawingInProgress.points[0].x, y: chartCoords.y }, // Bottom-left
+        ];
+        setDrawingInProgress({
+          ...drawingInProgress,
+          points,
+          currentPoint: chartCoords,
+        });
+      } else {
+        setDrawingInProgress({
+          ...drawingInProgress,
+          currentPoint: chartCoords,
+        });
+      }
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -301,129 +428,14 @@ export const DrawingCanvas = ({
     const y = e.clientY - rect.top;
     const chartCoords = toChartCoords(x, y);
 
-    // When dragging or drawing tool is selected, maintain high z-index
-    if (
-      draggingPoint ||
-      isDraggingLine ||
-      drawingInProgress ||
-      selectedTool !== "cursor"
-    ) {
-      if (canvasRef.current) {
-        canvasRef.current.style.zIndex = "100";
-      }
-    }
-
     if (draggingPoint) {
-      // Update point position while dragging
-      const updatedDrawing = drawings.find(
-        (d) => d.id === draggingPoint.drawingId
-      );
-      if (updatedDrawing && updatedDrawing.type === "trendline") {
-        const newPoints = [...updatedDrawing.points];
-        const pointToUpdate = newPoints[draggingPoint.pointIndex];
-        if (pointToUpdate) {
-          newPoints[draggingPoint.pointIndex] = chartCoords;
-          onDrawingUpdate({
-            ...updatedDrawing,
-            points: newPoints,
-          });
-        }
-      }
+      handlePointDragging(chartCoords);
     } else if (isDraggingLine && dragStartPosition && hoveredLine) {
-      // Handle line dragging
-      const drawing = drawings.find((d) => d.id === hoveredLine);
-      if (drawing) {
-        if (drawing.type === "trendline") {
-          const dx = chartCoords.x - dragStartPosition.x;
-          const dy = chartCoords.y - dragStartPosition.y;
-
-          const newPoints = drawing.points.map((point) => ({
-            x: point.x + dx,
-            y: point.y + dy,
-          }));
-
-          onDrawingUpdate({
-            ...drawing,
-            points: newPoints,
-          });
-
-          setDragStartPosition(chartCoords);
-        } else if (drawing.type === "horizontalLine" && drawing.points[0]) {
-          const dy = chartCoords.y - dragStartPosition.y;
-
-          const newPoints = [
-            {
-              x: drawing.points[0].x,
-              y: drawing.points[0].y + dy,
-            },
-          ];
-
-          onDrawingUpdate({
-            ...drawing,
-            points: newPoints,
-          });
-
-          setDragStartPosition(chartCoords);
-        }
-      }
+      handleLineDragging(chartCoords);
     } else if (drawingInProgress) {
-      if (drawingInProgress.type === "trendline") {
-        setDrawingInProgress({
-          ...drawingInProgress,
-          currentPoint: chartCoords,
-        });
-      }
+      handleDrawingInProgress(chartCoords);
     } else {
-      // Check for point or line hovering
-      let foundPoint = false;
-      let foundLine = false;
-
-      for (const drawing of drawings) {
-        if (drawing.type === "trendline" && drawing.points.length === 2) {
-          // Check points first
-          for (let i = 0; i < drawing.points.length; i++) {
-            const point = drawing.points[i];
-            if (point && isPointNearby(x, y, point)) {
-              setHoveredPoint({ drawingId: drawing.id, pointIndex: i });
-              setHoveredLine(null);
-              foundPoint = true;
-              break;
-            }
-          }
-
-          // If no point is hovered, check the line
-          if (
-            !foundPoint &&
-            drawing.points[0] &&
-            drawing.points[1] &&
-            isPointNearLine(x, y, drawing.points[0], drawing.points[1])
-          ) {
-            setHoveredLine(drawing.id);
-            setHoveredPoint(null);
-            foundLine = true;
-            break;
-          }
-        } else if (drawing.type === "horizontalLine" && drawing.points[0]) {
-          // Check if mouse is near the horizontal line
-          if (isPointNearLine(x, y, drawing.points[0])) {
-            setHoveredLine(drawing.id);
-            setHoveredPoint(null);
-            foundLine = true;
-            break;
-          }
-        }
-      }
-      //   console.log("foundPoint", foundPoint, foundLine);
-      // Update z-index based on interaction state
-      if (canvasRef.current) {
-        canvasRef.current.style.zIndex =
-          foundPoint || foundLine || selectedTool !== "cursor" ? "100" : "1";
-      }
-
-      if (!foundPoint && !foundLine) {
-        setHoveredPoint(null);
-        setHoveredLine(null);
-      }
+      handleInteraction(x, y);
     }
   };
 
@@ -438,12 +450,23 @@ export const DrawingCanvas = ({
     if (hoveredPoint) {
       // Handle point dragging
       const drawing = drawings.find((d) => d.id === hoveredPoint.drawingId);
-      if (drawing && drawing.points[hoveredPoint.pointIndex]) {
+      if (
+        drawing &&
+        (drawing.type === "trendline" ||
+          drawing.type === "fibonacci" ||
+          drawing.type === "rect" ||
+          drawing.type === "longPosition" ||
+          drawing.type === "shortPosition") &&
+        drawing.points[hoveredPoint.pointIndex]
+      ) {
         setDraggingPoint({
           drawingId: hoveredPoint.drawingId,
           pointIndex: hoveredPoint.pointIndex,
           originalPoint: drawing.points[hoveredPoint.pointIndex]!,
         });
+        if (canvasRef.current) {
+          canvasRef.current.style.cursor = "move";
+        }
         return;
       }
     } else if (hoveredLine) {
@@ -457,18 +480,26 @@ export const DrawingCanvas = ({
     }
 
     // Handle drawing creation
-    if (selectedTool === "trendline") {
+    if (
+      selectedTool === "trendline" ||
+      selectedTool === "fibonacci" ||
+      selectedTool === "rect"
+    ) {
       if (!drawingInProgress) {
         setDrawingInProgress({
-          type: "trendline",
+          type: selectedTool,
           points: [chartCoords],
           currentPoint: chartCoords,
         });
       } else if (drawingInProgress.points[0]) {
         const newDrawing: Drawing = {
           id: Date.now().toString(),
-          type: "trendline",
-          points: [drawingInProgress.points[0], chartCoords],
+          type: selectedTool,
+          points: createDrawingPoints(
+            selectedTool,
+            drawingInProgress.points[0],
+            chartCoords
+          ),
           visible: true,
         };
         onDrawingComplete(newDrawing);
@@ -481,6 +512,24 @@ export const DrawingCanvas = ({
         id: Date.now().toString(),
         type: "horizontalLine",
         points: [chartCoords],
+        visible: true,
+      };
+      onDrawingComplete(newDrawing);
+      dispatch(setSelectedTool("cursor"));
+    } else if (
+      selectedTool === "longPosition" ||
+      selectedTool === "shortPosition"
+    ) {
+      const priceRange = viewState.maxPrice! - viewState.minPrice!;
+      const initialPoints = createInitialPositionPoints(
+        chartCoords,
+        selectedTool,
+        priceRange
+      );
+      const newDrawing: Drawing = {
+        id: Date.now().toString(),
+        type: selectedTool,
+        points: initialPoints,
         visible: true,
       };
       onDrawingComplete(newDrawing);
@@ -516,26 +565,95 @@ export const DrawingCanvas = ({
       drawings.forEach((drawing) => {
         if (!drawing.visible) return;
 
-        if (drawing.type === "horizontalLine" && drawing.points[0]) {
-          drawHorizontalLine(ctx, drawing.points, drawing.id);
-        } else if (
-          drawing.type === "trendline" &&
-          drawing.points.length === 2
-        ) {
-          drawTrendLine(ctx, drawing.points, false, drawing.id);
+        const commonProps = {
+          ctx,
+          points: drawing.points,
+          drawingId: drawing.id,
+          hoveredLine,
+          hoveredPoint,
+          theme,
+          toCanvasCoords,
+          dimensions,
+          POINT_RADIUS,
+          POINT_BORDER_WIDTH,
+        };
+
+        switch (drawing.type) {
+          case "horizontalLine":
+            drawingMethods.horizontalLine({
+              ...commonProps,
+            });
+            break;
+          case "trendline":
+            drawingMethods.trendline({
+              ...commonProps,
+              isHovered: false,
+            });
+            break;
+          case "fibonacci":
+            drawingMethods.fibonacci({
+              ...commonProps,
+              isHovered: false,
+            });
+            break;
+          case "rect":
+            drawingMethods.rect({
+              ...commonProps,
+              isHovered: hoveredLine === drawing.id,
+            });
+            break;
+          case "longPosition":
+          case "shortPosition":
+            drawingMethods[drawing.type]({
+              ...commonProps,
+              isHovered: hoveredLine === drawing.id,
+            });
+            break;
         }
       });
 
       // Draw drawing in progress
-      if (drawingInProgress?.currentPoint) {
-        if (drawingInProgress.type === "trendline") {
-          drawTrendLine(
-            ctx,
-            [drawingInProgress.points[0], drawingInProgress.currentPoint],
-            true
-          );
-        } else if (drawingInProgress.type === "horizontalLine") {
-          drawHorizontalLine(ctx, [drawingInProgress.currentPoint]);
+      if (drawingInProgress?.currentPoint && drawingInProgress.points[0]) {
+        const commonProps = {
+          ctx,
+          points: [drawingInProgress.points[0], drawingInProgress.currentPoint],
+          hoveredLine,
+          hoveredPoint,
+          theme,
+          toCanvasCoords,
+          dimensions,
+          POINT_RADIUS,
+          POINT_BORDER_WIDTH,
+        };
+
+        switch (drawingInProgress.type) {
+          case "trendline":
+            drawingMethods.trendline({
+              ...commonProps,
+              isHovered: true,
+            });
+            break;
+          case "fibonacci":
+            drawingMethods.fibonacci({
+              ...commonProps,
+              isHovered: true,
+            });
+            break;
+          case "rect":
+            if (drawingInProgress.points.length === 4) {
+              drawingMethods.rect({
+                ...commonProps,
+                points: drawingInProgress.points,
+                isHovered: true,
+              });
+            }
+            break;
+          case "horizontalLine":
+            drawingMethods.horizontalLine({
+              ...commonProps,
+              points: [drawingInProgress.currentPoint],
+            });
+            break;
         }
       }
     }
@@ -543,12 +661,12 @@ export const DrawingCanvas = ({
     drawings,
     dimensions,
     showDrawings,
-    drawHorizontalLine,
-    drawTrendLine,
     viewState,
     drawingInProgress,
     hoveredLine,
     hoveredPoint,
+    theme,
+    toCanvasCoords,
   ]);
 
   useEffect(() => {
@@ -556,10 +674,6 @@ export const DrawingCanvas = ({
 
     if (!mousePosition || !canvasRef.current) return;
 
-    let foundInteraction = false;
-    const { x, y } = mousePosition;
-
-    // Keep high z-index during active interactions or when drawing tool is selected
     if (
       draggingPoint ||
       isDraggingLine ||
@@ -570,39 +684,7 @@ export const DrawingCanvas = ({
       return;
     }
 
-    // Check for drawings under mouse
-    for (const drawing of drawings) {
-      if (drawing.type === "trendline" && drawing.points.length === 2) {
-        // Check points
-        for (let i = 0; i < drawing.points.length; i++) {
-          const point = drawing.points[i];
-          if (point && isPointNearby(x, y, point)) {
-            foundInteraction = true;
-            break;
-          }
-        }
-
-        // Check line
-        if (
-          !foundInteraction &&
-          drawing.points[0] &&
-          drawing.points[1] &&
-          isPointNearLine(x, y, drawing.points[0], drawing.points[1])
-        ) {
-          foundInteraction = true;
-        }
-      } else if (drawing.type === "horizontalLine" && drawing.points[0]) {
-        // Check horizontal line
-        if (isPointNearLine(x, y, drawing.points[0])) {
-          foundInteraction = true;
-          break;
-        }
-      }
-    }
-
-    // Update z-index only if not in an active interaction state
-    canvasRef.current.style.zIndex =
-      foundInteraction || selectedTool !== "cursor" ? "100" : "1";
+    handleInteraction(mousePosition.x, mousePosition.y);
   }, [
     mousePosition,
     drawings,
@@ -612,6 +694,8 @@ export const DrawingCanvas = ({
     isDraggingLine,
     drawingInProgress,
     selectedTool,
+    toCanvasCoords,
+    dimensions,
   ]);
 
   return (
@@ -632,7 +716,11 @@ export const DrawingCanvas = ({
             ? isDraggingLine
               ? "grabbing"
               : "grab"
-            : selectedTool === "trendline" || selectedTool === "horizontalLine"
+            : selectedTool === "trendline" ||
+                selectedTool === "fibonacci" ||
+                selectedTool === "horizontalLine" ||
+                selectedTool === "longPosition" ||
+                selectedTool === "shortPosition"
               ? "crosshair"
               : "default",
         zIndex: 1,
@@ -643,4 +731,21 @@ export const DrawingCanvas = ({
       onMouseLeave={handleMouseUp}
     />
   );
+};
+
+// Add helper function to create points based on drawing type
+const createDrawingPoints = (
+  type: DrawingTool,
+  startPoint: Point,
+  endPoint: Point
+): Point[] => {
+  if (type === "rect") {
+    return [
+      startPoint, // Top-left
+      { x: endPoint.x, y: startPoint.y }, // Top-right
+      endPoint, // Bottom-right
+      { x: startPoint.x, y: endPoint.y }, // Bottom-left
+    ];
+  }
+  return [startPoint, endPoint]; // For trendline and fibonacci
 };

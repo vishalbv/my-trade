@@ -21,7 +21,10 @@ export type DrawingTool =
   | "cursor"
   | "horizontalLine"
   | "trendline"
-  | "fibonacci";
+  | "fibonacci"
+  | "rect"
+  | "longPosition"
+  | "shortPosition";
 
 interface DrawingToolsProps {
   selectedTool: DrawingTool | null;
