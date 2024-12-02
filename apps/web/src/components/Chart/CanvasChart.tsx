@@ -19,6 +19,7 @@ import { useSelector } from "react-redux";
 import {
   convertDrawingsToDataIndex,
   convertDrawingToTimestamp,
+  round,
 } from "./utils/drawingCoordinateUtils";
 import { ActionButtons } from "./ActionButtons";
 
@@ -93,7 +94,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const [dimensions, setDimensions] = useState<ChartDimensions>({
     width: 0,
     height: 0,
-    padding: { top: 20, right: 60, bottom: 30, left: 10 },
+    padding: { top: 0, right: 60, bottom: 0, left: 0 },
   });
 
   const [viewState, setViewState] = useState<ViewState>({
@@ -1204,16 +1205,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         height: number
       ) => number
     ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
-      // Calculate nice grid step based on scale
+      // Calculate visible price range
       const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
 
-      // Adjust number of ticks based on scale and chart height
-      const baseTickCount = Math.max(6, Math.floor(chartHeight / 50));
-      const scaleBasedTicks = Math.ceil(baseTickCount * viewState.scaleY);
-      const maxPriceTicks = Math.min(
-        20,
-        Math.max(baseTickCount, scaleBasedTicks)
-      );
+      // Minimum spacing between labels in pixels
+      const minLabelSpacing = 40;
+
+      // Calculate maximum number of ticks based on chart height and minimum spacing
+      const maxPriceTicks = Math.floor(chartHeight / minLabelSpacing);
 
       // Calculate initial grid step
       let gridPriceStep = calculateNiceNumber(visiblePriceRange, maxPriceTicks);
@@ -1227,15 +1226,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         Math.min(maxStepSize, gridPriceStep / viewState.scaleY)
       );
 
-      // Extend the range for grid lines (especially below)
-      const extendedMinPrice = adjustedMinPrice - gridPriceStep * 100; // Extend 100 steps below
-      const extendedMaxPrice = adjustedMaxPrice + gridPriceStep * 2;
+      // Extend the range for grid lines
+      const extendedMinPrice = adjustedMinPrice - gridPriceStep * 50; // Extend further
+      const extendedMaxPrice = adjustedMaxPrice + gridPriceStep * 50; // Extend further
 
       // Calculate grid prices
       const firstGridPrice =
-        Math.floor(extendedMinPrice / gridPriceStep) * gridPriceStep;
+        Math.ceil(extendedMinPrice / gridPriceStep) * gridPriceStep;
       const gridPrices: number[] = [];
       const priceLabels: { y: number; text: string }[] = [];
+      let lastY: number | null = null;
 
       // Add grid lines with dynamic spacing
       for (
@@ -1250,24 +1250,19 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           chartHeight
         );
 
-        // Include prices with extended visibility range, especially below
-        const extendedPadding = 50 * viewState.scaleY;
-        const extendedBottomPadding = chartHeight * 2; // Allow more space below
-
-        if (
-          y >= dimensions.padding.top - extendedPadding &&
-          y <= chartHeight + dimensions.padding.bottom + extendedBottomPadding
-        ) {
-          // Check minimum spacing between lines
-          const minSpacing = 20 / viewState.scaleY;
-          const lastY = priceLabels[priceLabels.length - 1]?.y;
-
-          if (!lastY || Math.abs(y - lastY) >= minSpacing) {
+        // Check if we have enough space from the last label
+        if (lastY === null || Math.abs(y - lastY) >= minLabelSpacing) {
+          // Only add if within visible range with some padding
+          if (
+            y >= dimensions.padding.top - 20 &&
+            y <= chartHeight + dimensions.padding.bottom
+          ) {
             gridPrices.push(price);
             priceLabels.push({
               y,
               text: price.toFixed(2),
             });
+            lastY = y;
           }
         }
       }
@@ -1944,10 +1939,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             date.getFullYear() !== lastDate.getFullYear());
 
         if (isDateChange || isMarketOpen) {
-          ctx.font = "bold 10px sans-serif";
+          ctx.font = `bold 10px ${currentTheme.fontFamily}`;
           ctx.fillStyle = currentTheme?.text || defaultTheme.text;
         } else {
-          ctx.font = "10px sans-serif";
+          ctx.font = `10px ${currentTheme.fontFamily}`;
           ctx.fillStyle =
             currentTheme?.textSecondary || defaultTheme.textSecondary;
         }
@@ -1992,8 +1987,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Draw crosshair label only if visible
     if (xAxisCrosshair.visible) {
       const timeLabel = timeframeConfig.tickFormat(xAxisCrosshair.timestamp);
+      console.log(timeLabel, timeframeConfig);
       const timeLabelWidth = ctx.measureText(timeLabel).width + 10;
-      const timeLabelHeight = 16;
+      const timeLabelHeight = 20;
 
       // Calculate label position to keep it within bounds
       const minX = dimensions.padding.left;
@@ -2008,7 +2004,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
 
       // Draw label background
-      ctx.fillStyle = currentTheme.axisBackground;
+      ctx.fillStyle = currentTheme.grid;
       ctx.fillRect(
         labelX,
         (30 - timeLabelHeight) / 2,
@@ -2017,7 +2013,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       // Draw label text
-      ctx.fillStyle = currentTheme.text;
+      ctx.fillStyle = currentTheme.baseText + "d";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(timeLabel, labelX + timeLabelWidth / 2, 30 / 2);
@@ -2094,12 +2090,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     // Draw price label only in main chart area
     if (mousePosition.y <= chartBottom) {
-      const priceLabel = mousePosition.price.toFixed(2);
+      const priceLabel = round(mousePosition.price, 0.05).toFixed(2);
       const priceLabelWidth = ctx.measureText(priceLabel).width + 10;
       const priceLabelHeight = 20;
 
       // Price label background
-      ctx.fillStyle = currentTheme.axisBackground;
+      ctx.fillStyle = currentTheme.grid;
       ctx.fillRect(
         dimensions.width - dimensions.padding.right,
         mousePosition.y - priceLabelHeight / 2,
@@ -2108,9 +2104,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       // Price label text
-      ctx.fillStyle = currentTheme.text;
+      ctx.fillStyle = currentTheme.baseText + "d";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
+      ctx.font = `10px ${currentTheme.fontFamily}`;
       ctx.fillText(
         priceLabel,
         dimensions.width - dimensions.padding.right + 5,
@@ -2363,7 +2360,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           ctx.fillStyle = currentTheme?.text || defaultTheme.text;
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
-          ctx.font = "10px sans-serif";
+          ctx.font = `10px ${currentTheme.fontFamily}`;
           ctx.fillText(
             price.toFixed(2),
             dimensions.width - dimensions.padding.right + 5,
@@ -2421,7 +2418,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.fillStyle = currentTheme?.text || defaultTheme.text;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        ctx.font = "10px sans-serif";
+        ctx.font = `10px ${currentTheme.fontFamily}`;
         ctx.fillText(
           price.toFixed(2),
           dimensions.width - dimensions.padding.right + 5,
@@ -2759,7 +2756,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         handleZoom={handleZoom}
         handlePan={handlePan}
         resetView={resetView}
-        rsiHeight={rsiHeight}
+        rsiHeight={isRSIEnabled ? rsiHeight : 0}
       />
     </div>
   );

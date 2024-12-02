@@ -1,6 +1,8 @@
 import { useTheme } from "next-themes";
 import { themes } from "./constants/themes";
 import { cn } from "@repo/utils/ui/helpers";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@repo/ui/button";
 
 interface ActionButtonProps {
   onClick: () => void;
@@ -8,7 +10,14 @@ interface ActionButtonProps {
   icon: React.ReactNode;
 }
 
-export const ActionButtons = ({
+interface ActionButtonsProps {
+  handleZoom: (scale: number) => void;
+  handlePan: (offset: number) => void;
+  resetView: () => void;
+  rsiHeight: number;
+}
+
+export const ActionButtons: React.FC<ActionButtonsProps> = ({
   handleZoom,
   handlePan,
   resetView,
@@ -17,22 +26,46 @@ export const ActionButtons = ({
   const { theme } = useTheme();
   const defaultTheme = themes.dark!;
   const currentTheme = themes[theme as keyof typeof themes] || defaultTheme;
+  const [isVisible, setIsVisible] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!buttonRef.current) return;
+
+      const rect = buttonRef.current.getBoundingClientRect();
+      const buffer = 50; // Detection area above the buttons
+
+      const isNearButtons =
+        e.clientX >= rect.left - buffer &&
+        e.clientX <= rect.right + buffer &&
+        e.clientY >= rect.top - buffer * 1.5 &&
+        e.clientY <= rect.bottom + buffer;
+
+      setIsVisible(isNearButtons);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   return (
     <div
+      ref={buttonRef}
       className={cn(
-        "absolute bottom-0 flex items-end justify-center p-5 z-[1000] opacity-0 transition-opacity duration-200 hover:opacity-100 touch:opacity-100 left-1/2 transform -translate-x-1/2 h-[100px]"
+        "absolute bottom-0 flex items-end justify-center z-[1000] transition-opacity duration-200 touch:opacity-100 left-1/2 transform -translate-x-1/2",
+        isVisible ? "opacity-100" : "opacity-0"
       )}
       style={{
-        bottom: rsiHeight > 0 ? `${rsiHeight + 30}px` : "inherit",
+        bottom: rsiHeight > 0 ? `${rsiHeight + 50}px` : "50px",
       }}
     >
       <div
-        className="flex gap-px rounded p-1 shadow-md"
-        style={{
-          background:
-            currentTheme?.controlsBackground || defaultTheme.controlsBackground,
-        }}
+        className="flex rounded shadow-md"
+        // style={{
+        //   background:
+        //     currentTheme?.controlsBackground || defaultTheme.controlsBackground,
+        // }}
       >
         <ActionButton
           onClick={() => handleZoom(0.9)}
@@ -136,22 +169,24 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   const currentTheme = themes[theme as keyof typeof themes] || defaultTheme;
 
   return (
-    <button
+    <Button
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
+      variant="light"
       title={title}
-      className="flex h-7 w-7 items-center justify-center rounded p-1.5 cursor-pointer transition-colors duration-200"
-      style={{
-        color: currentTheme.text || defaultTheme.text,
-        backgroundColor: "transparent",
-        "&:hover": {
-          backgroundColor: currentTheme.buttonHover || defaultTheme.buttonHover,
-        },
-      }}
+      className="flex h-8 w-8 items-center justify-center rounded p-1.5 cursor-pointer transition-colors duration-200"
+      //   className="flex h-7 w-7 items-center justify-center rounded p-1.5 cursor-pointer transition-colors duration-200"
+      //   style={{
+      //     color: currentTheme.text || defaultTheme.text,
+      //     backgroundColor: "transparent",
+      //     "&:hover": {
+      //       backgroundColor: currentTheme.buttonHover || defaultTheme.buttonHover,
+      //     },
+      //   }}
     >
       {icon}
-    </button>
+    </Button>
   );
 };

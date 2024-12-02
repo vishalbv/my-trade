@@ -54,9 +54,15 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
     maxScaleDays: 5,
     tickFormat: (timestamp: number) => {
       const date = new Date(timestamp);
-      return date.getHours() === 9 && date.getMinutes() === 15
-        ? `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
-        : date.toLocaleTimeString();
+      return `${date.getDate().toString().padStart(2, "0")}-${date.toLocaleString(
+        "default",
+        {
+          month: "short",
+        }
+      )}-${date.getFullYear()}  ${date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
     },
   },
   "5": {
@@ -66,9 +72,15 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
     maxScaleDays: 10,
     tickFormat: (timestamp: number) => {
       const date = new Date(timestamp);
-      return date.getHours() === 9 && date.getMinutes() === 15
-        ? `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`
-        : date.toLocaleTimeString();
+      return `${date.getDate().toString().padStart(2, "0")}-${date.toLocaleString(
+        "default",
+        {
+          month: "short",
+        }
+      )}-${date.getFullYear()} ${date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
     },
   },
   "15": {
@@ -78,7 +90,15 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
     maxScaleDays: 30,
     tickFormat: (timestamp: number) => {
       const date = new Date(timestamp);
-      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+      return `${date.getDate().toString().padStart(2, "0")}-${date.toLocaleString(
+        "default",
+        {
+          month: "short",
+        }
+      )}-${date.getFullYear()} ${date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
     },
   },
   D: {
@@ -86,7 +106,15 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
     resolution: "D",
     minScaleDays: 5,
     maxScaleDays: 365,
-    tickFormat: (timestamp: number) => new Date(timestamp).toLocaleDateString(),
+    tickFormat: (timestamp: number) => {
+      const date = new Date(timestamp);
+      return `${date.getDate().toString().padStart(2, "0")}-${date.toLocaleString(
+        "default",
+        {
+          month: "short",
+        }
+      )}-${date.getFullYear()}`;
+    },
   },
 };
 

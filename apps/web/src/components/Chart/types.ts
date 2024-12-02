@@ -38,6 +38,8 @@ export interface ChartTheme {
   buttonHover: string;
   accent: string;
   controlsBackground: string;
+  baseText: string;
+  fontFamily: string;
 }
 
 export interface ViewState {

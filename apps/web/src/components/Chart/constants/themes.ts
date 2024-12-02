@@ -1,5 +1,8 @@
 import { ChartTheme } from "../types";
 
+export const CHART_FONT_FAMILY =
+  "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
+
 export const themes: { [key: string]: ChartTheme } = {
   dark: {
     background: "#131722",
@@ -13,6 +16,9 @@ export const themes: { [key: string]: ChartTheme } = {
     buttonHover: "#2A2E39",
     accent: "#2962FF",
     controlsBackground: "#1E222D",
+    baseText: "#fff",
+    fontFamily: CHART_FONT_FAMILY,
+
   },
   light: {
     background: "#FFFFFF",
@@ -26,5 +32,8 @@ export const themes: { [key: string]: ChartTheme } = {
     buttonHover: "#F0F3FA",
     accent: "#2962FF",
     controlsBackground: "#F8F9FD",
+    baseText: "#000",
+    fontFamily: CHART_FONT_FAMILY,
+
   },
 };

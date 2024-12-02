@@ -221,7 +221,7 @@ export const DrawingCanvas = ({
 
     if (canvasRef.current) {
       canvasRef.current.style.zIndex =
-        foundPoint || foundLine || selectedTool !== "cursor" ? "100" : "1";
+        foundPoint || foundLine || selectedTool !== "cursor" ? "100" : "2";
     }
 
     if (!foundPoint && !foundLine) {
@@ -836,7 +836,7 @@ export const DrawingCanvas = ({
                   selectedTool === "shortPosition"
                 ? "crosshair"
                 : "default",
-        zIndex: 1,
+        zIndex: 2,
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
