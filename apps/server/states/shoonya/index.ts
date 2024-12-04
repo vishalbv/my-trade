@@ -72,11 +72,12 @@ class Shoonya extends State {
             ...res.data,
             openBalance: +res.data.payin + +res.data.cash + +res.data.payout,
             pl: -1 * +res.data.premium,
-            marginAvailable:
+            marginAvailable: (
               +res.data.payin +
               +res.data.cash +
               +res.data.payout -
-              +(res.data.marginused || 0),
+              +(res.data.marginused || 0)
+            ).toFixed(2),
           },
         });
       }
@@ -93,6 +94,16 @@ class Shoonya extends State {
     await startShoonyaSocket(api);
     this.getPositions();
   };
+
+  getOrderBook = () =>
+    api
+      .getOrderbook()
+      .then(({ data }) => {
+        this.setState({
+          orderBook: data?.length && data.length > 0 ? data : [],
+        });
+      })
+      .catch((e) => console.log(e));
 
   setAccessToken = (access_token: string | null) => {
     // fyers.setAccessToken(access_token);

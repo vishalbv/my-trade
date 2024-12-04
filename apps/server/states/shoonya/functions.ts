@@ -3,7 +3,7 @@ export const getNewTicks = (oldTicks: string[], newTicks: string[]) => {
 };
 
 export const getCurrentValue = (i: any, ticks: any) => {
-  return +i.rpnl + +i.netqty * (+ticks[i.token].lp - +i.netavgprc) * +i.prcftr;
+  return +i.rpnl + +i.netqty * (+ticks[i.token]?.lp - +i.netavgprc) * +i.prcftr;
 };
 
 export const getShoonyaPL = (positions: any, ticks: any) => {

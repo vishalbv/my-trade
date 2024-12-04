@@ -14,17 +14,17 @@ export const PnL = () => {
 
   const [showInPerc, setShowidPerc] = useState(true);
 
-  const shoonyaPLInPerc = (
-    ((_shoonyaPL ?? fundInfo.pl ?? 0) * 100) /
-    (fundInfo.openBalance || 1)
-  ).toFixed(2);
+  const shoonyaPLInPerc = fundInfo.openBalance
+    ? (((_shoonyaPL ?? fundInfo.pl ?? 0) * 100) / fundInfo.openBalance).toFixed(
+        2
+      )
+    : 0;
 
   const shoonyaPLInRs = _shoonyaPL ?? fundInfo.pl ?? 0;
 
-  const brokerageInPerc = (
-    (+fundInfo.brokerage * 100) /
-    (fundInfo.openBalance || 1)
-  ).toFixed(2);
+  const brokerageInPerc = fundInfo.openBalance
+    ? ((+fundInfo.brokerage * 100) / (fundInfo.openBalance || 1)).toFixed(2)
+    : 0;
 
   return (
     <div

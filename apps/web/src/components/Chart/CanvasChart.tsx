@@ -1399,8 +1399,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.globalAlpha = opacity;
         ctx.fillStyle =
           candle.close >= candle.open
-            ? currentTheme?.upColor || defaultTheme.upColor
-            : currentTheme?.downColor || defaultTheme.downColor;
+            ? currentTheme?.upColor
+            : currentTheme?.downColor;
         ctx.strokeStyle = ctx.fillStyle;
 
         // Draw wick
@@ -1429,9 +1429,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
         const lineColor = previousCandle
           ? lastCandle.close >= previousCandle.close
-            ? "#26a69a"
-            : "#ef5350"
-          : "#26a69a";
+            ? currentTheme?.upColor
+            : currentTheme?.downColor
+          : currentTheme?.upColor;
 
         const y = getY(
           lastCandle.close,
@@ -1534,7 +1534,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     bottom: 0,
     width: "100%",
     height: `${rsiHeight}px`,
-    borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
+    borderTop: `1px solid ${currentTheme?.grid}`,
     transform: "translate3d(0, 0, 0)", // Enable hardware acceleration
     willChange: "height", // Hint to browser about the changing property
   };
@@ -1546,7 +1546,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         <div
           style={{
             height: "4px",
-            backgroundColor: currentTheme?.grid || defaultTheme.grid,
+            backgroundColor: currentTheme?.grid,
             cursor: "ns-resize",
             width: "100%",
             position: "absolute",
@@ -1564,7 +1564,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               transform: "translate(-50%, -50%)",
               width: "30px",
               height: "2px",
-              backgroundColor: currentTheme?.text || defaultTheme.text,
+              backgroundColor: currentTheme?.text,
               opacity: isDraggingRSI ? 0.8 : 0.5, // Increase opacity while dragging
               transition: "opacity 0.2s ease",
             }}
@@ -1896,7 +1896,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const date = new Date(timestamp);
 
         // Draw grid line
-        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.strokeStyle = currentTheme?.grid;
         ctx.lineWidth = 0.5;
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -1924,11 +1924,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
         if (isDateChange || isMarketOpen) {
           ctx.font = `bold 10px ${currentTheme.fontFamily}`;
-          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+          ctx.fillStyle = currentTheme?.text;
         } else {
           ctx.font = `10px ${currentTheme.fontFamily}`;
-          ctx.fillStyle =
-            currentTheme?.textSecondary || defaultTheme.textSecondary;
+          ctx.fillStyle = currentTheme?.textSecondary;
         }
 
         ctx.fillText(timeLabel, x, 20);
@@ -2032,7 +2031,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Set crosshair style
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 0.8;
-    ctx.strokeStyle = currentTheme?.crosshair || defaultTheme.crosshair;
+    ctx.strokeStyle = currentTheme?.crosshair;
 
     // Calculate x-axis position and dimensions
     const xAxisTop = dimensions.height - 30;
@@ -2207,6 +2206,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       if (y < dimensions.padding.top || y > mainChartHeight) {
         return;
       }
+      e.stopPropagation();
 
       // Only if we're in the Y-axis area, proceed with the rest of the logic
       // Get visible data
@@ -2252,6 +2252,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add this function with the other handlers
   const handleXAxisDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      e.stopPropagation();
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
 
@@ -2298,7 +2299,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Draw vertical grid lines only at label positions
       labelPositionsRef.current.forEach(({ x }) => {
-        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.strokeStyle = currentTheme?.grid;
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.8;
         ctx.beginPath();
@@ -2323,38 +2324,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Clear canvas
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-      // If no data, draw default grid lines at regular intervals
+      // Calculate chart dimensions
+      const mainChartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+      const chartHeight =
+        mainChartHeight - dimensions.padding.top - dimensions.padding.bottom;
+
+      // If no data, draw default grid lines at regular intervals...
       if (!data.length) {
-        const defaultPrices = Array.from({ length: 5 }, (_, i) => i * 100);
-        defaultPrices.forEach((price) => {
-          const y =
-            dimensions.padding.top +
-            (price / 400) *
-              (dimensions.height -
-                dimensions.padding.top -
-                dimensions.padding.bottom);
-
-          // Draw grid line
-          ctx.beginPath();
-          ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
-          ctx.lineWidth = 0.5;
-          ctx.globalAlpha = 0.8;
-          ctx.moveTo(dimensions.padding.left, y);
-          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-          ctx.stroke();
-
-          // Draw price label
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = currentTheme?.text || defaultTheme.text;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.font = `10px ${currentTheme.fontFamily}`;
-          ctx.fillText(
-            price.toFixed(2),
-            dimensions.width - dimensions.padding.right + 5,
-            y
-          );
-        });
+        // ... existing default grid lines code ...
         return;
       }
 
@@ -2372,11 +2350,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const priceRange = maxPrice - minPrice;
       const pricePadding = priceRange * 0.15;
 
+      // Calculate adjusted price range with padding and offset
       const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
       const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-
-      const chartHeight =
-        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
 
       // Get grid prices and labels
       const { gridPrices } = calculateGridPrices(
@@ -2388,13 +2364,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         getY
       );
 
-      // Draw horizontal grid lines and price labels
+      // Draw horizontal grid lines and price labels...
       gridPrices.forEach((price) => {
         const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
 
         // Draw grid line
         ctx.beginPath();
-        ctx.strokeStyle = currentTheme?.grid || defaultTheme.grid;
+        ctx.strokeStyle = currentTheme?.grid;
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.8;
         ctx.moveTo(dimensions.padding.left, y);
@@ -2403,7 +2379,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
         // Draw price label
         ctx.globalAlpha = 1;
-        ctx.fillStyle = currentTheme?.text || defaultTheme.text;
+        ctx.fillStyle = currentTheme?.text;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.font = `10px ${currentTheme.fontFamily}`;
@@ -2413,6 +2389,61 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           y
         );
       });
+
+      // After drawing regular grid lines and labels, add the last price label
+      if (data.length > 0) {
+        const lastCandle = data[data.length - 1];
+        const previousCandle = data[data.length - 2];
+
+        if (lastCandle) {
+          const y = getY(
+            lastCandle.close,
+            adjustedMinPrice,
+            adjustedMaxPrice,
+            chartHeight
+          );
+
+          // Determine color based on previous close
+          const isUp = previousCandle
+            ? lastCandle.close >= previousCandle.close
+            : true;
+          const backgroundColor = isUp
+            ? currentTheme?.upColor
+            : currentTheme?.downColor;
+
+          // Format the price
+          const priceText = lastCandle.close.toFixed(2);
+
+          // Calculate label dimensions
+          const labelPadding = 4;
+          const textWidth = ctx.measureText(priceText).width;
+          const labelWidth = textWidth + labelPadding * 2;
+          const labelHeight = 22;
+
+          // Draw label background
+          ctx.fillStyle = backgroundColor;
+          ctx.beginPath();
+          ctx.roundRect(
+            dimensions.width - dimensions.padding.right,
+            y - labelHeight / 2,
+            labelWidth + 2,
+            labelHeight,
+            2 // border radius
+          );
+          ctx.fill();
+
+          // Draw price text
+          ctx.fillStyle = "#ffffff"; // White text
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = `normal 10px ${currentTheme.fontFamily}`;
+          ctx.fillText(
+            priceText,
+            dimensions.width - dimensions.padding.right + labelPadding,
+            y
+          );
+        }
+      }
     },
     [
       dimensions,
@@ -2421,7 +2452,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       viewState.offsetY,
       viewState.scaleY,
       combinedData,
-      data.length,
+      data,
       currentTheme,
       defaultTheme,
       calculateGridPrices,
@@ -2542,7 +2573,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       <DrawingCanvas
         drawings={drawingsForCanvas}
         dimensions={dimensions}
-        theme={currentTheme || defaultTheme}
+        theme={currentTheme}
         selectedTool={selectedTool}
         showDrawings={showDrawings}
         viewState={{
@@ -2567,14 +2598,14 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         position: "relative",
         width: "100%",
         height: "100%",
-        background: currentTheme?.background || defaultTheme.background,
+        background: currentTheme?.background,
         display: "flex",
         flexDirection: "column",
       }}
     >
       <ScrollToRightButton
         onClick={scrollToRight}
-        theme={currentTheme || defaultTheme}
+        theme={currentTheme}
         isVisible={shouldShowScrollButton}
       />
 
@@ -2646,7 +2677,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               <div
                 style={{
                   height: "4px",
-                  backgroundColor: currentTheme?.grid || defaultTheme.grid,
+                  backgroundColor: currentTheme?.grid,
                   cursor: "ns-resize",
                   position: "absolute",
                   bottom: `${rsiHeight}px`,
@@ -2663,7 +2694,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
                     transform: "translate(-50%, -50%)",
                     width: "30px",
                     height: "2px",
-                    backgroundColor: currentTheme?.text || defaultTheme.text,
+                    backgroundColor: currentTheme?.text,
                     opacity: isDraggingRSI ? 0.8 : 0.5,
                     transition: "opacity 0.2s ease",
                   }}
@@ -2710,7 +2741,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       <div
         style={{
           height: "30px",
-          borderTop: `1px solid ${currentTheme?.grid || defaultTheme.grid}`,
+          borderTop: `1px solid ${currentTheme?.grid}`,
           position: "relative",
         }}
       >

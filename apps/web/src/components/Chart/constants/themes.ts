@@ -11,14 +11,13 @@ export const themes: { [key: string]: ChartTheme } = {
     grid: "#363A45",
     crosshair: "#758696",
     axisBackground: "#131722",
-    upColor: "#26A69A",
+    upColor: "#0b9981",
     downColor: "#EF5350",
     buttonHover: "#2A2E39",
     accent: "#2962FF",
     controlsBackground: "#1E222D",
     baseText: "#fff",
     fontFamily: CHART_FONT_FAMILY,
-
   },
   light: {
     background: "#FFFFFF",
@@ -27,13 +26,12 @@ export const themes: { [key: string]: ChartTheme } = {
     grid: "#D6DCDE",
     crosshair: "#758696",
     axisBackground: "#FFFFFF",
-    upColor: "#26A69A",
+    upColor: "#0b9981",
     downColor: "#EF5350",
     buttonHover: "#F0F3FA",
     accent: "#2962FF",
     controlsBackground: "#F8F9FD",
     baseText: "#000",
     fontFamily: CHART_FONT_FAMILY,
-
   },
 };

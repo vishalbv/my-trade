@@ -4,6 +4,7 @@ import { INDEX_DETAILS } from "@repo/utils/constants";
 import { sendMessage } from "../../services/webSocket";
 import _shoonya from "./index";
 import { getNewTicks, getShoonyaPL } from "./functions";
+import notify from "../../services/notification";
 
 interface ShoonyaSocketState {
   _subscribed: string[];
@@ -70,7 +71,16 @@ function receiveQuote(data: any) {
 
 function handleOrderUpdate(order: any) {
   // Handle order updates
-  console.log("Order Update:", order);
+  _shoonya.getOrderBook();
+  if (order.status == "REJECTED") {
+    logger.error(order);
+    return notify.error(order.rejreason);
+  } else if (order.status == "COMPLETE" || order.status == "COMPLETED") {
+    _shoonya.getPositions();
+    _shoonya.getFundInfo();
+
+    return notify.success("order placed");
+  }
 }
 
 function socketClose() {
