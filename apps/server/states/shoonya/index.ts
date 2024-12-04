@@ -10,6 +10,8 @@ import NorenRestApi from "../../services/shoonyaApi/RestApi";
 import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
+import { shoonyaSocket, startShoonyaSocket } from "./socket";
+import { positionsFormatter } from "./functions";
 
 let api = new NorenRestApi();
 const secret = "5GY64JV73GK3A676S6GC63463L33I535";
@@ -32,6 +34,30 @@ class Shoonya extends State {
       this.setAccessToken(_new.access_token);
     }
   };
+
+  getPositions = () =>
+    api
+      .getPositions()
+      .then(({ data }) => {
+        // if data.stat == "Not_Ok" means till now no postions i took almost start of the day
+        if (data.stat == "Not_Ok") {
+          this.setState({
+            positions: [],
+            _db: true,
+          });
+        } else {
+          shoonyaSocket.subscribeTicks(
+            data.map((i: any) => i.exch + "|" + i.token)
+          );
+          this.setState(
+            positionsFormatter({
+              positions: data,
+              currentState: this.getState(),
+            })
+          );
+        }
+      })
+      .catch((e) => console.log(e));
 
   getFundInfo = async () => {
     console.log("getFundInfo");
@@ -59,12 +85,13 @@ class Shoonya extends State {
     }
   };
 
-  initializeShoonya = () => {
-    // this.getPositions();
-
+  initializeShoonya = async () => {
     console.log("initializing shoonya");
     this.getFundInfo();
-    // this.getOrderBook();
+
+    // Start the socket connection using the existing api instance
+    await startShoonyaSocket(api);
+    this.getPositions();
   };
 
   setAccessToken = (access_token: string | null) => {
@@ -121,6 +148,29 @@ class Shoonya extends State {
       return true;
     } catch (error: any) {
       throw new Error(`Failed to logout: ${error.message}`);
+    }
+  };
+
+  searchSymbol = async (exchange: string, text: string) => {
+    try {
+      const data = await api.searchscrip(exchange, text);
+      if (!data?.data?.values) {
+        throw new Error("No search results found");
+      }
+      return {
+        data: data.data.values,
+      };
+    } catch (error: any) {
+      logger.error("Symbol search failed", error);
+      const errorMessage = error.response?.statusText || error.message;
+      if (errorMessage.includes("Not Found")) {
+        return {
+          message: "No search results found",
+          data: [],
+        };
+      } else {
+        throw new Error(`Failed to search symbol: ${errorMessage}`);
+      }
     }
   };
 }

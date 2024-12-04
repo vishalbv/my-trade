@@ -25,3 +25,7 @@ export const logout = (body?: any) => {
 export const getHistory = (body: any) => {
   return postRequest(`history`, body);
 };
+
+export const searchSymbol = (body: any) => {
+  return postRequest(`searchSymbol`, body);
+};

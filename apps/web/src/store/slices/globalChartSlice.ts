@@ -27,6 +27,7 @@ interface GlobalChartState {
   symbolDrawings: {
     [symbol: string]: Drawing[];
   };
+  chartFullScreenId: string | null;
 }
 
 const defaultLayout: ChartState = {
@@ -73,6 +74,7 @@ const initialState: GlobalChartState = {
     "0": defaultLayout,
   },
   symbolDrawings: {},
+  chartFullScreenId: null,
   ...getLocalStorageData(),
 };
 
@@ -82,6 +84,7 @@ const globalChartSlice = createSlice({
   reducers: {
     setSelectedLayout: (state, action: PayloadAction<LayoutType>) => {
       state.selectedLayout = action.payload;
+      state.chartFullScreenId = null;
     },
     setIndicators: (state, action: PayloadAction<Indicator[]>) => {
       state.indicators = action.payload;
@@ -133,6 +136,10 @@ const globalChartSlice = createSlice({
       const symbol = action.payload;
       state.symbolDrawings[symbol] = [];
     },
+    setChartFullScreenId: (state, action: PayloadAction<string>) => {
+      state.chartFullScreenId =
+        state.chartFullScreenId === action.payload ? null : action.payload;
+    },
     updateDrawing: (
       state,
       action: PayloadAction<{ symbol: string; drawing: Drawing }>
@@ -162,6 +169,7 @@ export const {
   setSelectedChartKey,
   clearDrawings,
   updateDrawing,
+  setChartFullScreenId,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

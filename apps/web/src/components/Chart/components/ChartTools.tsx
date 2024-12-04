@@ -10,6 +10,10 @@ import { cn } from "@repo/utils/ui/helpers";
 import { LayoutType } from "../types";
 import { DrawingTools, DrawingTool } from "./DrawingTools";
 import { useState } from "react";
+import { ExitFullScreenIcon, FullScreenIcon } from "../icons/layoutIcons";
+import { useDispatch, useSelector } from "react-redux";
+import { setChartFullScreenId } from "../../../store/slices/globalChartSlice";
+import { RootState } from "../../../store/store";
 
 interface Indicator {
   id: string;
@@ -48,6 +52,14 @@ export function ChartTools({
   showDrawings,
   setShowDrawings,
 }: ChartToolsProps) {
+  const dispatch = useDispatch();
+  const { selectedChartKey, chartFullScreenId } = useSelector(
+    (state: RootState) => state.globalChart
+  );
+  const handleFullScreen = () => {
+    dispatch(setChartFullScreenId(chartFullScreenId ? null : selectedChartKey));
+  };
+
   const handleClearDrawings = () => {
     // Implement clear drawings logic
     console.log("Clear all drawings");
@@ -136,6 +148,19 @@ export function ChartTools({
         setShowDrawings={setShowDrawings}
         onClearDrawings={handleClearDrawings}
       />
+
+      {/* Full Screen Button */}
+      <Button
+        variant="light"
+        size="icon"
+        className={cn(
+          "h-8 w-8 absolute bottom-0",
+          chartFullScreenId ? "text-primary bg-primary/10" : ""
+        )}
+        onClick={handleFullScreen}
+      >
+        {chartFullScreenId ? <ExitFullScreenIcon /> : <FullScreenIcon />}
+      </Button>
     </div>
   );
 }

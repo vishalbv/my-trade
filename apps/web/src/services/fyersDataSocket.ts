@@ -5,6 +5,7 @@ import { store } from "../store/store";
 import { updateFyersWebTick } from "../store/slices/ticksSlice";
 
 let socketInstance: any = null;
+let subscribedSymbolsBeforeConnect: Set<string> = new Set();
 
 export const fyersDataSocketService = {
   connect: (accessToken: string) => {
@@ -29,7 +30,7 @@ export const fyersDataSocketService = {
     socketInstance.on("connect", () => {
       socketInstance.mode(socketInstance.LiteMode);
       console.log(socketInstance.isConnected());
-      socketInstance.subscribe(["NSE:NIFTY50-INDEX", "NSE:SBIN-EQ"]);
+      socketInstance.subscribe([...subscribedSymbolsBeforeConnect]);
     });
 
     socketInstance.on("message", (message: any) => {
@@ -66,6 +67,7 @@ export const fyersDataSocketService = {
     if (socketInstance && socketInstance.isConnected()) {
       socketInstance.subscribe(symbols);
     } else {
+      symbols.forEach((symbol) => subscribedSymbolsBeforeConnect.add(symbol));
       console.error("Socket not connected");
     }
   },

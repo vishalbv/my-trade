@@ -14,6 +14,7 @@ import { PRICECOLOR } from "../../utils/helpers";
 import { useSelector } from "react-redux";
 
 import { RootState } from "../../store/store";
+import { INDEX_DETAILS } from "@repo/utils/constants";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -81,12 +82,7 @@ const Header: React.FC = () => {
         transition: "opacity 0.3s ease",
       }
     : {};
-
-  const marketIndices = [
-    { name: "BANKEX", value: 57971.49, prevValue: 57871.49 },
-    { name: "FIN-NIFTY", value: 23732.7, prevValue: 23932.7 },
-    { name: "NIFTY-BANK", value: 50787.45, prevValue: 50787.45 },
-  ];
+  const indexToDisplay = ["NIFTY-50", "FIN-NIFTY", "NIFTY-BANK"];
 
   return (
     <>
@@ -101,13 +97,8 @@ const Header: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center space-x-4 text-sm gap-2">
-          {marketIndices.map((index) => (
-            <MarketIndex
-              key={index.name}
-              name={index.name}
-              value={index.value}
-              prevValue={index.prevValue}
-            />
+          {indexToDisplay.map((index) => (
+            <MarketIndex key={index} name={index} />
           ))}
         </div>
 
@@ -164,14 +155,20 @@ interface MarketIndexProps {
   prevValue: number;
 }
 
-export const MarketIndex = ({ name, value, prevValue }: MarketIndexProps) => {
-  const change = value - prevValue;
-  const percentageChange = ((change / prevValue) * 100).toFixed(2);
+export const MarketIndex = ({ name }: MarketIndexProps) => {
+  const indexData = INDEX_DETAILS[name];
+
+  const price = useSelector(
+    ({ ticks }: RootState) => ticks.shoonya_server[indexData.shoonyaToken] || {}
+  );
+
+  const change = price.lp - price.c;
+  const percentageChange = price.pc;
 
   return (
     <div className="flex items-center gap-1">
       <span className="font-medium text-xs text-muted-foreground">{name}</span>
-      <span className="mx-1">{value.toFixed(2)}</span>
+      <span className="mx-1">{price.lp}</span>
 
       <span className={cn("text-xs", PRICECOLOR(change))}>
         {change >= 0 ? "+" : ""}

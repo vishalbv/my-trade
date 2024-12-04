@@ -969,22 +969,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         // Adjust exactBarIndex by accounting for the fractional start
         const exactBarIndex = mouseX / barWidth + startIndexFraction;
 
-        // Add detailed logging
-        console.log("Crosshair Details:", {
-          mouseX,
-          barWidth,
-          startIndexFraction,
-          exactBarIndex,
-          roundedIndex: Math.floor(exactBarIndex),
-          nextCandleThreshold: exactBarIndex % 1 >= 0.5,
-          finalIndex:
-            Math.floor(exactBarIndex) + (exactBarIndex % 1 >= 0.5 ? 1 : 0),
-          viewState: {
-            startIndex: viewState.startIndex,
-            flooredStartIndex: Math.floor(viewState.startIndex),
-          },
-        });
-
         // Get the nearest bar index based on which half of the bar we're in
         const barIndex = Math.floor(exactBarIndex);
         const fractionalPart = exactBarIndex - barIndex;
@@ -1987,7 +1971,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Draw crosshair label only if visible
     if (xAxisCrosshair.visible) {
       const timeLabel = timeframeConfig.tickFormat(xAxisCrosshair.timestamp);
-      console.log(timeLabel, timeframeConfig);
+
       const timeLabelWidth = ctx.measureText(timeLabel).width + 10;
       const timeLabelHeight = 20;
 
@@ -2210,10 +2194,21 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     (e: React.MouseEvent<HTMLDivElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-      // Only handle double click on y-axis area
-      if (x < dimensions.width - dimensions.padding.right) return;
+      // Check if click is within Y-axis area (right side of chart)
+      if (x < dimensions.width - dimensions.padding.right) {
+        return;
+      }
 
+      // Check if click is within the main chart area (excluding RSI if enabled)
+      const mainChartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+      if (y < dimensions.padding.top || y > mainChartHeight) {
+        return;
+      }
+
+      // Only if we're in the Y-axis area, proceed with the rest of the logic
       // Get visible data
       const visibleData = combinedData.slice(
         viewState.startIndex,
@@ -2251,14 +2246,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Animate to new state
       animateViewState(targetState);
     },
-    [
-      dimensions,
-      viewState,
-      combinedData,
-      isRSIEnabled,
-      rsiHeight,
-      animateViewState,
-    ]
+    [dimensions, viewState, combinedData, isRSIEnabled, rsiHeight]
   );
 
   // Add this function with the other handlers
@@ -2530,7 +2518,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Wrap the drawing handlers to convert coordinates
     const handleDrawingComplete = useCallback(
       (drawing: Drawing) => {
-        console.log("drawing", drawing);
         const timestampDrawing = convertDrawingToTimestamp(
           drawing,
           combinedData
@@ -2542,8 +2529,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     const handleDrawingUpdate = useCallback(
       (drawing: Drawing) => {
-        console.log("drawing update", drawing);
-
         const timestampDrawing = convertDrawingToTimestamp(
           drawing,
           combinedData

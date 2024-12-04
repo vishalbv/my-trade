@@ -21,8 +21,10 @@ import {
   updateLayoutTimeframe,
   setSelectedChartKey,
   updateDrawing,
+  setChartFullScreenId,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
+import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
 
 interface Indicator {
   id: string;
@@ -57,9 +59,8 @@ export const ChartContainer = ({
   className,
 }: ChartContainerProps) => {
   const dispatch = useDispatch();
-  const { selectedTool, showDrawings, selectedChartKey } = useSelector(
-    (state: RootState) => state.globalChart
-  );
+  const { selectedTool, showDrawings, selectedChartKey, chartFullScreenId } =
+    useSelector((state: RootState) => state.globalChart);
   const chartState = useSelector((state: RootState) => {
     if (!state.globalChart.layouts[chartKey]) {
       dispatch(initializeLayout({ chartKey }));
@@ -87,6 +88,29 @@ export const ChartContainer = ({
       state.globalChart.symbolDrawings[chartState.symbol] || []
   );
 
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        const roundedWidth = Math.round(width / 30) * 30;
+        setContainerWidth(roundedWidth);
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+    };
+  }, [containerRef]);
+
   useEffect(() => {
     if (containerRef.current) {
       const resizeEvent = new Event("resize");
@@ -112,6 +136,11 @@ export const ChartContainer = ({
     return null; // Or render an error state
   }
 
+  const handleDoubleClick = () => {
+    dispatch(setChartFullScreenId(chartKey));
+    console.log("double clicked");
+  };
+
   return (
     <div
       ref={containerRef}
@@ -120,12 +149,13 @@ export const ChartContainer = ({
         selectedChartKey === chartKey && selectedLayout !== "single"
           ? "border-blue-500 border dark:border-0.5"
           : "border-transparent border dark:border-0.5",
+        chartFullScreenId === chartKey && "absolute inset-0 z-50",
         className
       )}
       onMouseDown={handleChartClick}
     >
       {/* Chart Header */}
-      <div className="flex items-center p-1 border-b border-border">
+      <div className="flex items-center p-1 border-b border-border bg-background">
         <div className="flex items-center">
           {/* Symbol Button */}
           <Button
@@ -181,13 +211,19 @@ export const ChartContainer = ({
       <SymbolSearch
         isOpen={isSymbolSearchOpen}
         onClose={() => setIsSymbolSearchOpen(false)}
-        onSymbolSelect={(symbol) =>
-          dispatch(updateLayoutSymbol({ chartKey, symbol }))
-        }
+        onSymbolSelect={(symbol) => {
+          dispatch(
+            updateLayoutSymbol({
+              chartKey,
+              symbol: shoonyaToFyersSymbol(symbol),
+            })
+          );
+          setIsSymbolSearchOpen(false);
+        }}
       />
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0" onDoubleClick={handleDoubleClick}>
         <CanvasChart
-          key={`${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
+          key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}`}
           data={chartData}
           timeframeConfig={currentTimeframeConfig}
           indicators={indicators}

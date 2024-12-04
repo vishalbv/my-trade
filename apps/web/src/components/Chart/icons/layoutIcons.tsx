@@ -240,3 +240,31 @@ export const VerticalStackIcon = () => (
     />
   </svg>
 );
+
+export const FullScreenIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 18 18"
+    width="18"
+    height="18"
+  >
+    <path
+      fill="currentColor"
+      d="M15 8V3h-5V2h6v6h-1ZM3 10v5h5v1H2v-6h1Z"
+    ></path>
+  </svg>
+);
+
+export const ExitFullScreenIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 18 18"
+    width="18"
+    height="18"
+  >
+    <path
+      fill="currentColor"
+      d="M11 2v5h5v1h-6V2h1ZM7 16v-5H2v-1h6v6H7Z"
+    ></path>
+  </svg>
+);

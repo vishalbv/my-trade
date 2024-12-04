@@ -1,124 +1,119 @@
-// @ts-nocheck
+import web_socket from "ws";
 
-import WebSocket from "ws";
-import { API } from "./config.js";
-
-const triggers = {
+let triggers = {
   open: [],
   quote: [],
   order: [],
+  close: [],
 };
 
-// Helper function to trigger event callbacks
-const trigger = (e, args) => {
-  if (!triggers[e]) return;
-  triggers[e].forEach((callback) => callback.apply(callback, args || []));
-};
+import { API } from "./config.js";
 
-class WebSocketClient {
-  #ws = null;
-  #apikey;
-  #url;
-  #timeout;
+let WebSocketClient = function (cred, params) {
+  let self = this;
 
-  constructor(cred) {
-    this.#apikey = cred.apikey;
-    this.#url = cred.url;
-    this.#timeout = API.heartbeat || 3000;
-  }
+  let ws = null;
 
-  async connect(params, callbacks) {
-    if (!this.#apikey || !this.#url) {
-      throw new Error("apikey or url is missing");
-    }
+  let apikey = cred.apikey;
 
+  let url = cred.url;
+
+  let timeout = API.heartbeat || 3000;
+
+  this.connect = function (params, callbacks) {
     return new Promise((resolve, reject) => {
-      this.#setCallbacks(callbacks);
+      if (apikey === null || url === null) return "apikey or url is missing";
 
-      this.#ws = new WebSocket(this.#url, null, { rejectUnauthorized: false });
+      //callbacks to the app are set here
+      this.set_callbacks(callbacks);
 
-      this.#ws.onopen = () => {
-        setInterval(() => {
-          this.#ws.send('{"t":"h"}');
-        }, this.#timeout);
+      ws = new web_socket(url, undefined, { rejectUnauthorized: false });
 
-        const values = {
-          t: "c",
-          uid: params.uid,
-          actid: params.actid,
-          susertoken: params.apikey,
-          source: "API",
-        };
+      ws.onopen = function onOpen(evt) {
+        setInterval(function () {
+          var _hb_req = '{"t":"h"}';
+          ws.send(_hb_req);
+        }, timeout);
 
-        this.#ws.send(JSON.stringify(values));
+        //prepare the data
+        let values = { t: "c" };
+        values["uid"] = params.uid;
+        values["actid"] = params.actid;
+        values["susertoken"] = params.apikey;
+        values["source"] = "API";
+        console.log(JSON.stringify(values));
+        ws.send(JSON.stringify(values));
         resolve();
       };
+      ws.onmessage = function (evt) {
+        var result = JSON.parse(evt.data);
+        // console.log(result);
 
-      this.#ws.onmessage = (evt) => {
-        const result = JSON.parse(evt.data);
-        console.log(result);
-
-        switch (result.t) {
-          case "ck":
-            trigger("open", [result]);
-            break;
-          case "tk":
-          case "tf":
-          case "dk":
-          case "df":
-            trigger("quote", [result]);
-            break;
-          case "om":
-            trigger("order", [result]);
-            break;
+        if (result.t == "ck") {
+          trigger("open", [result]);
+        }
+        if (result.t == "tk" || result.t == "tf") {
+          trigger("quote", [result]);
+        }
+        if (result.t == "dk" || result.t == "df") {
+          trigger("quote", [result]);
+        }
+        if (result.t == "om") {
+          trigger("order", [result]);
         }
       };
-
-      this.#ws.onerror = (evt) => {
+      ws.onerror = function (evt) {
         console.log("error::", evt);
         trigger("error", [JSON.stringify(evt.data)]);
-        this.connect();
+        setTimeout(() => {
+          console.log("retrying to connect shoonya socket");
+          self.connect(params, callbacks).catch((e) => console.log(e));
+        }, 5000);
         reject(evt);
       };
-
-      this.#ws.onclose = (evt) => {
+      ws.onclose = function (evt) {
         console.log("Socket closed");
         trigger("close", [JSON.stringify(evt.data)]);
       };
     });
-  }
-
-  #setCallbacks(callbacks) {
-    const callbackMap = {
-      socket_open: "open",
-      socket_close: "close",
-      socket_error: "error",
-      quote: "quote",
-      order: "order",
-    };
-
-    Object.entries(callbackMap).forEach(([key, event]) => {
-      if (callbacks[key]) {
-        this.on(event, callbacks[key]);
-      }
-    });
-  }
-
-  send(data) {
-    if (!this.#ws) throw new Error("WebSocket not connected");
-    this.#ws.send(data);
-  }
-
-  on(event, callback) {
-    if (triggers.hasOwnProperty(event)) {
-      triggers[event].push(callback);
+  };
+  this.set_callbacks = function (callbacks = {}) {
+    if (callbacks.socket_open !== undefined) {
+      this.on("open", callbacks.socket_open);
     }
-  }
-
-  close() {
-    if (this.#ws) {
-      this.#ws.close();
+    if (callbacks.socket_close !== undefined) {
+      this.on("close", callbacks.socket_close);
     }
+    if (callbacks.socket_error !== undefined) {
+      this.on("error", callbacks.socket_error);
+    }
+    if (callbacks.quote !== undefined) {
+      this.on("quote", callbacks.quote);
+    }
+    if (callbacks.order !== undefined) {
+      this.on("order", callbacks.order);
+    }
+  };
+  this.send = function (data) {
+    ws.send(data);
+  };
+
+  this.on = function (e, callback) {
+    if (triggers.hasOwnProperty(e)) {
+      triggers[e][0] = callback;
+    }
+  };
+
+  this.close = function () {
+    ws.close();
+  };
+};
+
+// trigger event callbacks
+function trigger(e, args) {
+  if (!triggers[e]) return;
+  for (var n = 0; n < triggers[e].length; n++) {
+    triggers[e][n].apply(triggers[e][n], args ? args : []);
   }
 }
 

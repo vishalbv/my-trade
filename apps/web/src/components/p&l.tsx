@@ -8,9 +8,9 @@ export const PnL = () => {
     ({ states }: RootState) => states.shoonya || {}
   );
 
-  //   const { _shoonyaPL } = useSelector((s: RootState) => s.ticks_shoonya);
+  const { _shoonyaPL } = useSelector((s: RootState) => s.ticks.shoonya_server);
 
-  const _shoonyaPL = 1000;
+  // const _shoonyaPL = 1000;
 
   const [showInPerc, setShowidPerc] = useState(true);
 

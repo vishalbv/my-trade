@@ -36,7 +36,7 @@ export const drawHorizontalLine = ({
   ctx.stroke();
 
   // Draw price label with background
-  const price = points[0].y.toFixed(2);
+  const price = points[0]?.y?.toFixed(2);
   const textWidth = ctx.measureText(price).width;
   const padding = 4;
 

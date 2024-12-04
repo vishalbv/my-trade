@@ -13,10 +13,14 @@ interface TicksState {
   fyers_web: {
     [symbol: string]: TickData;
   };
+  shoonya_server: {
+    [symbol: string]: number | string;
+  };
 }
 
 const initialState: TicksState = {
   fyers_web: {},
+  shoonya_server: {},
 };
 
 export const ticksSlice = createSlice({
@@ -36,11 +40,25 @@ export const ticksSlice = createSlice({
     clearFyersWebTicks(state) {
       state.fyers_web = {};
     },
+    updateShoonyaServerTick(
+      state,
+      action: PayloadAction<{ [symbol: string]: number | string }>
+    ) {
+      console.log("updateShoonyaServerTick", action.payload);
+      state.shoonya_server = {
+        ...state.shoonya_server,
+        ...action.payload,
+      };
+    },
   },
 });
 
 // Export actions
-export const { updateFyersWebTick, clearFyersWebTicks } = ticksSlice.actions;
+export const {
+  updateFyersWebTick,
+  clearFyersWebTicks,
+  updateShoonyaServerTick,
+} = ticksSlice.actions;
 
 // Export reducer
 export default ticksSlice.reducer;

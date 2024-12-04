@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,8 @@ import {
   DialogTitle,
 } from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
+import { searchSymbol } from "../../../store/actions/appActions";
+import { INDEX_DETAILS } from "@repo/utils/constants";
 
 interface SymbolSearchProps {
   isOpen: boolean;
@@ -20,18 +22,65 @@ const INDICES = [
   { symbol: "NSE:MIDCPNIFTY-INDEX", description: "MIDCAP NIFTY" },
 ];
 
+const chipStyles = {
+  base: "px-4 py-0.5 rounded-full cursor-pointer text-sm font-medium h-6",
+  active: "bg-primary text-primary-foreground",
+  inactive: "bg-muted hover:bg-muted/80",
+};
+
+const symbolTypes = [
+  { id: "stocks", label: "Stocks", exchange: "NSE" },
+  { id: "options", label: "Options", exchange: "NFO" },
+] as const;
+
 export const SymbolSearch = ({
   isOpen,
   onClose,
   onSymbolSelect,
 }: SymbolSearchProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState({
+    exchange: "NSE",
+    text: "",
+  });
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedType, setSelectedType] =
+    useState<(typeof symbolTypes)[number]["id"]>("stocks");
 
-  const filteredIndices = INDICES.filter(
-    (index) =>
-      index.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      index.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleTypeChange = (type: (typeof symbolTypes)[number]["id"]) => {
+    setSelectedType(type);
+    setSearchTerm({
+      exchange: symbolTypes.find((t) => t.id === type)?.exchange || "NSE",
+      text: "",
+    });
+    setSearchResults([]);
+  };
+
+  const fetchSearchResults = async (exchange: string, text: string) => {
+    try {
+      const response = (await searchSymbol({
+        exchange: searchTerm.exchange,
+        text: searchTerm.text,
+        broker: "shoonya",
+      })) as any;
+
+      if (response && Array.isArray(response)) {
+        return response;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching historical data:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (searchTerm.text.length > 2 && searchTerm.exchange) {
+      fetchSearchResults(searchTerm.exchange, searchTerm.text).then((res) => {
+        console.log(res, "ppppppp");
+        setSearchResults(res || []);
+      });
+    }
+  }, [searchTerm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -39,30 +88,62 @@ export const SymbolSearch = ({
         <DialogHeader>
           <DialogTitle>Symbol Search</DialogTitle>
         </DialogHeader>
+
         <Input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search indices..."
+          value={searchTerm.text}
+          onChange={(e) =>
+            setSearchTerm({ ...searchTerm, text: e.target.value })
+          }
+          placeholder={`Search ${selectedType}...`}
           className="my-4"
           autoFocus
         />
         <div className="max-h-[400px] overflow-y-auto">
-          {filteredIndices.map((index) => (
+          <div className="flex gap-2 mb-4">
+            {Object.keys(INDEX_DETAILS).map((index) => (
+              <button
+                key={index}
+                className={`${chipStyles.base} ${chipStyles.inactive}`}
+                onClick={() => {
+                  const symbol = { name: index, type: "index" };
+                  onSymbolSelect(symbol);
+                }}
+              >
+                {index}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            {symbolTypes.map((type) => (
+              <button
+                key={type.id}
+                className={`${chipStyles.base} ${
+                  selectedType === type.id
+                    ? chipStyles.active
+                    : chipStyles.inactive
+                }`}
+                onClick={() => handleTypeChange(type.id)}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
+          {searchResults.map((symbol) => (
             <div
-              key={index.symbol}
+              key={symbol.token}
               className="px-4 py-3 hover:bg-muted cursor-pointer flex justify-between items-center rounded-md"
               onClick={() => {
-                onSymbolSelect(index.symbol);
-                onClose();
+                onSymbolSelect(symbol);
               }}
             >
               <div>
-                <div className="font-medium">{index.description}</div>
+                <div className="font-medium">{symbol.tsym}</div>
                 <div className="text-sm text-muted-foreground">
-                  {index.symbol}
+                  {symbol.cname || symbol.dname}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">NSE</div>
+              <div className="text-xs text-muted-foreground">{symbol.exch}</div>
             </div>
           ))}
         </div>

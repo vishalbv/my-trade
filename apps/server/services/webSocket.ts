@@ -139,7 +139,7 @@ function handleNotificationEvent(data: any) {
 
 export function broadcastMessage(event: string, data: any) {
   const message: WebSocketMessage = { event, data };
-  logger.info(`Broadcasting message to ${clients.size} clients:`, message);
+  // logger.info(`Broadcasting message to ${clients.size} clients:`, message);
 
   const messageString = JSON.stringify(message);
   clients.forEach((client) => {

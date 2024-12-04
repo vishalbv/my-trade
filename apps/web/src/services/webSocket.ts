@@ -1,4 +1,5 @@
 import { setStatesByID } from "../store/slices/stateSlice";
+import { updateShoonyaServerTick } from "../store/slices/ticksSlice";
 import store from "../store/store";
 import { allStates } from "../utils/constants";
 import notify, { notifyServerSide } from "./notification";
@@ -44,6 +45,8 @@ function connect() {
 
     if (event === "notification") {
       notifyServerSide(data);
+    } else if (event === "ticks_shoonya_server") {
+      dispatch(updateShoonyaServerTick(data));
     } else if (allStates.includes(event)) {
       console.log("setting states", event, data);
       dispatch(setStatesByID({ id: event, data }));

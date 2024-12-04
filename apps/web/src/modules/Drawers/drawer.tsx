@@ -88,12 +88,12 @@ const IconButton = ({
     onClick={onClick}
     variant="primary-hover"
     size="xs"
-    className={`flex text-foreground/80 items-center gap-1 px-2 py-2 rounded-lg transition-colors bg-primary/10 rounded-b-none border-primary/20 border-0.5 ${
+    className={`h-6 flex text-foreground/80 items-center gap-1 px-2 py-1 rounded-lg transition-colors bg-primary/10 rounded-b-none border-primary/20 border-0.5 ${
       isActive ? "text-primary" : ""
     }`}
   >
-    <div className="w-5 h-5 pt-0.5">{icon}</div>
+    <div className="w-3 h-3 mb-1 mr-2">{icon}</div>
     <span className="text-xs font-base">{label}</span>
-    <span className="opacity-50">{directionIcon}</span>
+    <span className="opacity-50 ml-1">{directionIcon}</span>
   </Button>
 );

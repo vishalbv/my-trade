@@ -129,7 +129,10 @@ class Fyers extends State {
       });
 
       if (response.s === "ok") {
-        return response;
+        return {
+          message: response.message || "Historical data retrieved successfully",
+          data: response,
+        };
       }
       throw new Error(
         `Failed to fetch historical data: ${JSON.stringify(response)}`
