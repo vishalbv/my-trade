@@ -10,22 +10,6 @@ import {
 import { RootState } from "../../src/store/store";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@repo/ui/dropdown-menu";
-import { Button } from "@repo/ui/button";
-import { Separator } from "@repo/ui/separator";
-import { cn } from "@repo/utils/ui/helpers";
-import {
-  LayoutGrid,
-  Monitor,
-  PanelLeftOpen,
-  PanelTop,
-  LineChart,
-} from "lucide-react";
-import {
   SingleChartIcon,
   HorizontalSplitIcon,
   TopTwoBottomOneIcon,
@@ -35,9 +19,8 @@ import {
   VerticalStackIcon,
 } from "../../src/components/Chart/icons/layoutIcons";
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
-import { SymbolSearch } from "../../src/components/Chart/components/SymbolSearch";
+
 import { ChartTools } from "../../src/components/Chart/components/ChartTools";
-import { DrawingTool } from "../../src/components/Chart/components/DrawingTools";
 
 interface TimeframeConfig {
   resolution: string;
@@ -117,13 +100,6 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
     },
   },
 };
-
-const timeframeOptions = [
-  { value: "1", label: "1 Minute", shortLabel: "1m" },
-  { value: "5", label: "5 Minutes", shortLabel: "5m" },
-  { value: "15", label: "15 Minutes", shortLabel: "15m" },
-  { value: "D", label: "1 Day", shortLabel: "1D" },
-];
 
 // Layout types
 type LayoutType =

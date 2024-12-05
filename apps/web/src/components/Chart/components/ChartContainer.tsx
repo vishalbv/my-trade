@@ -223,7 +223,7 @@ export const ChartContainer = ({
       />
       <div className="flex-1 min-h-0" onDoubleClick={handleDoubleClick}>
         <CanvasChart
-          key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}`}
+          key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}-${chartFullScreenId}`}
           data={chartData}
           timeframeConfig={currentTimeframeConfig}
           indicators={indicators}

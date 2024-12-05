@@ -263,18 +263,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     return holidays.includes(formattedDate) || isWeekend(date);
   };
 
-  // Add this helper function at the top
-  const isMarketOpen = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-
-    // Market is open between 9:15 AM and 3:30 PM
-    return (
-      ((hours === 9 && minutes >= 15) || (hours === 15 && minutes <= 29)) &&
-      !isHoliday(date)
-    );
-  };
-
   const createDummyCandles = useCallback(
     (lastCandle: OHLCData | undefined, count: number): OHLCData[] => {
       if (!lastCandle) return [];
@@ -286,18 +274,27 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const getNextTradingTime = (date: Date): Date => {
         const nextDate = new Date(date.getTime());
 
-        // If outside trading hours (9:15 AM - 3:30 PM), move to next trading day
-        const hours = nextDate.getHours();
-        const minutes = nextDate.getMinutes();
-        const totalMinutes = hours * 60 + minutes;
+        // Keep checking next days until we find a valid trading day
+        while (true) {
+          const hours = nextDate.getHours();
+          const minutes = nextDate.getMinutes();
+          const totalMinutes = hours * 60 + minutes;
 
-        if (totalMinutes < 9 * 60 + 15 || totalMinutes > 15 * 60 + 29) {
+          // If outside trading hours (9:15 AM - 3:30 PM), move to next day at market open
+          if (totalMinutes < 9 * 60 + 15 || totalMinutes > 15 * 60 + 29) {
+            nextDate.setDate(nextDate.getDate() + 1);
+            nextDate.setHours(9, 15, 0, 0);
+          }
+
+          // Check if this is a valid trading day
+          if (!isHoliday(nextDate)) {
+            return nextDate;
+          }
+
+          // If it's a holiday/weekend, try the next day
           nextDate.setDate(nextDate.getDate() + 1);
           nextDate.setHours(9, 15, 0, 0);
-          return nextDate;
         }
-
-        return nextDate;
       };
 
       for (let i = 1; i <= count; i++) {
@@ -1053,24 +1050,24 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add resize observer effect if not already present
 
   // Update the calculateTimeStep function for better time intervals
-  const calculateTimeStep = (
-    timeRange: number,
-    visibleBars: number
-  ): number => {
-    const msPerDay = 86400000;
-    const msPerHour = 3600000;
-    const msPerMinute = 60000;
+  // const calculateTimeStep = (
+  //   timeRange: number,
+  //   visibleBars: number
+  // ): number => {
+  //   const msPerDay = 86400000;
+  //   const msPerHour = 3600000;
+  //   const msPerMinute = 60000;
 
-    // More granular time steps like TradingView
-    if (timeRange > msPerDay * 5) return msPerDay; // Daily
-    if (timeRange > msPerDay) return msPerHour * 6; // 6 hours
-    if (timeRange > msPerHour * 12) return msPerHour * 2; // 2 hours
-    if (timeRange > msPerHour * 4) return msPerHour; // 1 hour
-    if (timeRange > msPerHour * 2) return msPerMinute * 30; // 30 minutes
-    if (timeRange > msPerHour) return msPerMinute * 15; // 15 minutes
-    if (timeRange > msPerMinute * 30) return msPerMinute * 5; // 5 minutes
-    return msPerMinute; // 1 minute
-  };
+  //   // More granular time steps like TradingView
+  //   if (timeRange > msPerDay * 5) return msPerDay; // Daily
+  //   if (timeRange > msPerDay) return msPerHour * 6; // 6 hours
+  //   if (timeRange > msPerHour * 12) return msPerHour * 2; // 2 hours
+  //   if (timeRange > msPerHour * 4) return msPerHour; // 1 hour
+  //   if (timeRange > msPerHour * 2) return msPerMinute * 30; // 30 minutes
+  //   if (timeRange > msPerHour) return msPerMinute * 15; // 15 minutes
+  //   if (timeRange > msPerMinute * 30) return msPerMinute * 5; // 5 minutes
+  //   return msPerMinute; // 1 minute
+  // };
 
   // Update formatTimeLabel function to be more intelligent
   const formatTimeLabel = useCallback((date: Date, prevDate: Date | null) => {
@@ -1136,21 +1133,21 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   };
 
   // Add function to check label overlap
-  const willLabelsOverlap = (
-    ctx: CanvasRenderingContext2D,
-    labels: { x: number; text: string }[],
-    minSpacing: number
-  ): boolean => {
-    for (let i = 1; i < labels.length; i++) {
-      const prevLabel = labels[i - 1];
-      const currentLabel = labels[i];
-      if (!prevLabel || !currentLabel) continue;
-      const prevWidth = ctx.measureText(prevLabel.text).width;
-      const spacing = currentLabel.x - (prevLabel.x + prevWidth);
-      if (spacing < minSpacing) return true;
-    }
-    return false;
-  };
+  // const willLabelsOverlap = (
+  //   ctx: CanvasRenderingContext2D,
+  //   labels: { x: number; text: string }[],
+  //   minSpacing: number
+  // ): boolean => {
+  //   for (let i = 1; i < labels.length; i++) {
+  //     const prevLabel = labels[i - 1];
+  //     const currentLabel = labels[i];
+  //     if (!prevLabel || !currentLabel) continue;
+  //     const prevWidth = ctx.measureText(prevLabel.text).width;
+  //     const spacing = currentLabel.x - (prevLabel.x + prevWidth);
+  //     if (spacing < minSpacing) return true;
+  //   }
+  //   return false;
+  // };
 
   // Add this before calculateGridPrices
   const getY = useCallback(
@@ -1265,27 +1262,27 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   };
 
   // Add this function to calculate clip boundaries
-  const getClipBoundaries = useCallback(() => {
-    const chartWidth =
-      dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const totalHeight =
-      dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
-    const chartHeight =
-      totalHeight - dimensions.padding.top - dimensions.padding.bottom;
+  // const getClipBoundaries = useCallback(() => {
+  //   const chartWidth =
+  //     dimensions.width - dimensions.padding.left - dimensions.padding.right;
+  //   const totalHeight =
+  //     dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+  //   const chartHeight =
+  //     totalHeight - dimensions.padding.top - dimensions.padding.bottom;
 
-    return {
-      left: chartWidth, // 1x chart width to the left
-      right: chartWidth, // 1x chart width to the right
-      top: chartHeight, // 1x chart height to the top
-      bottom: chartHeight, // 1x chart height to the bottom
-    };
-  }, [
-    dimensions.width,
-    dimensions.height,
-    dimensions.padding,
-    isRSIEnabled,
-    rsiHeight,
-  ]);
+  //   return {
+  //     left: chartWidth, // 1x chart width to the left
+  //     right: chartWidth, // 1x chart width to the right
+  //     top: chartHeight, // 1x chart height to the top
+  //     bottom: chartHeight, // 1x chart height to the bottom
+  //   };
+  // }, [
+  //   dimensions.width,
+  //   dimensions.height,
+  //   dimensions.padding,
+  //   isRSIEnabled,
+  //   rsiHeight,
+  // ]);
 
   // Update the drawChart function to use calculateBarX
   const drawChart = useCallback(
@@ -1324,18 +1321,18 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Calculate adjusted price range with padding
       const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
       const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-      const adjustedPriceRange =
-        (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
+      // const adjustedPriceRange =
+      //   (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
 
-      // Get grid prices and labels
-      const { gridPrices, priceLabels } = calculateGridPrices(
-        minPrice,
-        maxPrice,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight,
-        getY
-      );
+      // // Get grid prices and labels
+      // const { gridPrices, priceLabels } = calculateGridPrices(
+      //   minPrice,
+      //   maxPrice,
+      //   adjustedMinPrice,
+      //   adjustedMaxPrice,
+      //   chartHeight,
+      //   getY
+      // );
 
       // Draw horizontal grid lines
       // gridPrices.forEach((price) => {
@@ -1835,13 +1832,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   );
 
   // Helper function to format date
-  const formatDate = (date: Date, showYear = false) => {
-    const month = date.toLocaleString("default", { month: "short" });
-    const day = date.getDate();
-    const year = date.getFullYear();
+  // const formatDate = (date: Date, showYear = false) => {
+  //   const month = date.toLocaleString("default", { month: "short" });
+  //   const day = date.getDate();
+  //   const year = date.getFullYear();
 
-    return showYear ? `${month}/${year}` : `${month}/${day}`;
-  };
+  //   return showYear ? `${month}/${year}` : `${month}/${day}`;
+  // };
 
   // Add this helper function near the top of the component to calculate x positions
 
@@ -1896,15 +1893,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const date = new Date(timestamp);
 
         // Draw grid line
-        ctx.strokeStyle = currentTheme?.grid;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, dimensions.height - 30); // Draw line up to x-axis
-        ctx.stroke();
+        // ctx.strokeStyle = currentTheme?.grid;
+        // ctx.lineWidth = 0.5;
+        // ctx.beginPath();
+        // ctx.moveTo(x, 0);
+        // ctx.lineTo(x, dimensions.height - 30); // Draw line up to x-axis
+        // ctx.stroke();
 
         // Draw tick mark
         ctx.beginPath();
+        ctx.strokeStyle = currentTheme?.grid;
+        ctx.lineWidth = 0.5;
         ctx.moveTo(x, 0);
         ctx.lineTo(x, 8);
         ctx.stroke();
