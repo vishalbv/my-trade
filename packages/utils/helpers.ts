@@ -43,8 +43,8 @@ export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
     DEC: "D",
   };
   let arr = symbol.tsym.match(/[a-zA-Z]+|[0-9]+(?:\.[0-9]+|)/g);
-
-  const monthly = !symbol.weekly;
+  console.log(arr);
+  const monthly = !symbol.weekly || symbol.weekly == "W4";
   return (
     "NSE:" +
     arr[0] +

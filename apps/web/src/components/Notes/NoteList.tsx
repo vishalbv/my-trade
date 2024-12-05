@@ -40,7 +40,7 @@ export function NoteList() {
   };
 
   const handleCreateNote = async () => {
-    if (!newNote.title.trim()) return;
+    // if (!newNote.title.trim()) return;
 
     await createNote(newNote);
     setNewNote({ title: "", description: "", priority: false });

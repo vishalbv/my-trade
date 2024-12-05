@@ -54,16 +54,34 @@ export function initializeWebSocket() {
       try {
         const url = new URL(req.url);
         const urlParams = url.pathname.split("/").filter(Boolean);
-        const params = { id: urlParams[urlParams.length - 1] }; // Assumes ID is the last URL segment
+
+        let id: string | undefined;
+        let routePath: string;
+
+        // Only extract ID for PUT and DELETE methods
+        if (req.method === "PUT" || req.method === "DELETE") {
+          id = urlParams[urlParams.length - 1];
+          routePath = "/" + urlParams.slice(0, -1).join("/");
+        } else {
+          routePath = "/" + urlParams.join("/");
+        }
+
+        // Get query parameters
+        const queryParams: Record<string, string> = {};
+        url.searchParams.forEach((value, key) => {
+          queryParams[key] = value;
+        });
 
         const handler =
-          apiHandlers[
-            `${req.method} ${url.pathname}` as keyof typeof apiHandlers
-          ];
+          apiHandlers[`${req.method} ${routePath}` as keyof typeof apiHandlers];
 
         if (handler) {
-          const body = req.method !== "GET" ? await req.json() : undefined;
-          const response = await handler({ body, params });
+          const body = req.method === "POST" ? await req.json() : undefined;
+          const response = await handler({
+            body,
+            params: id ? { id } : undefined,
+            query: queryParams,
+          });
           return new Response(JSON.stringify(response), {
             headers: {
               "Content-Type": "application/json",

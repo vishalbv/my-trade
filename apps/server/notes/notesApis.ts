@@ -55,7 +55,7 @@ export const declareNoteApis = () => ({
     }
   },
 
-  "PUT /api/notes/:id": async ({
+  "PUT /api/notes": async ({
     body,
     params,
   }: {
@@ -84,7 +84,7 @@ export const declareNoteApis = () => ({
     }
   },
 
-  "DELETE /api/notes/:id": async ({ params }: { params: { id: string } }) => {
+  "DELETE /api/notes": async ({ params }: { params: { id: string } }) => {
     try {
       const noteId = params.id;
       await dbService.deleteDocument("notes", noteId);
