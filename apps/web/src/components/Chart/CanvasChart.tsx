@@ -2543,7 +2543,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Convert drawings to data index coordinates for rendering
     const drawingsForCanvas = useMemo(() => {
       return convertDrawingsToDataIndex(drawings, combinedData);
-    }, [drawings, combinedData]);
+    }, [drawings, combinedData.length]);
 
     // Wrap the drawing handlers to convert coordinates
     const handleDrawingComplete = useCallback(

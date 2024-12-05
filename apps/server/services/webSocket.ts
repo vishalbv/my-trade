@@ -146,7 +146,7 @@ export function broadcastMessage(event: string, data: any) {
     try {
       if (client.readyState === 1) {
         client.send(messageString);
-        logger.info("Message sent successfully to a client");
+        // logger.info("Message sent successfully to a client");
       } else {
         logger.warn(`Client in unexpected state: ${client.readyState}`);
       }

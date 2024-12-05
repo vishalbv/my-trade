@@ -38,10 +38,7 @@ function connect() {
   };
 
   socket.onmessage = (response: MessageEvent<any>) => {
-    console.log("Received:", response.data);
-
     const { event, data } = JSON.parse(response.data);
-    console.log("event", event);
 
     if (event === "notification") {
       notifyServerSide(data);

@@ -148,14 +148,12 @@ export const useRealtimeCandles = ({
       return;
 
     const currentPrice = parseFloat(tickData[symbol].ltp);
-    console.log("tickData", tickData[symbol]);
 
     setChartData((prevCandles) => {
       const updatedCandles = [...prevCandles];
       const lastCandle = updatedCandles[updatedCandles.length - 1];
 
       if (lastCandle) {
-        // console.log("tickData", tickData[symbol]);
         const updatedLastCandle = {
           ...lastCandle,
           close: currentPrice,

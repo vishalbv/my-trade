@@ -44,7 +44,6 @@ export const ticksSlice = createSlice({
       state,
       action: PayloadAction<{ [symbol: string]: number | string }>
     ) {
-      console.log("updateShoonyaServerTick", action.payload);
       state.shoonya_server = {
         ...state.shoonya_server,
         ...action.payload,
