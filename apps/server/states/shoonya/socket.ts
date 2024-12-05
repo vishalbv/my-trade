@@ -76,10 +76,20 @@ function handleOrderUpdate(order: any) {
     logger.error(order);
     return notify.error(order.rejreason);
   } else if (order.status == "COMPLETE" || order.status == "COMPLETED") {
-    _shoonya.getPositions();
-    _shoonya.getFundInfo();
+    //TO-DO added delay to get positions and fund info
 
-    return notify.success("order placed");
+    setTimeout(() => {
+      _shoonya.getPositions();
+      _shoonya.getFundInfo();
+    }, 500);
+    setTimeout(() => {
+      _shoonya.getPositions();
+      _shoonya.getFundInfo();
+    }, 1000);
+    return notify.success({
+      title: `Order placed: ${order.tsym}`,
+      description: `${order.trantype == "S" ? "Sell" : "Buy"} ${order.qty} at ${order.avgprc}`,
+    });
   }
 }
 
