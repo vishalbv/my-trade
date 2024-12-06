@@ -13,6 +13,12 @@ interface DrawPositionProps {
   type: "longPosition" | "shortPosition";
   POINT_RADIUS: number;
   POINT_BORDER_WIDTH: number;
+  isSelected: boolean;
+  draggingPoint: {
+    drawingId: string;
+    pointIndex: number;
+    originalPoint: Point;
+  } | null;
 }
 
 export const drawPosition = ({
@@ -27,6 +33,8 @@ export const drawPosition = ({
   dimensions,
   POINT_RADIUS,
   POINT_BORDER_WIDTH,
+  isSelected,
+  draggingPoint,
 }: DrawPositionProps) => {
   if (points.length < 4) return;
 
@@ -110,24 +118,31 @@ export const drawPosition = ({
   //   ctx.lineTo(right.x, Math.max(stop.y, entry.y));
   //   ctx.stroke();
 
-  // Draw points when hovered or drawing is highlighted
-  if (isHighlighted) {
-    [entry, stop, target, right].forEach((point, index) => {
-      // Draw point fill
-      ctx.beginPath();
-      ctx.fillStyle = theme.background;
-      ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
+  const shouldShowPoints =
+    isSelected || isHovered || hoveredPoint?.drawingId === drawingId;
 
-      // Draw point border
+  if (shouldShowPoints) {
+    // Draw points
+    points.forEach((point, index) => {
+      // Skip drawing the point that's being dragged
+      if (
+        draggingPoint &&
+        draggingPoint.drawingId === drawingId &&
+        draggingPoint.pointIndex === index
+      ) {
+        return;
+      }
+
+      const { x, y } = toCanvasCoords(point);
       ctx.beginPath();
+      ctx.arc(x, y, POINT_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = theme.background;
+      ctx.fill();
       ctx.strokeStyle =
-        hoveredPoint?.drawingId === drawingId &&
-        hoveredPoint.pointIndex === index
-          ? "#2962FF" // Blue when point is hovered
-          : "#089981"; // Default color
+        isSelected || isHovered || hoveredPoint?.drawingId === drawingId
+          ? "#2962FF"
+          : theme.text;
       ctx.lineWidth = POINT_BORDER_WIDTH;
-      ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
     });
   }

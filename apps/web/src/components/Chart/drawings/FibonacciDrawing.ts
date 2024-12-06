@@ -12,6 +12,12 @@ interface DrawFibonacciProps {
   dimensions: { width: number; padding: { left: number; right: number } };
   POINT_RADIUS: number;
   POINT_BORDER_WIDTH: number;
+  isSelected: boolean;
+  draggingPoint: {
+    drawingId: string;
+    pointIndex: number;
+    originalPoint: Point;
+  } | null;
 }
 
 export const drawFibonacci = ({
@@ -26,6 +32,8 @@ export const drawFibonacci = ({
   dimensions,
   POINT_RADIUS,
   POINT_BORDER_WIDTH,
+  isSelected,
+  draggingPoint,
 }: DrawFibonacciProps) => {
   if (points.length < 2) return;
 
@@ -87,24 +95,31 @@ export const drawFibonacci = ({
     ctx.fillText(label, startPoint.x, levelY - labelOffset);
   });
 
-  // Draw points when hovered or drawing is highlighted
-  if (isHighlighted) {
-    [startPoint, endPoint].forEach((point, index) => {
-      // Draw point fill
-      ctx.beginPath();
-      ctx.fillStyle = theme.background;
-      ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
+  const shouldShowPoints =
+    isSelected || isHovered || hoveredPoint?.drawingId === drawingId;
 
-      // Draw point border
+  if (shouldShowPoints) {
+    // Draw points
+    points.forEach((point, index) => {
+      // Skip drawing the point that's being dragged
+      if (
+        draggingPoint &&
+        draggingPoint.drawingId === drawingId &&
+        draggingPoint.pointIndex === index
+      ) {
+        return;
+      }
+
+      const { x, y } = toCanvasCoords(point);
       ctx.beginPath();
-      const isPointHovered =
-        hoveredPoint !== null &&
-        hoveredPoint.drawingId === drawingId &&
-        hoveredPoint.pointIndex === index;
-      ctx.strokeStyle = "#2962FF";
+      ctx.arc(x, y, POINT_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = theme.background;
+      ctx.fill();
+      ctx.strokeStyle =
+        isSelected || isHovered || hoveredPoint?.drawingId === drawingId
+          ? "#2962FF"
+          : theme.text;
       ctx.lineWidth = POINT_BORDER_WIDTH;
-      ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
     });
   }

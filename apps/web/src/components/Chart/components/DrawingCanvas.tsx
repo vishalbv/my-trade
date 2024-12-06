@@ -704,6 +704,7 @@ export const DrawingCanvas = ({
     ctx.scale(dpr, dpr);
 
     if (showDrawings) {
+      // Draw completed drawings
       localDrawings.forEach((drawing) => {
         if (!drawing.visible) return;
 
@@ -712,13 +713,18 @@ export const DrawingCanvas = ({
           points: drawing.points,
           drawingId: drawing.id,
           hoveredLine,
-          hoveredPoint: draggingPoint ? null : hoveredPoint,
+          hoveredPoint: hoveredPoint,
           theme,
           toCanvasCoords,
           dimensions,
           POINT_RADIUS,
           POINT_BORDER_WIDTH,
           selectedDrawing,
+          draggingPoint,
+          isHovered:
+            hoveredLine === drawing.id ||
+            hoveredPoint?.drawingId === drawing.id,
+          isSelected: selectedDrawing?.drawing?.id === drawing.id,
         };
 
         const drawMethod = drawingMethods[drawing.type];
@@ -726,6 +732,53 @@ export const DrawingCanvas = ({
           drawMethod(commonProps);
         }
       });
+
+      // Draw drawing in progress
+      if (drawingInProgress?.currentPoint && drawingInProgress.points[0]) {
+        const commonProps = {
+          ctx,
+          points: [drawingInProgress.points[0], drawingInProgress.currentPoint],
+          hoveredLine: null,
+          hoveredPoint: null,
+          theme,
+          toCanvasCoords,
+          dimensions,
+          POINT_RADIUS,
+          POINT_BORDER_WIDTH,
+          selectedDrawing: null,
+          draggingPoint: null,
+          isHovered: false,
+          isSelected: false,
+        };
+
+        switch (drawingInProgress.type) {
+          case "trendline":
+          case "fibonacci":
+            const drawMethod = drawingMethods[drawingInProgress.type];
+            if (drawMethod) {
+              drawMethod({
+                ...commonProps,
+                isHovered: true,
+              });
+            }
+            break;
+          case "rect":
+            if (drawingInProgress.points.length === 4) {
+              drawingMethods.rect({
+                ...commonProps,
+                points: drawingInProgress.points,
+                isHovered: true,
+              });
+            }
+            break;
+          case "horizontalLine":
+            drawingMethods.horizontalLine({
+              ...commonProps,
+              points: [drawingInProgress.currentPoint],
+            });
+            break;
+        }
+      }
     }
   }, [
     localDrawings,

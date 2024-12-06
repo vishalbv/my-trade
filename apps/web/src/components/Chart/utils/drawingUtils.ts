@@ -169,24 +169,31 @@ export const drawingMethods = {
   trendline: (props: any) => {
     const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
     const isHovered = props.hoveredLine === props.drawingId;
+    const showPoints = !props.draggingPoint && (isSelected || isHovered);
     return drawTrendLine({
       ...props,
       isHovered: isSelected || isHovered,
+      showPoints,
     });
   },
   fibonacci: (props: any) => {
     const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
     const isHovered = props.hoveredLine === props.drawingId;
+    const showPoints = !props.draggingPoint && (isSelected || isHovered);
     return drawFibonacci({
       ...props,
       isHovered: isSelected || isHovered,
+      showPoints,
     });
   },
   rect: (props: any) => {
-    const isSelected = props.hoveredLine === props.drawingId;
+    const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
+    const isHovered = props.hoveredLine === props.drawingId;
+    const showPoints = !props.draggingPoint && (isSelected || isHovered);
     return drawRectangle({
       ...props,
-      isHovered: isSelected || props.isHovered,
+      isHovered: isSelected || isHovered,
+      showPoints,
     });
   },
   horizontalLine: (props: any) => {
