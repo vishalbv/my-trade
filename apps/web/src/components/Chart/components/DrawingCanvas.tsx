@@ -706,15 +706,15 @@ export const DrawingCanvas = ({
 
         switch (drawingInProgress.type) {
           case "trendline":
-          case "fibonacci":
+          case "fibonacci": {
             const drawMethod = drawingMethods[drawingInProgress.type];
             if (drawMethod) {
               drawMethod({
                 ...commonProps,
-                isHovered: true,
               });
             }
             break;
+          }
           case "rect":
             if (drawingInProgress.points.length === 4) {
               drawingMethods.rect({

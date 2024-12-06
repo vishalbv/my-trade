@@ -197,7 +197,7 @@ export const drawingMethods = {
     });
   },
   horizontalLine: (props: any) => {
-    const isSelected = props.hoveredLine === props.drawingId;
+    const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
     return drawHorizontalLine({
       ...props,
       isHovered: isSelected || props.isHovered,

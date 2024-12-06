@@ -18,6 +18,7 @@ export const drawHorizontalLine = ({
   theme,
   toCanvasCoords,
   dimensions,
+  isHovered,
 }: DrawHorizontalLineProps) => {
   if (!points[0]) return;
 
@@ -28,7 +29,7 @@ export const drawHorizontalLine = ({
   // Set line style
   ctx.beginPath();
   ctx.strokeStyle = theme.text;
-  ctx.lineWidth = hoveredLine === drawingId ? 3 : 1;
+  ctx.lineWidth = hoveredLine === drawingId || isHovered ? 2 : 1;
 
   // Draw line from left to right
   ctx.moveTo(dimensions.padding.left, canvasPoint.y);
