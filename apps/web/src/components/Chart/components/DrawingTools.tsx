@@ -15,7 +15,10 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 
 import { RootState } from "../../store/store";
-import { clearDrawings } from "../../../store/slices/globalChartSlice";
+import {
+  clearDrawings,
+  setSelectedTool,
+} from "../../../store/slices/globalChartSlice";
 
 export type DrawingTool =
   | "cursor"
@@ -44,6 +47,9 @@ export function DrawingTools({
     const selectedKey = state.globalChart.selectedChartKey;
     return state.globalChart.layouts[selectedKey]?.symbol;
   });
+  const selectedDrawing = useSelector(
+    (state: RootState) => state.globalChart.selectedDrawing
+  );
 
   const tools = [
     { id: "cursor" as DrawingTool, icon: CursorIcon, label: "Cursor" },

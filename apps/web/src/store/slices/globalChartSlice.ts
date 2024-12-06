@@ -162,6 +162,17 @@ const globalChartSlice = createSlice({
     setSelectedDrawing: (state, action) => {
       state.selectedDrawing = action.payload;
     },
+    deleteSelectedDrawing: (state) => {
+      if (state.selectedDrawing) {
+        const { symbol, drawing } = state.selectedDrawing;
+        if (state.symbolDrawings[symbol]) {
+          state.symbolDrawings[symbol] = state.symbolDrawings[symbol].filter(
+            (d) => d.id !== drawing.id
+          );
+        }
+        state.selectedDrawing = null;
+      }
+    },
   },
 });
 
@@ -179,6 +190,7 @@ export const {
   updateDrawing,
   setChartFullScreenId,
   setSelectedDrawing,
+  deleteSelectedDrawing,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

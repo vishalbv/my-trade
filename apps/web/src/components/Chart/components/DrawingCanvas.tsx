@@ -9,7 +9,10 @@ import {
 } from "../types";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../../store/store";
-import { setSelectedTool } from "../../../store/slices/globalChartSlice";
+import {
+  deleteSelectedDrawing,
+  setSelectedTool,
+} from "../../../store/slices/globalChartSlice";
 import {
   checkDrawingInteraction,
   drawingMethods,
@@ -20,7 +23,6 @@ import { createInitialPositionPoints } from "../drawings/PositionDrawing";
 import {
   handleRectanglePointDragging,
   handleRectangleAreaDragging,
-  createInitialRectanglePoints,
 } from "../drawings/RectangleDrawing";
 import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
 
@@ -364,64 +366,6 @@ export const DrawingCanvas = ({
     }
   };
 
-  // Add separate line dragging handlers
-  const handleFibonacciLineDragging = (
-    chartCoords: Point,
-    drawing: Drawing,
-    dragStartPosition: Point
-  ) => {
-    const dx = chartCoords.x - dragStartPosition.x;
-    const dy = chartCoords.y - dragStartPosition.y;
-
-    const newPoints = drawing.points.map((point) => ({
-      x: point.x + dx,
-      y: point.y + dy,
-    }));
-
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
-  };
-
-  const handleTrendLineLineDragging = (
-    chartCoords: Point,
-    drawing: Drawing,
-    dragStartPosition: Point
-  ) => {
-    const dx = chartCoords.x - dragStartPosition.x;
-    const dy = chartCoords.y - dragStartPosition.y;
-
-    const newPoints = drawing.points.map((point) => ({
-      x: point.x + dx,
-      y: point.y + dy,
-    }));
-
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
-  };
-
-  const handlePositionLineDragging = (
-    chartCoords: Point,
-    drawing: Drawing,
-    dragStartPosition: Point
-  ) => {
-    const dx = chartCoords.x - dragStartPosition.x;
-    const dy = chartCoords.y - dragStartPosition.y;
-
-    const newPoints = drawing.points.map((point) => ({
-      x: point.x + dx,
-      y: point.y + dy,
-    }));
-
-    onDrawingUpdate({
-      ...drawing,
-      points: newPoints,
-    });
-  };
-
   // Update handleLineDragging to only use local state
   const handleLineDragging = (chartCoords: Point) => {
     const drawing = localDrawings.find((d) => d.id === hoveredLine);
@@ -538,6 +482,19 @@ export const DrawingCanvas = ({
     }
   };
 
+  const handleDrawingComplete = (drawing: Drawing) => {
+    onDrawingComplete(drawing);
+    // Select the newly created drawing
+    dispatch(
+      setSelectedDrawing({
+        symbol: chartState.symbol,
+        drawing,
+      })
+    );
+    setDrawingInProgress(null);
+    dispatch(setSelectedTool("cursor"));
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
@@ -630,9 +587,7 @@ export const DrawingCanvas = ({
           ),
           visible: true,
         };
-        onDrawingComplete(newDrawing);
-        setDrawingInProgress(null);
-        dispatch(setSelectedTool("cursor"));
+        handleDrawingComplete(newDrawing);
       }
     } else if (selectedTool === "horizontalLine") {
       // For horizontal line, we complete the drawing immediately with a single click
@@ -642,8 +597,7 @@ export const DrawingCanvas = ({
         points: [chartCoords],
         visible: true,
       };
-      onDrawingComplete(newDrawing);
-      dispatch(setSelectedTool("cursor"));
+      handleDrawingComplete(newDrawing);
     } else if (
       selectedTool === "longPosition" ||
       selectedTool === "shortPosition"
@@ -660,8 +614,7 @@ export const DrawingCanvas = ({
         points: initialPoints,
         visible: true,
       };
-      onDrawingComplete(newDrawing);
-      dispatch(setSelectedTool("cursor"));
+      handleDrawingComplete(newDrawing);
     }
   };
 
@@ -820,6 +773,22 @@ export const DrawingCanvas = ({
     toCanvasCoords,
     dimensions,
   ]);
+
+  // Add keyboard event handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle delete if we have a selected drawing
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedDrawing?.symbol === chartState.symbol
+      ) {
+        dispatch(deleteSelectedDrawing());
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch, selectedDrawing, chartState.symbol]);
 
   return (
     <canvas
