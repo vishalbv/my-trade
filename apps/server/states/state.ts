@@ -24,9 +24,12 @@ class State {
     clearAndSet?: boolean
   ): void => {
     const { _db, ..._newState } = newState || {};
+    const { _key, ...rest } = _newState;
     this.state = clearAndSet
-      ? { ...this.initialState, ..._newState }
-      : { ...this.state, ..._newState };
+      ? { ...this.initialState, ...rest }
+      : _key
+        ? { ...this.state, [_key]: { ...this.state[_key], ...rest } }
+        : { ...this.state, ...rest };
 
     this.pushState(_newState, clearAndSet);
     if (_db) this.pushToDB(_newState);
@@ -44,16 +47,33 @@ class State {
   // };
 
   pushState = (newState?: Record<string, any>, clearAndSet?: boolean): void => {
-    sendMessage(
-      this.id,
-      clearAndSet
-        ? { ...this.getState(), _clearAndSet: true }
-        : { ...(newState || this.getState()), _clearAndSet: false }
-    );
+    if (newState?._key) {
+      sendMessage(
+        this.id,
+        clearAndSet
+          ? { ...this.getState()[newState._key], _clearAndSet: true }
+          : {
+              ...((newState as { _key?: string }) ||
+                this.getState()[newState._key]),
+              _clearAndSet: false,
+            }
+      );
+    } else {
+      sendMessage(
+        this.id,
+        clearAndSet
+          ? { ...this.getState(), _clearAndSet: true }
+          : { ...(newState || this.getState()), _clearAndSet: false }
+      );
+    }
   };
 
   pushToDB = (newState: Record<string, any>): void => {
-    statesDbService.upsertState(this.id, newState);
+    const { _key, ...rest } = newState;
+    statesDbService.upsertState(
+      this.id,
+      _key ? { [_key]: { ...this.getState()[_key], ...rest } } : newState
+    );
   };
 
   startingFunctionsAtInitialize = (): void => {};

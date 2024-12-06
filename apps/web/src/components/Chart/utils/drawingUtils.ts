@@ -166,14 +166,52 @@ export const checkDrawingInteraction = (
 };
 
 export const drawingMethods = {
-  horizontalLine: drawHorizontalLine,
-  trendline: drawTrendLine,
-  fibonacci: drawFibonacci,
-  longPosition: (props: any) =>
-    drawPosition({ ...props, type: "longPosition" }),
-  shortPosition: (props: any) =>
-    drawPosition({ ...props, type: "shortPosition" }),
-  rect: drawRectangle,
+  trendline: (props: any) => {
+    const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
+    const isHovered = props.hoveredLine === props.drawingId;
+    return drawTrendLine({
+      ...props,
+      isHovered: isSelected || isHovered,
+    });
+  },
+  fibonacci: (props: any) => {
+    const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
+    const isHovered = props.hoveredLine === props.drawingId;
+    return drawFibonacci({
+      ...props,
+      isHovered: isSelected || isHovered,
+    });
+  },
+  rect: (props: any) => {
+    const isSelected = props.hoveredLine === props.drawingId;
+    return drawRectangle({
+      ...props,
+      isHovered: isSelected || props.isHovered,
+    });
+  },
+  horizontalLine: (props: any) => {
+    const isSelected = props.hoveredLine === props.drawingId;
+    return drawHorizontalLine({
+      ...props,
+      isHovered: isSelected || props.isHovered,
+    });
+  },
+  longPosition: (props: any) => {
+    const isSelected = props.hoveredLine === props.drawingId;
+    return drawPosition({
+      ...props,
+      type: "longPosition",
+      isHovered: isSelected || props.isHovered,
+    });
+  },
+  shortPosition: (props: any) => {
+    const isSelected = props.hoveredLine === props.drawingId;
+    return drawPosition({
+      ...props,
+      type: "shortPosition",
+      isHovered: isSelected || props.isHovered,
+    });
+  },
 };
 
 export const isPointNearby = (

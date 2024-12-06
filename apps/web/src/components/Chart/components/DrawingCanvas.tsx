@@ -22,6 +22,7 @@ import {
   handleRectangleAreaDragging,
   createInitialRectanglePoints,
 } from "../drawings/RectangleDrawing";
+import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
 
 interface DrawingCanvasProps {
   drawings: Drawing[];
@@ -41,6 +42,14 @@ interface DrawingCanvasProps {
     timestamp: number;
     visible: boolean;
   };
+  chartState: {
+    symbol: string;
+    timeframe: string;
+  };
+  selectedDrawing?: {
+    symbol: string;
+    drawing: Drawing;
+  } | null;
 }
 
 export const DrawingCanvas = ({
@@ -54,6 +63,8 @@ export const DrawingCanvas = ({
   mousePosition,
   handleMouseMoveForCrosshair,
   xAxisCrosshair,
+  chartState,
+  selectedDrawing,
 }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
@@ -224,6 +235,7 @@ export const DrawingCanvas = ({
         foundPoint || foundLine || selectedTool !== "cursor" ? "100" : "2";
     }
 
+    // Update hover state based on mouse position
     if (!foundPoint && !foundLine) {
       setHoveredPoint(null);
       setHoveredLine(null);
@@ -533,6 +545,27 @@ export const DrawingCanvas = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Check for drawing interaction
+    const { foundPoint, foundLine } = handleInteraction(x, y);
+
+    if (foundPoint || foundLine) {
+      // If clicking on a drawing, select it
+      const drawing = localDrawings.find(
+        (d) => d.id === (hoveredPoint?.drawingId || hoveredLine)
+      );
+      if (drawing) {
+        dispatch(
+          setSelectedDrawing({
+            symbol: chartState.symbol,
+            drawing,
+          })
+        );
+      }
+    } else {
+      // If clicking elsewhere, deselect drawing
+      dispatch(setSelectedDrawing(null));
+    }
+
     // Use xAxisCrosshair position if available, otherwise use snapped position
     const xPosition = xAxisCrosshair?.visible
       ? xAxisCrosshair.x
@@ -667,13 +700,10 @@ export const DrawingCanvas = ({
     canvasRef.current.height = dimensions.height * dpr;
 
     // Clear canvas
-    ctx.clearRect(0, 0, dimensions.width * dpr, dimensions.height * dpr);
-
-    // Scale context
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
     ctx.scale(dpr, dpr);
 
     if (showDrawings) {
-      // Draw all completed drawings using localDrawings instead of drawings
       localDrawings.forEach((drawing) => {
         if (!drawing.visible) return;
 
@@ -688,86 +718,14 @@ export const DrawingCanvas = ({
           dimensions,
           POINT_RADIUS,
           POINT_BORDER_WIDTH,
+          selectedDrawing,
         };
 
-        switch (drawing.type) {
-          case "horizontalLine":
-            drawingMethods.horizontalLine({
-              ...commonProps,
-            });
-            break;
-          case "trendline":
-            drawingMethods.trendline({
-              ...commonProps,
-              isHovered: false,
-            });
-            break;
-          case "fibonacci":
-            drawingMethods.fibonacci({
-              ...commonProps,
-              isHovered: false,
-            });
-            break;
-          case "rect":
-            drawingMethods.rect({
-              ...commonProps,
-              isHovered: hoveredLine === drawing.id,
-            });
-            break;
-          case "longPosition":
-          case "shortPosition":
-            drawingMethods[drawing.type]({
-              ...commonProps,
-              isHovered: hoveredLine === drawing.id,
-            });
-            break;
+        const drawMethod = drawingMethods[drawing.type];
+        if (drawMethod) {
+          drawMethod(commonProps);
         }
       });
-
-      // Draw drawing in progress
-      if (drawingInProgress?.currentPoint && drawingInProgress.points[0]) {
-        const commonProps = {
-          ctx,
-          points: [drawingInProgress.points[0], drawingInProgress.currentPoint],
-          hoveredLine,
-          hoveredPoint: draggingPoint ? null : hoveredPoint,
-          theme,
-          toCanvasCoords,
-          dimensions,
-          POINT_RADIUS,
-          POINT_BORDER_WIDTH,
-        };
-
-        switch (drawingInProgress.type) {
-          case "trendline":
-            drawingMethods.trendline({
-              ...commonProps,
-              isHovered: true,
-            });
-            break;
-          case "fibonacci":
-            drawingMethods.fibonacci({
-              ...commonProps,
-              isHovered: true,
-            });
-            break;
-          case "rect":
-            if (drawingInProgress.points.length === 4) {
-              drawingMethods.rect({
-                ...commonProps,
-                points: drawingInProgress.points,
-                isHovered: true,
-              });
-            }
-            break;
-          case "horizontalLine":
-            drawingMethods.horizontalLine({
-              ...commonProps,
-              points: [drawingInProgress.currentPoint],
-            });
-            break;
-        }
-      }
     }
   }, [
     localDrawings,
@@ -780,6 +738,7 @@ export const DrawingCanvas = ({
     draggingPoint,
     theme,
     toCanvasCoords,
+    selectedDrawing,
   ]);
 
   useEffect(() => {

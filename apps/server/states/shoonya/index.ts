@@ -12,6 +12,7 @@ import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
 import { shoonyaSocket, startShoonyaSocket } from "./socket";
 import { positionsFormatter } from "./functions";
+import _symbols from "../symbols/index";
 
 let api = new NorenRestApi();
 const secret = "5GY64JV73GK3A676S6GC63463L33I535";
@@ -182,6 +183,69 @@ class Shoonya extends State {
       } else {
         throw new Error(`Failed to search symbol: ${errorMessage}`);
       }
+    }
+  };
+
+  placeOrder = async (
+    body: {
+      side: number;
+      qty?: number;
+      type?: number;
+      fyersSymbol?: string;
+      shoonyaSymbol?: string;
+      $index?: string;
+      exchange?: string;
+      price?: number;
+    },
+    disableMoneyManage = false
+  ) => {
+    try {
+      const {
+        side,
+        qty = 1,
+        fyersSymbol,
+        shoonyaSymbol,
+        $index,
+        exchange = "NSE",
+        price,
+      } = body;
+
+      console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
+      console.log(
+        "fyersSymbol",
+        fyersSymbol,
+        _symbols.getState().fyersToShoonyaMapping,
+        _symbols.getState().fyersToShoonyaMapping[fyersSymbol]
+      );
+      const { exch = exchange, tsym = shoonyaSymbol } = fyersSymbol
+        ? _symbols.getState().fyersToShoonyaMapping[fyersSymbol]
+        : {};
+      const orderParams = {
+        buy_or_sell: side == 1 ? "B" : "S",
+        product_type: "M",
+        exchange: exch,
+        tradingsymbol: tsym,
+        quantity: qty,
+        discloseqty: 0,
+        price_type: price ? "LMT" : "MKT",
+        price: price || 0,
+        trigger_price: "None",
+        retention: "DAY",
+        remarks: "ALGO_SHOONYA",
+      };
+
+      const response = await api.placeOrder(orderParams);
+
+      if (response?.data) {
+        return {
+          data: response.data,
+        };
+      } else {
+        throw new Error("Order placement failed");
+      }
+    } catch (error: any) {
+      logger.error("Order placement failed", error);
+      throw new Error(`Failed to place order: ${error.message}`);
     }
   };
 }

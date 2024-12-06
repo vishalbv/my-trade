@@ -15,13 +15,15 @@ import { RSIIndicator } from "./components/RSIIndicator";
 import { ScrollToRightButton } from "./components/ScrollToRightButton";
 import { DrawingCanvas } from "./components/DrawingCanvas";
 import { RootState } from "../../store/store";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   convertDrawingsToDataIndex,
   convertDrawingToTimestamp,
   round,
 } from "./utils/drawingCoordinateUtils";
 import { ActionButtons } from "./ActionButtons";
+import { BuySellWindow } from "./components/BuySellWindow";
+import { setSelectedDrawing } from "../../store/slices/globalChartSlice";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -32,6 +34,7 @@ interface CanvasChartProps {
   drawings: Drawing[];
   onDrawingComplete: (drawing: Drawing) => void;
   onDrawingUpdate: (drawing: Drawing) => void; // Make this required, not optional
+  chartState: { symbol: string; timeframe: string };
 }
 
 interface MousePosition {
@@ -73,6 +76,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   drawings,
   onDrawingComplete,
   onDrawingUpdate,
+  chartState,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -83,13 +87,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const [isDraggingRSI, setIsDraggingRSI] = useState(false);
   const [dragStartY, setDragStartY] = useState<number>(0);
   const [dragStartHeight, setDragStartHeight] = useState<number>(0);
-
+  const dispatch = useDispatch();
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const defaultTheme = themes.dark!; // Ensure dark theme exists
   const currentTheme = themes[theme as keyof typeof themes] || defaultTheme;
+
+  const selectedDrawing = useSelector(
+    (state: RootState) => state.globalChart.selectedDrawing
+  );
 
   const [dimensions, setDimensions] = useState<ChartDimensions>({
     width: 0,
@@ -454,13 +462,30 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     }
   }, [combinedData.length, viewState.visibleBars]);
 
-  // Update handleMouseDown to detect drag on xAxisCanvas
+  // Add this state to track if we're dragging
+  const [isCleanClick, setIsCleanClick] = useState(true);
+
+  // Add this state to track mouse position at start of click/drag
+  const [mouseStartPos, setMouseStartPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Modify handleMouseDown
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log("selectedDrawing", selectedDrawing);
     if (!containerRef.current) return;
+    //clearing drawing selection
+    dispatch(setSelectedDrawing(null));
+
+    setIsCleanClick(true); // Reset clean click state on mouse down
 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Store initial mouse position
+    setMouseStartPos({ x: e.clientX, y: e.clientY });
 
     // Check if clicking on y-axis
     const isOverYAxis = x >= dimensions.width - dimensions.padding.right;
@@ -476,113 +501,129 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         startOffsetY: viewState.offsetY,
       });
       e.currentTarget.style.cursor = "ns-resize";
-    } else if (
-      x >= dimensions.padding.left &&
-      x <= dimensions.width - dimensions.padding.right
-    ) {
-      setDragState({
-        mode: "pan",
-        startX: e.clientX,
-        startY: e.clientY,
-        startScaleX: viewState.scaleX,
-        startScaleY: viewState.scaleY,
-        startIndex: viewState.startIndex,
-        startOffsetY: viewState.offsetY,
-      });
-      e.currentTarget.style.cursor = "grabbing";
+      setIsCleanClick(false);
     }
+    // Remove the else if block that sets pan mode immediately
   };
 
   // Update handleMouseMove
   const handleMouseMove = (e: React.MouseEvent) => {
     handleMouseMoveForCrosshair(e);
 
-    if (!dragState) return;
+    if (mouseStartPos) {
+      // Calculate movement distance
+      const dx = Math.abs(e.clientX - mouseStartPos.x);
+      const dy = Math.abs(e.clientY - mouseStartPos.y);
+      const hasMoved = dx > 3 || dy > 3; // Add some threshold before considering it a drag
 
-    switch (dragState.mode) {
-      case "scaleY": {
-        const dy = dragState.startY - e.clientY;
-        const scaleFactor = 1 + dy / 200; // Adjust sensitivity as needed
-        const newScaleY = Math.max(
-          0.1,
-          Math.min(5, dragState.startScaleY * scaleFactor)
-        );
-
-        setViewState((prev) => ({
-          ...prev,
-          scaleY: newScaleY,
-        }));
-        break;
-      }
-      case "pan": {
-        // Calculate horizontal movement in bars
-        const dx = e.clientX - dragState.startX;
-        const chartWidth =
-          dimensions.width - dimensions.padding.left - dimensions.padding.right;
-        const barWidth = chartWidth / viewState.visibleBars;
-        const barsToMove = dx / barWidth;
-
-        // Calculate vertical movement in price
-        const dy = e.clientY - dragState.startY;
-        const chartHeight =
-          dimensions.height -
-          dimensions.padding.top -
-          dimensions.padding.bottom -
-          (isRSIEnabled ? rsiHeight + 34 : 30);
-
-        // Get visible data for price range calculation
-        const visibleData = combinedData.slice(
-          Math.floor(dragState.startIndex),
-          Math.floor(dragState.startIndex) + viewState.visibleBars
-        );
-
-        // Calculate price range from visible data
-        const prices = visibleData.flatMap((candle) => [
-          candle.high,
-          candle.low,
-        ]);
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        const priceRange = maxPrice - minPrice;
-        const pricePadding = priceRange * 0.1;
-        const totalPriceRange =
-          (priceRange + 2 * pricePadding) / viewState.scaleY;
-
-        // Calculate the price movement
-        const pricePerPixel = totalPriceRange / chartHeight;
-        const priceMove = dy * pricePerPixel;
-
-        // Update view state with new position
-        setViewState((prev) => {
-          // Calculate new start index while preventing overscroll
-          const proposedStartIndex = dragState.startIndex - barsToMove;
-          const maxStartIndex = Math.max(
-            0,
-            combinedData.length - prev.visibleBars
-          );
-          const newStartIndex = Math.max(
-            0,
-            Math.min(maxStartIndex, proposedStartIndex)
-          );
-
-          return {
-            ...prev,
-            startIndex: newStartIndex,
-            offsetY: dragState.startOffsetY + priceMove,
-            // Keep scales exactly as they were at drag start
-            scaleX: dragState.startScaleX,
-            scaleY: dragState.startScaleY,
-          };
+      if (hasMoved && !dragState) {
+        // Only start dragging if we've moved more than the threshold
+        setDragState({
+          mode: "pan",
+          startX: mouseStartPos.x,
+          startY: mouseStartPos.y,
+          startScaleX: viewState.scaleX,
+          startScaleY: viewState.scaleY,
+          startIndex: viewState.startIndex,
+          startOffsetY: viewState.offsetY,
         });
-        break;
+        e.currentTarget.style.cursor = "grabbing";
+        setIsCleanClick(false);
+      }
+    }
+
+    if (dragState) {
+      setIsCleanClick(false); // Not a clean click if we're moving while dragging
+      switch (dragState.mode) {
+        case "scaleY": {
+          const dy = dragState.startY - e.clientY;
+          const scaleFactor = 1 + dy / 200; // Adjust sensitivity as needed
+          const newScaleY = Math.max(
+            0.1,
+            Math.min(5, dragState.startScaleY * scaleFactor)
+          );
+
+          setViewState((prev) => ({
+            ...prev,
+            scaleY: newScaleY,
+          }));
+          break;
+        }
+        case "pan": {
+          // Calculate horizontal movement in bars
+          const dx = e.clientX - dragState.startX;
+          const chartWidth =
+            dimensions.width -
+            dimensions.padding.left -
+            dimensions.padding.right;
+          const barWidth = chartWidth / viewState.visibleBars;
+          const barsToMove = dx / barWidth;
+
+          // Calculate vertical movement in price
+          const dy = e.clientY - dragState.startY;
+          const chartHeight =
+            dimensions.height -
+            dimensions.padding.top -
+            dimensions.padding.bottom -
+            (isRSIEnabled ? rsiHeight + 34 : 30);
+
+          // Get visible data for price range calculation
+          const visibleData = combinedData.slice(
+            Math.floor(dragState.startIndex),
+            Math.floor(dragState.startIndex) + viewState.visibleBars
+          );
+
+          // Calculate price range from visible data
+          const prices = visibleData.flatMap((candle) => [
+            candle.high,
+            candle.low,
+          ]);
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+          const priceRange = maxPrice - minPrice;
+          const pricePadding = priceRange * 0.1;
+          const totalPriceRange =
+            (priceRange + 2 * pricePadding) / viewState.scaleY;
+
+          // Calculate the price movement
+          const pricePerPixel = totalPriceRange / chartHeight;
+          const priceMove = dy * pricePerPixel;
+
+          // Update view state with new position
+          setViewState((prev) => {
+            // Calculate new start index while preventing overscroll
+            const proposedStartIndex = dragState.startIndex - barsToMove;
+            const maxStartIndex = Math.max(
+              0,
+              combinedData.length - prev.visibleBars
+            );
+            const newStartIndex = Math.max(
+              0,
+              Math.min(maxStartIndex, proposedStartIndex)
+            );
+
+            return {
+              ...prev,
+              startIndex: newStartIndex,
+              offsetY: dragState.startOffsetY + priceMove,
+              // Keep scales exactly as they were at drag start
+              scaleX: dragState.startScaleX,
+              scaleY: dragState.startScaleY,
+            };
+          });
+          break;
+        }
       }
     }
   };
 
   // Update handleMouseUp
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    setDragState(null);
-    e.currentTarget.style.cursor = "crosshair";
+    if (dragState) {
+      setDragState(null);
+      e.currentTarget.style.cursor = "crosshair";
+    }
+    setMouseStartPos(null); // Reset mouse start position
   };
 
   // Update handleMouseLeave
@@ -591,6 +632,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       setDragState(null);
       e.currentTarget.style.cursor = "crosshair";
     }
+    setMouseStartPos(null); // Reset mouse start position
     setMousePosition((prev) => ({ ...prev, visible: false }));
     setXAxisCrosshair((prev) => ({ ...prev, visible: false }));
 
@@ -2568,6 +2610,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       [combinedData, onDrawingUpdate]
     );
 
+    const selectedDrawing = useSelector(
+      (state: RootState) => state.globalChart.selectedDrawing
+    );
+
     return (
       <DrawingCanvas
         drawings={drawingsForCanvas}
@@ -2585,9 +2631,22 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         handleMouseMoveForCrosshair={handleMouseMoveForCrosshair}
         onDrawingComplete={handleDrawingComplete}
         onDrawingUpdate={handleDrawingUpdate}
-        xAxisCrosshair={xAxisCrosshair} // Add this prop
+        xAxisCrosshair={xAxisCrosshair}
+        chartState={chartState}
+        selectedDrawing={selectedDrawing}
       />
     );
+  };
+
+  // Add state for current click price
+  const [currentClickPrice, setCurrentClickPrice] = useState<
+    number | undefined
+  >(undefined);
+  console.log(isCleanClick);
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isCleanClick && mousePosition.visible) {
+      setCurrentClickPrice(mousePosition.price);
+    }
   };
 
   // Then in the return statement, replace the DrawingCanvas component with:
@@ -2629,6 +2688,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onClick={handleClick}
         >
           {/* Grid Canvas - Bottom layer */}
           <canvas
@@ -2771,6 +2831,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         handleZoom={handleZoom}
         handlePan={handlePan}
         resetView={resetView}
+        rsiHeight={isRSIEnabled ? rsiHeight : 0}
+      />
+
+      <BuySellWindow
+        chartState={chartState}
+        currentPrice={currentClickPrice}
         rsiHeight={isRSIEnabled ? rsiHeight : 0}
       />
     </div>

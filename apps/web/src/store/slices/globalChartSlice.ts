@@ -28,6 +28,10 @@ interface GlobalChartState {
     [symbol: string]: Drawing[];
   };
   chartFullScreenId: string | null;
+  selectedDrawing: {
+    symbol: string;
+    drawingId: string;
+  } | null;
 }
 
 const defaultLayout: ChartState = {
@@ -75,6 +79,7 @@ const initialState: GlobalChartState = {
   },
   symbolDrawings: {},
   chartFullScreenId: null,
+  selectedDrawing: null,
   ...getLocalStorageData(),
 };
 
@@ -154,6 +159,9 @@ const globalChartSlice = createSlice({
         }
       }
     },
+    setSelectedDrawing: (state, action) => {
+      state.selectedDrawing = action.payload;
+    },
   },
 });
 
@@ -170,6 +178,7 @@ export const {
   clearDrawings,
   updateDrawing,
   setChartFullScreenId,
+  setSelectedDrawing,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

@@ -11,16 +11,17 @@ export const getTimeoutTo = (time = moment(), testMode?: boolean) => {
   return diffMSec;
 };
 
-export const shoonyaToFyersSymbol = (symbol: any) => {
+export const shoonyaToFyersSymbol = (symbol: any, callback: any) => {
+  let fyersSymbol = "";
   if (symbol.type === "index") {
-    return shoonyaToFyersIndexMapping(INDEX_DETAILS[symbol.name]);
-  }
-  if (symbol.exch === "NSE") {
-    return "NSE:" + symbol.tsym;
-  } else if (symbol.exch === "NFO") {
-    return shoonyaToFyersSymbolOptionMapping(symbol);
-  }
-  return symbol.replace("~", ".");
+    fyersSymbol = shoonyaToFyersIndexMapping(INDEX_DETAILS[symbol.name]);
+  } else if (symbol.exch === "NSE") {
+    fyersSymbol = "NSE:" + symbol.tsym;
+  } else if (symbol.exch === "NFO" || symbol.exch === "BFO") {
+    fyersSymbol = shoonyaToFyersSymbolOptionMapping(symbol);
+  } else fyersSymbol = symbol.replace("~", ".");
+  callback({ [fyersSymbol]: symbol });
+  return fyersSymbol;
 };
 
 export const shoonyaToFyersIndexMapping = (symbol: any) => {
@@ -28,6 +29,9 @@ export const shoonyaToFyersIndexMapping = (symbol: any) => {
 };
 
 export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
+  if (symbol.exch === "BFO") {
+    return "BSE:" + symbol.tsym;
+  }
   let months = {
     JAN: "1",
     FEB: "2",

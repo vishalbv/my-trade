@@ -53,7 +53,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     <div
       ref={buttonRef}
       className={cn(
-        "absolute bottom-0 flex items-end justify-center z-[1000] transition-opacity duration-200 touch:opacity-100 left-1/2 transform -translate-x-1/2",
+        "absolute bottom-0 flex items-end justify-center z-[48] transition-opacity duration-200 touch:opacity-100 left-1/2 transform -translate-x-1/2",
         isVisible ? "opacity-100" : "opacity-0"
       )}
       style={{

@@ -16,7 +16,8 @@
     "./checkbox": "./components/ui/checkbox.tsx",
     "./dialog": "./components/ui/dialog.tsx",
     "./dropdown-menu": "./components/ui/dropdown-menu.tsx",
-    "./separator": "./components/ui/separator.tsx"
+    "./separator": "./components/ui/separator.tsx",
+    "./popover": "./components/ui/popover.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

@@ -1,4 +1,4 @@
-import { setStatesByID } from "../store/slices/stateSlice";
+import { setStatesByID, setStatesByIDAndKey } from "../store/slices/stateSlice";
 import { updateShoonyaServerTick } from "../store/slices/ticksSlice";
 import store from "../store/store";
 import { allStates } from "../utils/constants";
@@ -46,7 +46,12 @@ function connect() {
       dispatch(updateShoonyaServerTick(data));
     } else if (allStates.includes(event)) {
       console.log("setting states", event, data);
-      dispatch(setStatesByID({ id: event, data }));
+      const { _key, ...rest } = data;
+      if (_key) {
+        dispatch(setStatesByIDAndKey({ id: event, key: _key, data: rest }));
+      } else {
+        dispatch(setStatesByID({ id: event, data }));
+      }
     }
   };
 

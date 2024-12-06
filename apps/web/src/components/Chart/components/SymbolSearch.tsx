@@ -30,7 +30,7 @@ const chipStyles = {
 
 const symbolTypes = [
   { id: "stocks", label: "Stocks", exchange: "NSE" },
-  { id: "options", label: "Options", exchange: "NFO" },
+  { id: "options", label: "Options", exchange: "BFO" },
 ] as const;
 
 export const SymbolSearch = ({

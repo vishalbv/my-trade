@@ -22,9 +22,14 @@ import {
   setSelectedChartKey,
   updateDrawing,
   setChartFullScreenId,
+  setSelectedDrawing,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
+import { toast } from "@repo/ui/toast";
+import { updateFyersToShoonyaMapping } from "../../../store/actions/symbolsActions";
+import { AlertBuySellWindow } from "./AlertBuySellWindow";
+import { BellIcon } from "lucide-react";
 
 interface Indicator {
   id: string;
@@ -90,6 +95,10 @@ export const ChartContainer = ({
 
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
 
+  const selectedDrawing = useSelector(
+    (state: RootState) => state.globalChart.selectedDrawing
+  );
+
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -141,6 +150,24 @@ export const ChartContainer = ({
     console.log("double clicked");
   };
 
+  const handleBuy = (qty: number) => {
+    toast({
+      title: "Buy Order",
+      description: `Placed buy order for ${qty} shares of ${chartState.symbol}`,
+    });
+    // Add your buy order logic here
+  };
+
+  const handleSell = (qty: number) => {
+    toast({
+      title: "Sell Order",
+      description: `Placed sell order for ${qty} shares of ${chartState.symbol}`,
+    });
+    // Add your sell order logic here
+  };
+
+  console.log("isAlertWindowOpen", selectedDrawing, chartState);
+
   return (
     <div
       ref={containerRef}
@@ -156,54 +183,65 @@ export const ChartContainer = ({
     >
       {/* Chart Header */}
       <div className="flex items-center p-1 border-b border-border bg-background">
-        <div className="flex items-center">
-          {/* Symbol Button */}
-          <Button
-            variant="ghost"
-            onClick={() => setIsSymbolSearchOpen(true)}
-            className="h-6 px-2 text-sm hover:bg-muted"
-          >
-            <span className="mr-1">
-              {chartState.symbol.split(":")[1]?.replace("-INDEX", "") || ""}
-            </span>
-            <span className="text-xs text-muted-foreground">NSE</span>
-          </Button>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center">
+            {/* Symbol Button */}
+            <Button
+              variant="ghost"
+              onClick={() => setIsSymbolSearchOpen(true)}
+              className="h-6 px-2 text-sm hover:bg-muted"
+            >
+              <span className="mr-1">
+                {chartState.symbol.split(":")[1]?.replace("-INDEX", "") || ""}
+              </span>
+              <span className="text-xs text-muted-foreground">NSE</span>
+            </Button>
 
-          <Separator orientation="vertical" className="mx-1 h-4" />
+            <Separator orientation="vertical" className="mx-1 h-4" />
 
-          {/* Timeframe Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-6 px-2 text-sm hover:bg-muted"
-              >
-                {currentTimeframe?.shortLabel}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[120px]">
-              {timeframeOptions.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  onClick={() =>
-                    dispatch(
-                      updateLayoutTimeframe({
-                        chartKey,
-                        timeframe: option.value,
-                      })
-                    )
-                  }
-                  className={cn(
-                    chartState.timeframe === option.value
-                      ? "bg-muted"
-                      : "hover:bg-muted"
-                  )}
+            {/* Timeframe Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-6 px-2 text-sm hover:bg-muted"
                 >
-                  <span>{option.label}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  {currentTimeframe?.shortLabel}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[120px]">
+                {timeframeOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() =>
+                      dispatch(
+                        updateLayoutTimeframe({
+                          chartKey,
+                          timeframe: option.value,
+                        })
+                      )
+                    }
+                    className={cn(
+                      chartState.timeframe === option.value
+                        ? "bg-muted"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <span>{option.label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Alert Button */}
+          {selectedDrawing?.symbol === chartState.symbol && (
+            <AlertBuySellWindow
+              symbol={chartState.symbol}
+              drawingId={selectedDrawing.drawingId}
+              onClose={() => dispatch(setSelectedDrawing(null))}
+            />
+          )}
         </div>
       </div>
 
@@ -215,7 +253,7 @@ export const ChartContainer = ({
           dispatch(
             updateLayoutSymbol({
               chartKey,
-              symbol: shoonyaToFyersSymbol(symbol),
+              symbol: shoonyaToFyersSymbol(symbol, updateFyersToShoonyaMapping),
             })
           );
           setIsSymbolSearchOpen(false);
@@ -232,6 +270,7 @@ export const ChartContainer = ({
           drawings={symbolDrawings}
           onDrawingComplete={handleDrawingComplete}
           onDrawingUpdate={handleDrawingUpdate}
+          chartState={chartState}
         />
       </div>
     </div>

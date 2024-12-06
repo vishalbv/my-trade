@@ -29,7 +29,7 @@ interface SetStatesByIDAndKeyPayload {
 }
 
 const stateReducer = createSlice({
-  name: "state",
+  name: "states",
   initialState: initialState,
   reducers: {
     setAllStates: (state, action: PayloadAction<State>) => {
