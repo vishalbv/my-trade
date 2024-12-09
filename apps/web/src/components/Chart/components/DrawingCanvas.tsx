@@ -34,7 +34,7 @@ interface DrawingCanvasProps {
   onDrawingComplete: (drawing: Drawing) => void;
   onDrawingUpdate: (drawing: Drawing) => void;
   mousePosition?: { x: number; y: number } | null;
-  isDraggingMainChart?: boolean;
+  disableHandleInteraction?: boolean;
   handleMouseMoveForCrosshair?: (
     e: React.MouseEvent<HTMLCanvasElement>
   ) => void;
@@ -66,7 +66,7 @@ export const DrawingCanvas = ({
   xAxisCrosshair,
   chartState,
   selectedDrawing,
-  isDraggingMainChart,
+  disableHandleInteraction,
 }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
@@ -477,7 +477,7 @@ export const DrawingCanvas = ({
       handleLineDragging(chartCoords);
     } else if (drawingInProgress) {
       handleDrawingInProgress(chartCoords);
-    } else {
+    } else if (!disableHandleInteraction) {
       handleInteraction(xPosition, y);
     }
   };
@@ -496,7 +496,7 @@ export const DrawingCanvas = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || disableHandleInteraction) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -748,7 +748,8 @@ export const DrawingCanvas = ({
   ]);
 
   useEffect(() => {
-    if (!mousePosition || !canvasRef.current || isDraggingMainChart) return;
+    if (!mousePosition || !canvasRef.current || disableHandleInteraction)
+      return;
 
     if (
       draggingPoint ||

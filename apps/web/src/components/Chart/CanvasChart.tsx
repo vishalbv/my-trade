@@ -2633,7 +2633,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         xAxisCrosshair={xAxisCrosshair}
         chartState={chartState}
         selectedDrawing={selectedDrawing}
-        isDraggingMainChart={dragState?.mode === "pan"}
+        disableHandleInteraction={!!dragState?.mode}
       />
     );
   };
