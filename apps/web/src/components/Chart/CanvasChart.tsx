@@ -506,7 +506,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   };
 
   // Update handleMouseMove
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     handleMouseMoveForCrosshair(e);
 
     if (mouseStartPos) {
