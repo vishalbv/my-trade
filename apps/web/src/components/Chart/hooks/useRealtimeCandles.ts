@@ -181,7 +181,7 @@ export const useRealtimeCandles = ({
   useEffect(() => {
     const fetchInitialData = async () => {
       const now = Date.now();
-      const fromTimestamp = Math.floor(now / 1000 - 10000 * 60); // Last 5 minutes
+      const fromTimestamp = Math.floor(now / 1000 - 40000 * 60); // Last 5 minutes
       const toTimestamp = Math.floor(now / 1000);
 
       const initialCandles = await fetchHistoricalData(

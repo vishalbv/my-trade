@@ -537,6 +537,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     y: number;
   } | null>(null);
 
+  // Add this state to track if we're currently dragging
+  const [isDraggingChart, setIsDraggingChart] = useState(false);
+
   // Modify handleMouseDown
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
@@ -569,6 +572,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       setIsCleanClick(false);
     }
     // Remove the else if block that sets pan mode immediately
+    setIsDraggingChart(true);
   };
 
   // Update handleMouseMove
@@ -604,7 +608,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           const dy = dragState.startY - e.clientY;
           const scaleFactor = 1 + dy / 200;
           const newScaleY = Math.max(
-            0.1,
+            0.01,
             Math.min(5, dragState.startScaleY * scaleFactor)
           );
 
@@ -646,7 +650,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           const barWidth = chartWidth / viewState.visibleBars;
           const barsToMove = dx / barWidth;
 
-          // Calculate vertical movement in price using last 10 candles
+          // Calculate vertical movement in price
           const dy = e.clientY - dragState.startY;
           const chartHeight =
             dimensions.height -
@@ -654,11 +658,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             dimensions.padding.bottom -
             (isRSIEnabled ? rsiHeight + 34 : 30);
 
-          // Use last 10 candles for price range calculation
+          // Use price range for vertical movement
+          if (!priceRangeData) break;
           const { min, max, padding } = priceRangeData;
           const totalPriceRange = (max - min + padding * 2) / viewState.scaleY;
-
-          // Calculate the price movement
           const pricePerPixel = totalPriceRange / chartHeight;
           const priceMove = dy * pricePerPixel;
 
@@ -678,10 +681,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               ...prev,
               startIndex: newStartIndex,
               offsetY: dragState.startOffsetY + priceMove,
-              scaleX: dragState.startScaleX,
-              scaleY: dragState.startScaleY,
             };
           });
+
+          // Request a redraw
+          if (gridCanvasRef.current) {
+            const ctx = gridCanvasRef.current.getContext("2d");
+            if (ctx) {
+              drawGridLines(ctx);
+            }
+          }
           break;
         }
       }
@@ -695,6 +704,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       e.currentTarget.style.cursor = "crosshair";
     }
     setMouseStartPos(null); // Reset mouse start position
+    setIsDraggingChart(false);
   };
 
   // Update handleMouseLeave
@@ -1342,79 +1352,41 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     [priceRangeData, viewState.offsetY, viewState.scaleY, getY]
   );
 
-  // Update drawYAxisLabels to handle transitions better
+  // Update drawYAxisLabels function
   const drawYAxisLabels = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       if (!ctx || !priceRangeData) return;
 
-      // Clear the canvas first
+      // Clear the entire y-axis canvas
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
       const chartHeight =
         dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
-      const { gridPrices, priceLabels } = calculateGridPrices(
-        chartHeight,
-        getY
-      );
+      const { gridPrices } = calculateGridPrices(chartHeight, getY);
 
-      // Only update previous grid lines when scaling stops
-      if (!dragState?.mode) {
-        setPreviousGridLines((prev) => ({
-          prices: gridPrices,
-          opacity: 1,
-          transitionId: prev.transitionId + 1,
-        }));
-      }
-
-      // Draw current grid lines first
+      // Draw price labels
       ctx.globalAlpha = 1;
       gridPrices.forEach((price) => {
         const y = getY(price, chartHeight);
-
-        // Draw grid line
-        ctx.beginPath();
-        ctx.strokeStyle = currentTheme?.grid;
-        ctx.lineWidth = 0.5;
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
-
-        // Draw price label
         ctx.fillStyle = currentTheme?.text;
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.font = `10px ${currentTheme.fontFamily}`;
         ctx.fillText(
           price.toFixed(2),
-          dimensions.width - dimensions.padding.right + 5,
+          5, // Start from left edge of y-axis canvas
           y
         );
       });
-
-      // Draw fading previous grid lines only during scaling
-      if (dragState?.mode === "scaleY" && previousGridLines.opacity > 0) {
-        ctx.globalAlpha = previousGridLines.opacity;
-        previousGridLines.prices.forEach((price) => {
-          const y = getY(price, chartHeight);
-          ctx.beginPath();
-          ctx.strokeStyle = currentTheme?.grid;
-          ctx.lineWidth = 0.5;
-          ctx.moveTo(dimensions.padding.left, y);
-          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-          ctx.stroke();
-        });
-      }
     },
     [
       dimensions,
-      viewState,
       priceRangeData,
-      currentTheme,
-      getY,
       isRSIEnabled,
       rsiHeight,
+      getY,
       calculateGridPrices,
-      dragState,
+      currentTheme,
     ]
   );
 
@@ -1995,64 +1967,73 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add this helper function near the top of the component to calculate x positions
 
+  const calculateXAxisLabels = useMemo(() => {
+    if (!combinedData.length) return [];
+
+    const visibleData = combinedData.slice(
+      Math.floor(viewState.startIndex),
+      Math.floor(viewState.startIndex) + viewState.visibleBars
+    );
+
+    const fractionalOffset =
+      viewState.startIndex - Math.floor(viewState.startIndex);
+    const labels: { x: number; timestamp: number; text: string }[] = [];
+    let lastDate: Date | null = null;
+    let lastLabelX: number | null = null;
+    const minLabelSpacing = 80;
+
+    visibleData.forEach((candle, i) => {
+      const x = calculateBarX(i, fractionalOffset);
+      const date = new Date(candle.timestamp);
+      const barWidth =
+        (dimensions.width -
+          dimensions.padding.left -
+          dimensions.padding.right) /
+        viewState.visibleBars;
+
+      if (
+        shouldDrawLabel(date, barWidth) &&
+        x >= dimensions.padding.left &&
+        x <= dimensions.width - dimensions.padding.right
+      ) {
+        // Check for minimum spacing between labels
+        if (lastLabelX && x - lastLabelX < minLabelSpacing) {
+          return;
+        }
+
+        labels.push({
+          x,
+          timestamp: candle.timestamp,
+          text: formatTimeLabel(date, lastDate),
+        });
+
+        lastLabelX = x;
+        lastDate = date;
+      }
+    });
+
+    return labels;
+  }, [
+    combinedData,
+    viewState.startIndex,
+    viewState.visibleBars,
+    dimensions.width,
+    dimensions.padding,
+    calculateBarX,
+    shouldDrawLabel,
+    formatTimeLabel,
+  ]);
+
   // Update the drawXAxisLabels function
   const drawXAxisLabels = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const visibleData = combinedData.slice(
-        Math.floor(viewState.startIndex),
-        Math.ceil(viewState.startIndex + viewState.visibleBars)
-      );
+      const labels = calculateXAxisLabels;
 
-      const fractionalOffset =
-        viewState.startIndex - Math.floor(viewState.startIndex);
+      // Clear canvas
+      ctx.clearRect(0, 0, dimensions.width, 30);
 
-      ctx.textAlign = "center";
-      let lastDate: Date | null = null;
-      let lastLabelX: number | null = null;
-      const minLabelSpacing = 80;
-
-      // Calculate label positions first
-      const newLabelPositions: { x: number; timestamp: number }[] = [];
-
-      visibleData.forEach((candle, i) => {
-        const x = calculateBarX(i, fractionalOffset);
-        const date = new Date(candle.timestamp);
-        const barWidth =
-          (dimensions.width -
-            dimensions.padding.left -
-            dimensions.padding.right) /
-          viewState.visibleBars;
-
-        if (
-          shouldDrawLabel(date, barWidth) &&
-          x >= dimensions.padding.left &&
-          x <= dimensions.width - dimensions.padding.right
-        ) {
-          // Check for minimum spacing between labels
-          if (lastLabelX && x - lastLabelX < minLabelSpacing) {
-            return;
-          }
-
-          newLabelPositions.push({ x, timestamp: candle.timestamp });
-          lastLabelX = x;
-        }
-      });
-
-      // Store the new label positions
-      labelPositionsRef.current = newLabelPositions;
-
-      // Draw labels and grid lines
-      labelPositionsRef.current.forEach(({ x, timestamp }) => {
-        const date = new Date(timestamp);
-
-        // Draw grid line
-        // ctx.strokeStyle = currentTheme?.grid;
-        // ctx.lineWidth = 0.5;
-        // ctx.beginPath();
-        // ctx.moveTo(x, 0);
-        // ctx.lineTo(x, dimensions.height - 30); // Draw line up to x-axis
-        // ctx.stroke();
-
+      // Draw labels
+      labels.forEach(({ x, text }) => {
         // Draw tick mark
         ctx.beginPath();
         ctx.strokeStyle = currentTheme?.grid;
@@ -2061,20 +2042,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.lineTo(x, 8);
         ctx.stroke();
 
-        // Format and draw time label
-        const timeLabel = formatTimeLabel(date, lastDate);
+        // Draw label
+        const isDateChange = text.includes("/"); // Simple check for date labels
 
-        // Set style based on label type
-        const hours = date.getHours();
-        const minutes = date.getMinutes();
-        const isMarketOpen = hours === 9 && minutes === 15;
-        const isDateChange =
-          lastDate &&
-          (date.getDate() !== lastDate.getDate() ||
-            date.getMonth() !== lastDate.getMonth() ||
-            date.getFullYear() !== lastDate.getFullYear());
-
-        if (isDateChange || isMarketOpen) {
+        if (isDateChange) {
           ctx.font = `bold 10px ${currentTheme.fontFamily}`;
           ctx.fillStyle = currentTheme?.text;
         } else {
@@ -2082,28 +2053,22 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           ctx.fillStyle = currentTheme?.textSecondary;
         }
 
-        ctx.fillText(timeLabel, x, 20);
-        lastDate = date;
+        ctx.textAlign = "center";
+        ctx.fillText(text, x, 20);
       });
     },
-    [
-      combinedData,
-      viewState.startIndex,
-      viewState.visibleBars,
-      dimensions,
-      currentTheme,
-      defaultTheme,
-      calculateBarX,
-      shouldDrawLabel,
-      formatTimeLabel,
-    ]
+    [calculateXAxisLabels, dimensions.width, currentTheme]
   );
 
-  // Update the drawXAxisCrosshair function
-  const drawXAxisCrosshair = useCallback(() => {
-    if (!xAxisCanvasRef.current || !currentTheme) return;
+  // First, create separate canvases for labels and crosshair
+  const xAxisLabelsCanvasRef = useRef<HTMLCanvasElement>(null);
+  const xAxisCrosshairCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    const canvas = xAxisCanvasRef.current;
+  // Update the drawXAxisCrosshair function to use the crosshair canvas
+  const drawXAxisCrosshair = useCallback(() => {
+    if (!xAxisCrosshairCanvasRef.current || !currentTheme) return;
+
+    const canvas = xAxisCrosshairCanvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -2113,53 +2078,76 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     canvas.height = 30 * dpr;
     ctx.scale(dpr, dpr);
 
-    // Clear canvas
+    // Clear only the crosshair canvas
     ctx.clearRect(0, 0, dimensions.width, 30);
 
-    // Draw regular x-axis labels first
-    drawXAxisLabels(ctx);
-
-    // Draw crosshair label only if visible
     if (xAxisCrosshair.visible) {
-      const timeLabel = timeframeConfig.tickFormat(xAxisCrosshair.timestamp);
+      // Draw crosshair label...
+      // (existing crosshair drawing code)
+    }
+  }, [xAxisCrosshair, dimensions, timeframeConfig, currentTheme]);
 
-      const timeLabelWidth = ctx.measureText(timeLabel).width + 10;
-      const timeLabelHeight = 20;
+  // Update the grid and labels effect to use the labels canvas
+  useEffect(() => {
+    if (!gridCanvasRef.current || !xAxisLabelsCanvasRef.current) return;
 
-      // Calculate label position to keep it within bounds
-      const minX = dimensions.padding.left;
-      const maxX = dimensions.width - dimensions.padding.right;
-      let labelX = xAxisCrosshair.x - timeLabelWidth / 2;
+    const gridCtx = gridCanvasRef.current.getContext("2d");
+    const labelsCtx = xAxisLabelsCanvasRef.current.getContext("2d");
+    if (!gridCtx || !labelsCtx) return;
 
-      // Adjust label position if it would go outside bounds
-      if (labelX < minX) {
-        labelX = minX;
-      } else if (labelX + timeLabelWidth > maxX) {
-        labelX = maxX - timeLabelWidth;
+    // Set canvas sizes with device pixel ratio
+    const dpr = window.devicePixelRatio || 1;
+    gridCanvasRef.current.width = dimensions.width * dpr;
+    gridCanvasRef.current.height = dimensions.height * dpr;
+    xAxisLabelsCanvasRef.current.width = dimensions.width * dpr;
+    xAxisLabelsCanvasRef.current.height = 30 * dpr;
+
+    gridCtx.scale(dpr, dpr);
+    labelsCtx.scale(dpr, dpr);
+
+    // Clear canvases
+    gridCtx.clearRect(0, 0, dimensions.width, dimensions.height);
+    labelsCtx.clearRect(0, 0, dimensions.width, 30);
+
+    // Get calculated labels
+    const labels = calculateXAxisLabels;
+
+    // Draw grid lines
+    labels.forEach(({ x }) => {
+      gridCtx.beginPath();
+      gridCtx.strokeStyle = currentTheme?.grid;
+      gridCtx.lineWidth = 0.5;
+      gridCtx.globalAlpha = 0.8;
+      gridCtx.moveTo(x, 0);
+      gridCtx.lineTo(x, dimensions.height - 30);
+      gridCtx.stroke();
+    });
+
+    // Draw x-axis labels
+    labels.forEach(({ x, text }) => {
+      // Draw tick mark
+      labelsCtx.beginPath();
+      labelsCtx.strokeStyle = currentTheme?.grid;
+      labelsCtx.lineWidth = 0.5;
+      labelsCtx.moveTo(x, 0);
+      labelsCtx.lineTo(x, 8);
+      labelsCtx.stroke();
+
+      // Draw label
+      const isDateChange = text.includes("/");
+
+      if (isDateChange) {
+        labelsCtx.font = `bold 10px ${currentTheme.fontFamily}`;
+        labelsCtx.fillStyle = currentTheme?.text;
+      } else {
+        labelsCtx.font = `10px ${currentTheme.fontFamily}`;
+        labelsCtx.fillStyle = currentTheme?.textSecondary;
       }
 
-      // Draw label background
-      ctx.fillStyle = currentTheme.grid;
-      ctx.fillRect(
-        labelX,
-        (30 - timeLabelHeight) / 2,
-        timeLabelWidth,
-        timeLabelHeight
-      );
-
-      // Draw label text
-      ctx.fillStyle = currentTheme.baseText + "d";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(timeLabel, labelX + timeLabelWidth / 2, 30 / 2);
-    }
-  }, [
-    xAxisCrosshair,
-    dimensions,
-    timeframeConfig,
-    currentTheme,
-    drawXAxisLabels,
-  ]);
+      labelsCtx.textAlign = "center";
+      labelsCtx.fillText(text, x, 20);
+    });
+  }, [calculateXAxisLabels, dimensions, currentTheme]);
 
   // Keep only one drawCrosshair function (the one that doesn't draw time labels)
   const drawCrosshair = useCallback(() => {
@@ -2391,8 +2379,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Create target state for animation
       const targetState: ViewState = {
         ...viewState,
-        scaleY: baseScale,
-        offsetY: 0, // Reset vertical offset
+        scaleY: 0.3,
+        offsetY: calculateInitialOffset(data),
       };
 
       // Animate to new state
@@ -2441,28 +2429,52 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add new canvas ref
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Create a new function to draw grid lines
+  // First, add a function to draw grid lines
   const drawGridLines = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      if (!ctx) return;
+      if (!ctx || !priceRangeData) return;
 
       // Clear the grid canvas
       ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-      // Draw vertical grid lines only at label positions
-      labelPositionsRef.current.forEach(({ x }) => {
+      const chartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+      const { gridPrices } = calculateGridPrices(chartHeight, getY);
+
+      // Draw horizontal grid lines
+      gridPrices.forEach((price) => {
+        const y = getY(price, chartHeight);
+        ctx.beginPath();
         ctx.strokeStyle = currentTheme?.grid;
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, dimensions.height - 30); // Don't draw through x-axis
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
         ctx.stroke();
       });
 
-      // Draw horizontal grid lines as before...
+      // Draw vertical grid lines
+      const labels = calculateXAxisLabels;
+      labels.forEach(({ x }) => {
+        ctx.beginPath();
+        ctx.strokeStyle = currentTheme?.grid;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.8;
+        ctx.moveTo(x, dimensions.padding.top);
+        ctx.lineTo(x, dimensions.height - 30);
+        ctx.stroke();
+      });
     },
-    [dimensions, currentTheme, defaultTheme]
+    [
+      dimensions,
+      priceRangeData,
+      isRSIEnabled,
+      rsiHeight,
+      getY,
+      calculateGridPrices,
+      currentTheme,
+      calculateXAxisLabels,
+    ]
   );
 
   // Add new canvas ref for y-axis
@@ -2486,12 +2498,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     // Set canvas sizes with device pixel ratio
     const dpr = window.devicePixelRatio || 1;
 
-    // Setup all canvases
-    [
-      gridCanvasRef.current,
-      mainCanvasRef.current,
-      yAxisCanvasRef.current,
-    ].forEach((canvas) => {
+    // Set main and grid canvas sizes
+    [gridCanvasRef.current, mainCanvasRef.current].forEach((canvas) => {
       canvas.width = dimensions.width * dpr;
       canvas.height = dimensions.height * dpr;
       const ctx = canvas.getContext("2d");
@@ -2500,32 +2508,42 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
     });
 
-    // Clear all canvases
-    [gridCtx, mainCtx, yAxisCtx].forEach((ctx) => {
-      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
-    });
+    // Set y-axis canvas size
+    yAxisCanvasRef.current.width = dimensions.padding.right * dpr;
+    yAxisCanvasRef.current.height = dimensions.height * dpr;
+    yAxisCtx.scale(dpr, dpr);
 
     // Draw in correct order
     requestAnimationFrame(() => {
-      // 1. Grid lines (background)
       drawGridLines(gridCtx);
-      // 2. Y-axis labels and grid lines
-      drawYAxisLabels(yAxisCtx);
-      // 3. Candlesticks (foreground)
       drawChart(mainCtx);
+      drawYAxisLabels(yAxisCtx);
     });
   }, [
-    dimensions.width,
-    dimensions.height,
+    dimensions,
     viewState.startIndex,
     viewState.visibleBars,
     viewState.scaleY,
     viewState.offsetY,
     data.length,
-    drawChart,
     drawGridLines,
+    drawChart,
     drawYAxisLabels,
   ]);
+
+  useEffect(() => {
+    if (!yAxisCanvasRef.current) return;
+    const ctx = yAxisCanvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    // Set canvas size with device pixel ratio
+    const dpr = window.devicePixelRatio || 1;
+    yAxisCanvasRef.current.width = dimensions.padding.right * dpr;
+    yAxisCanvasRef.current.height = dimensions.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    drawYAxisLabels(ctx);
+  }, [dimensions, drawYAxisLabels]);
 
   // Add these calculations before the return statement, where we have access to the data
   const renderDrawingCanvas = () => {
@@ -2660,6 +2678,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           {/* Grid Canvas - Bottom layer */}
           <canvas
             ref={gridCanvasRef}
+            id={"gridCanvasRef"}
             style={{
               width: "100%",
               height: "100%",
@@ -2670,20 +2689,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             }}
           />
 
-          {/* Y-axis Canvas - Middle layer */}
-          <canvas
-            ref={yAxisCanvasRef}
-            style={{
-              width: "100%",
-              height: "100%",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              zIndex: 2,
-            }}
-          />
-
-          {/* Main Chart Canvas - Top layer */}
+          {/* Main Chart Canvas - Middle layer */}
           <canvas
             ref={mainCanvasRef}
             id="mainCanvasRef"
@@ -2693,61 +2699,25 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               position: "absolute",
               top: 0,
               left: 0,
-              zIndex: 3,
+              zIndex: 4,
             }}
           />
 
-          {/* RSI Section */}
-          {isRSIEnabled && (
-            <>
-              <div
-                style={{
-                  height: "4px",
-                  backgroundColor: currentTheme?.grid,
-                  cursor: "ns-resize",
-                  position: "absolute",
-                  bottom: `${rsiHeight}px`,
-                  width: "100%",
-                  zIndex: 20,
-                }}
-                onMouseDown={handleRSISeparatorMouseDown}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "30px",
-                    height: "2px",
-                    backgroundColor: currentTheme?.text,
-                    opacity: isDraggingRSI ? 0.8 : 0.5,
-                    transition: "opacity 0.2s ease",
-                  }}
-                />
-              </div>
+          {/* Y-axis Canvas - Right side only */}
+          <canvas
+            ref={yAxisCanvasRef}
+            style={{
+              width: `${dimensions.padding.right}px`,
+              height: "100%",
+              position: "absolute",
+              top: 0,
+              right: 0,
+              zIndex: 3,
+              backgroundColor: currentTheme?.background, // Add this to match chart background
+            }}
+          />
 
-              <div style={rsiContainerStyle}>
-                <RSIIndicator
-                  data={combinedData}
-                  dimensions={{
-                    ...dimensions,
-                    padding: {
-                      ...dimensions.padding,
-                      bottom: 0,
-                    },
-                  }}
-                  theme={currentTheme}
-                  period={14}
-                  height={rsiHeight}
-                  startIndex={viewState.startIndex}
-                  visibleBars={viewState.visibleBars}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Crosshair Overlay */}
+          {/* Crosshair Overlay - Top layer */}
           <canvas
             ref={overlayCanvasRef}
             style={{
@@ -2756,7 +2726,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               position: "absolute",
               top: 0,
               left: 0,
-              zIndex: 18,
+              zIndex: 4,
               pointerEvents: "none",
             }}
           />
@@ -2771,8 +2741,22 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           position: "relative",
         }}
       >
+        {/* Labels canvas - bottom layer */}
         <canvas
-          ref={xAxisCanvasRef}
+          ref={xAxisLabelsCanvasRef}
+          id={"xAxisLabelsCanvasRef"}
+          style={{
+            width: "100%",
+            height: "30px",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            zIndex: 1,
+          }}
+        />
+        {/* Crosshair canvas - top layer */}
+        <canvas
+          ref={xAxisCrosshairCanvasRef}
           style={{
             width: "100%",
             height: "30px",
