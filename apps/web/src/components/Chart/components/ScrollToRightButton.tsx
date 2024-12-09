@@ -48,7 +48,7 @@ export const ScrollToRightButton = ({
       size="icon"
       onClick={onClick}
       className={cn(
-        "absolute right-20 bottom-[85px] z-10 h-[26px] w-[26px] opacity-80 transition-all shadow-sm shadow-foreground/20",
+        "absolute right-20 bottom-[50px] z-10 h-[26px] w-[26px] opacity-80 transition-all shadow-sm shadow-foreground/20",
         "hover:opacity-100 hover:border-foreground",
         "bg-background border-border",
         className

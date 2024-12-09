@@ -1161,26 +1161,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add resize observer effect if not already present
 
-  // Update the calculateTimeStep function for better time intervals
-  // const calculateTimeStep = (
-  //   timeRange: number,
-  //   visibleBars: number
-  // ): number => {
-  //   const msPerDay = 86400000;
-  //   const msPerHour = 3600000;
-  //   const msPerMinute = 60000;
-
-  //   // More granular time steps like TradingView
-  //   if (timeRange > msPerDay * 5) return msPerDay; // Daily
-  //   if (timeRange > msPerDay) return msPerHour * 6; // 6 hours
-  //   if (timeRange > msPerHour * 12) return msPerHour * 2; // 2 hours
-  //   if (timeRange > msPerHour * 4) return msPerHour; // 1 hour
-  //   if (timeRange > msPerHour * 2) return msPerMinute * 30; // 30 minutes
-  //   if (timeRange > msPerHour) return msPerMinute * 15; // 15 minutes
-  //   if (timeRange > msPerMinute * 30) return msPerMinute * 5; // 5 minutes
-  //   return msPerMinute; // 1 minute
-  // };
-
   // Update formatTimeLabel function to be more intelligent
   const formatTimeLabel = useCallback((date: Date, prevDate: Date | null) => {
     if (!date.getTime()) return ""; // Don't format invalid dates
@@ -1476,7 +1456,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         visibleStartIndex + viewState.visibleBars
       );
 
-      if (!visibleData.length) return;
+      if (!visibleData.length || !priceRangeData) return;
 
       // Use last 10 candles for price range
       const { min, max, padding } = priceRangeData;
@@ -1833,104 +1813,57 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     [xAxisDragState]
   );
 
-  // Add a function to calculate optimal label interval
-  const calculateLabelInterval = useCallback(
-    (barWidth: number) => {
-      // Reduce the minimum pixels between labels
-      const minPixelsBetweenLabels = 200; // Reduced from 500 to 200
+  // Update the shouldShowLabelAtIndex function with more granular intervals
+  const shouldShowLabelAtIndex = useCallback(
+    (dataIndex: number, barWidth: number) => {
+      if (!combinedData[dataIndex]) return false;
 
-      // Calculate how many bars we need between labels
-      const barsNeeded = Math.ceil(minPixelsBetweenLabels / barWidth);
+      const date = new Date(combinedData[dataIndex]!.timestamp);
+      const prevDate =
+        dataIndex > 0 ? new Date(combinedData[dataIndex - 1]!.timestamp) : null;
 
-      // Get timeframe in minutes
-      const timeframeMinutes = (() => {
-        switch (timeframeConfig.resolution) {
-          case "1":
-            return 1;
-          case "5":
-            return 5;
-          case "15":
-            return 15;
-          case "D":
-            return 1440;
-          default:
-            return 1;
-        }
-      })();
+      // Check for date changes
+      const isDateChange =
+        prevDate &&
+        (date.getDate() !== prevDate.getDate() ||
+          date.getMonth() !== prevDate.getMonth() ||
+          date.getFullYear() !== prevDate.getFullYear());
 
-      // Calculate total minutes needed for spacing
-      const minutesNeeded = barsNeeded * timeframeMinutes;
+      // Always show date changes and market open
+      if (isDateChange) return true;
+      if (date.getHours() === 9 && date.getMinutes() === 15) return true;
 
-      // Define intervals based on timeframe
-      if (timeframeConfig.resolution === "D") {
-        if (minutesNeeded <= 1440) return 1; // 1 day
-        if (minutesNeeded <= 7200) return 5; // 5 days
-        if (minutesNeeded <= 14400) return 10; // 10 days
-        return 20; // 20 days
-      }
-
-      // For intraday timeframes, use dynamic calculation based on bar width
-      const getIntraDayInterval = () => {
-        // When bars are wide (zoomed in), show more granular labels
-        if (barWidth >= 30) {
-          // Increased threshold
-          return 1;
-        } else if (barWidth >= 20) {
-          // Increased threshold
-          return 2;
-        } else if (barWidth >= 10) {
-          // Increased threshold
-          return 3;
-        }
-
-        // For more zoomed out views, calculate based on minutesNeeded
-        if (minutesNeeded <= 30) return 5;
-        if (minutesNeeded <= 60) return 10;
-        if (minutesNeeded <= 120) return 20;
-        if (minutesNeeded <= 240) return 40;
-        if (minutesNeeded <= 480) return 80;
-        if (minutesNeeded <= 960) return 160;
-
-        return 320; // Reduced from 320 to 160
-      };
-
-      // Apply the interval based on timeframe resolution
-      switch (timeframeConfig.resolution) {
-        case "1":
-          return getIntraDayInterval() * 2.5;
-        case "5":
-          return getIntraDayInterval() * 1; // Reduced multiplier from 5 to 3
-        case "15":
-          return getIntraDayInterval() * 2; // Reduced multiplier from 15 to 6
-        default:
-          return getIntraDayInterval();
-      }
-    },
-    [timeframeConfig.resolution]
-  );
-
-  // Update the shouldDrawLabel logic in drawXAxisLabels
-  const shouldDrawLabel = useCallback(
-    (date: Date, barWidth: number) => {
-      if (!date.getTime()) return false;
-
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const totalMinutes = hours * 60 + minutes;
-      const interval = calculateLabelInterval(barWidth);
-
-      // Always show market open (9:15 AM)
-      if (hours === 9 && minutes === 15) return true;
-
-      // Always show day change (midnight)
-      if (hours === 0 && minutes === 0) return true;
+      // More granular intervals based on bar width
+      let interval = 1;
+      if (barWidth >= 100)
+        interval = 1; // Show every label when very zoomed in
+      else if (barWidth >= 50)
+        interval = 2; // Show every other label
+      else if (barWidth >= 30)
+        interval = 3; // Show every third label
+      else if (barWidth >= 20)
+        interval = 5; // Show every fifth label
+      else if (barWidth >= 10)
+        interval = 10; // Show every tenth label
+      else if (barWidth >= 5)
+        interval = 20; // Show every twentieth label
+      else interval = 30; // Show every thirtieth label when zoomed out
 
       // For daily timeframe
       if (timeframeConfig.resolution === "D") {
-        return date.getDate() % interval === 0;
+        return dataIndex % interval === 0;
       }
 
-      // Get resolution in minutes
+      // For intraday timeframes
+      const minutes = date.getHours() * 60 + date.getMinutes();
+      const marketOpenMinutes = 9 * 60 + 15;
+
+      // Calculate candle index from market open
+      const minutesSinceMarketOpen =
+        minutes >= marketOpenMinutes
+          ? minutes - marketOpenMinutes
+          : minutes + (24 * 60 - marketOpenMinutes);
+
       const resolutionMinutes =
         {
           "1": 1,
@@ -1939,101 +1872,121 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           D: 1440,
         }[timeframeConfig.resolution] || 1;
 
-      // Calculate candle index from market open
-      const marketOpenMinutes = 9 * 60 + 15;
-      const minutesSinceMarketOpen =
-        totalMinutes >= marketOpenMinutes
-          ? totalMinutes - marketOpenMinutes
-          : totalMinutes + (24 * 60 - marketOpenMinutes);
-
       const candleIndex = Math.floor(
         minutesSinceMarketOpen / resolutionMinutes
       );
-
-      // Show label based on candle index and interval
       return candleIndex % interval === 0;
     },
-    [timeframeConfig.resolution, calculateLabelInterval]
+    [timeframeConfig.resolution, combinedData]
   );
 
-  // Helper function to format date
-  // const formatDate = (date: Date, showYear = false) => {
-  //   const month = date.toLocaleString("default", { month: "short" });
-  //   const day = date.getDate();
-  //   const year = date.getFullYear();
-
-  //   return showYear ? `${month}/${year}` : `${month}/${day}`;
-  // };
-
-  // Add this helper function near the top of the component to calculate x positions
-
+  // Update calculateXAxisLabels with better spacing around date changes
   const calculateXAxisLabels = useMemo(() => {
     if (!combinedData.length) return [];
 
-    const visibleData = combinedData.slice(
-      Math.floor(viewState.startIndex),
-      Math.floor(viewState.startIndex) + viewState.visibleBars
+    const startIndex = Math.floor(viewState.startIndex);
+    const endIndex = Math.min(
+      combinedData.length,
+      startIndex + viewState.visibleBars
     );
 
+    const chartWidth =
+      dimensions.width - dimensions.padding.left - dimensions.padding.right;
+    const barWidth = chartWidth / viewState.visibleBars;
     const fractionalOffset =
       viewState.startIndex - Math.floor(viewState.startIndex);
-    const labels: { x: number; timestamp: number; text: string }[] = [];
-    let lastDate: Date | null = null;
+
+    const labels: { index: number; x: number; isDateChange: boolean }[] = [];
+    const MIN_LABEL_SPACING = 45; // Minimum pixels between any labels
+    const DATE_CHANGE_MIN_SPACING = 65; // Minimum pixels between date change labels
     let lastLabelX: number | null = null;
-    const minLabelSpacing = 80;
+    let lastDateChangeX: number | null = null;
 
-    visibleData.forEach((candle, i) => {
-      const x = calculateBarX(i, fractionalOffset);
-      const date = new Date(candle.timestamp);
-      const barWidth =
-        (dimensions.width -
-          dimensions.padding.left -
-          dimensions.padding.right) /
-        viewState.visibleBars;
+    // First pass: Identify all date changes and market opens
+    const dateChanges: number[] = [];
+    for (let i = startIndex; i < endIndex; i++) {
+      const date = new Date(combinedData[i]!.timestamp);
+      const prevDate =
+        i > startIndex ? new Date(combinedData[i - 1]!.timestamp) : null;
 
-      if (
-        shouldDrawLabel(date, barWidth) &&
-        x >= dimensions.padding.left &&
-        x <= dimensions.width - dimensions.padding.right
-      ) {
-        // Check for minimum spacing between labels
-        if (lastLabelX && x - lastLabelX < minLabelSpacing) {
-          return;
-        }
+      const isDateChange =
+        prevDate &&
+        (date.getDate() !== prevDate.getDate() ||
+          date.getMonth() !== prevDate.getMonth() ||
+          date.getFullYear() !== prevDate.getFullYear());
 
-        labels.push({
-          x,
-          timestamp: candle.timestamp,
-          text: formatTimeLabel(date, lastDate),
-        });
+      const isMarketOpen = date.getHours() === 9 && date.getMinutes() === 15;
 
-        lastLabelX = x;
-        lastDate = date;
+      if (isDateChange || isMarketOpen) {
+        dateChanges.push(i);
       }
-    });
+    }
 
-    return labels;
+    // Second pass: Add regular labels, ensuring space before date changes
+    for (let i = startIndex; i < endIndex; i++) {
+      const x = calculateBarX(i - startIndex, fractionalOffset);
+      const isDateChangeIndex = dateChanges.includes(i);
+
+      // Check if next index is a date change
+      const nextIndex = dateChanges.find((changeIndex) => changeIndex > i);
+      const distanceToNextDateChange = nextIndex
+        ? calculateBarX(nextIndex - startIndex, fractionalOffset) - x
+        : Infinity;
+
+      // Always show label if it's a date change
+      if (isDateChangeIndex) {
+        if (
+          !lastDateChangeX ||
+          x - lastDateChangeX >= DATE_CHANGE_MIN_SPACING
+        ) {
+          labels.push({ index: i, x, isDateChange: true });
+          lastDateChangeX = x;
+          lastLabelX = x;
+        }
+        continue;
+      }
+
+      // For regular labels, ensure we leave space before date changes
+      if (lastLabelX && x - lastLabelX < MIN_LABEL_SPACING) continue;
+      if (distanceToNextDateChange < MIN_LABEL_SPACING) continue;
+
+      // Check if we should show a regular label
+      if (shouldShowLabelAtIndex(i, barWidth)) {
+        labels.push({ index: i, x, isDateChange: false });
+        lastLabelX = x;
+      }
+    }
+
+    // Sort labels by index to maintain proper order
+    return labels.sort((a, b) => a.index - b.index);
   }, [
-    combinedData,
+    combinedData.length,
     viewState.startIndex,
     viewState.visibleBars,
     dimensions.width,
     dimensions.padding,
     calculateBarX,
-    shouldDrawLabel,
-    formatTimeLabel,
+    shouldShowLabelAtIndex,
   ]);
 
-  // Update the drawXAxisLabels function
+  // Update drawXAxisLabels to use indices
   const drawXAxisLabels = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const labels = calculateXAxisLabels;
+      let lastDate: Date | null = null;
 
       // Clear canvas
       ctx.clearRect(0, 0, dimensions.width, 30);
 
       // Draw labels
-      labels.forEach(({ x, text }) => {
+      labels.forEach(({ index, x, isDateChange: isDateBoundary }) => {
+        const candle = combinedData[index];
+        if (!candle) return;
+
+        const date = new Date(candle.timestamp);
+        const text = formatTimeLabel(date, lastDate);
+        lastDate = date;
+
         // Draw tick mark
         ctx.beginPath();
         ctx.strokeStyle = currentTheme?.grid;
@@ -2043,9 +1996,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.stroke();
 
         // Draw label
-        const isDateChange = text.includes("/"); // Simple check for date labels
+        const hasDateSeparator = text.includes("/");
 
-        if (isDateChange) {
+        if (hasDateSeparator) {
           ctx.font = `bold 10px ${currentTheme.fontFamily}`;
           ctx.fillStyle = currentTheme?.text;
         } else {
@@ -2057,7 +2010,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.fillText(text, x, 20);
       });
     },
-    [calculateXAxisLabels, dimensions.width, currentTheme]
+    [
+      calculateXAxisLabels,
+      dimensions.width,
+      currentTheme,
+      combinedData,
+      formatTimeLabel,
+    ]
   );
 
   // First, create separate canvases for labels and crosshair
@@ -2153,7 +2112,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     });
 
     // Draw x-axis labels
-    labels.forEach(({ x, text }) => {
+    labels.forEach(({ index, x, isDateChange: isDateBoundary }) => {
+      const candle = combinedData[index];
+      if (!candle) return;
+
+      const date = new Date(candle.timestamp);
+      const text = formatTimeLabel(date, null);
+
       // Draw tick mark
       labelsCtx.beginPath();
       labelsCtx.strokeStyle = currentTheme?.grid;
@@ -2163,9 +2128,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       labelsCtx.stroke();
 
       // Draw label
-      const isDateChange = text.includes("/");
+      const hasDateSeparator = text.includes("/");
 
-      if (isDateChange) {
+      if (hasDateSeparator) {
         labelsCtx.font = `bold 10px ${currentTheme.fontFamily}`;
         labelsCtx.fillStyle = currentTheme?.text;
       } else {
@@ -2176,7 +2141,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       labelsCtx.textAlign = "center";
       labelsCtx.fillText(text, x, 20);
     });
-  }, [calculateXAxisLabels, dimensions, currentTheme]);
+  }, [
+    calculateXAxisLabels,
+    dimensions,
+    currentTheme,
+    combinedData,
+    formatTimeLabel,
+  ]);
 
   // Keep only one drawCrosshair function (the one that doesn't draw time labels)
   const drawCrosshair = useCallback(() => {
@@ -2328,7 +2299,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       ...viewState,
       startIndex: targetStartIndex,
       visibleBars,
-      offsetY: 0,
+      offsetY: calculateInitialOffset(data),
+      scaleY: 0.3,
     };
 
     // Trigger animation
@@ -2606,6 +2578,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           drawing,
           combinedData
         );
+        console.log(drawing, timestampDrawing);
         onDrawingComplete(timestampDrawing);
       },
       [combinedData, onDrawingComplete]

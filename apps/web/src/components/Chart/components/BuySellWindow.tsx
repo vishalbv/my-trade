@@ -155,7 +155,7 @@ export const BuySellWindow = ({
         className
       )}
       style={{
-        bottom: `calc(10% + ${rsiHeight > 0 ? `${rsiHeight}px` : "0px"})`,
+        bottom: `calc(10% + ${rsiHeight > 0 ? `${rsiHeight}px` : "20px"})`,
       }}
       onDoubleClick={(e) => e.stopPropagation()}
     >
