@@ -4,7 +4,7 @@ import { RootState } from "../store";
 import { sendMessage } from "../../services/webSocket";
 
 export const drawingsMiddleware: Middleware =
-  (store) => (next) => async (action) => {
+  (store) => (next) => async (action: any) => {
     const prevState = store.getState() as RootState;
     const result = next(action);
     const currentState = store.getState() as RootState;

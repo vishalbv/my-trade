@@ -128,11 +128,11 @@ export const ChartContainer = ({
   }, [chartKey, indicators]);
 
   const handleDrawingComplete = (drawing: Drawing) => {
-    dispatch(addDrawing({ symbol: chartState.symbol, drawing }));
+    dispatch(addDrawing({ symbol: chartState.symbol, drawing }) as any);
   };
 
   const handleDrawingUpdate = (drawing: Drawing) => {
-    dispatch(updateDrawing({ symbol: chartState.symbol, drawing }));
+    dispatch(updateDrawing({ symbol: chartState.symbol, drawing }) as any);
   };
 
   const handleChartClick = () => {

@@ -14,7 +14,11 @@ export const getTimeoutTo = (time = moment(), testMode?: boolean) => {
 export const shoonyaToFyersSymbol = (symbol: any, callback: any) => {
   let fyersSymbol = "";
   if (symbol.type === "index") {
-    fyersSymbol = shoonyaToFyersIndexMapping(INDEX_DETAILS[symbol.name]);
+    const indexDetails = INDEX_DETAILS as Record<
+      string,
+      { name: string; fyersName: string }
+    >;
+    fyersSymbol = shoonyaToFyersIndexMapping(indexDetails[symbol.name]);
   } else if (symbol.exch === "NSE") {
     fyersSymbol = "NSE:" + symbol.tsym;
   } else if (symbol.exch === "NFO" || symbol.exch === "BFO") {
@@ -32,28 +36,29 @@ export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
   if (symbol.exch === "BFO") {
     return "BSE:" + symbol.tsym;
   }
-  let months = {
-    JAN: "1",
-    FEB: "2",
-    MAR: "3",
-    APR: "4",
-    MAY: "5",
-    JUN: "6",
-    JUL: "7",
-    AUG: "8",
-    SEP: "9",
-    OCT: "O",
-    NOV: "N",
-    DEC: "D",
+  const months: Record<string, string> = {
+    JAN: "01",
+    FEB: "02",
+    MAR: "03",
+    APR: "04",
+    MAY: "05",
+    JUN: "06",
+    JUL: "07",
+    AUG: "08",
+    SEP: "09",
+    OCT: "10",
+    NOV: "11",
+    DEC: "12",
   };
   let arr = symbol.tsym.match(/[a-zA-Z]+|[0-9]+(?:\.[0-9]+|)/g);
   console.log(arr);
   const monthly = !symbol.weekly || symbol.weekly == "W4";
+  const monthKey = arr[2] as keyof typeof months;
   return (
     "NSE:" +
     arr[0] +
     arr[3] +
-    (monthly ? arr[2] : months[arr[2]]) +
+    (monthly ? arr[2] : months[monthKey]) +
     (monthly ? "" : arr[1]) +
     arr[5] +
     (arr[4] == "P" ? "PE" : "CE")

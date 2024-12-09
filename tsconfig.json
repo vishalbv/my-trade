@@ -1,8 +1,18 @@
 {
   "compilerOptions": {
+    "target": "ES2018",
     "lib": ["dom", "es2015"],
-    "typeRoots": ["./types", "./node_modules/@types"]
-    // ... other options ...
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "skipLibCheck": true,
+    "strict": true,
+    "module": "esnext",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["packages/ui/**/*.ts", "packages/ui/**/*.tsx"],
   "exclude": ["node_modules"]

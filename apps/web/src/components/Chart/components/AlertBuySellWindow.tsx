@@ -29,7 +29,7 @@ export const AlertBuySellWindow = ({
 }: AlertBuySellWindowProps) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<
     (typeof timeframeOptions)[0]
-  >(timeframeOptions[0]);
+  >(timeframeOptions[0]!);
   const [isAlertEnabled, setIsAlertEnabled] = useState(true);
 
   const handleTimeframeSelect = (timeframe: (typeof timeframeOptions)[0]) => {

@@ -10,7 +10,7 @@ export const calculateRSI = (
 
   // Calculate price changes and separate gains/losses
   for (let i = 1; i < data.length; i++) {
-    const change = data[i].close - data[i - 1].close;
+    const change = data[i]!.close - data[i - 1]!.close;
     gains.push(Math.max(0, change));
     losses.push(Math.max(0, -change));
   }
@@ -24,8 +24,8 @@ export const calculateRSI = (
 
   // Calculate subsequent values using Wilder's smoothing
   for (let i = period; i < data.length - 1; i++) {
-    avgGain = (avgGain * (period - 1) + gains[i]) / period;
-    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+    avgGain = (avgGain * (period - 1) + gains[i]!) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i]!) / period;
 
     if (avgLoss === 0) {
       rsi.push(100);

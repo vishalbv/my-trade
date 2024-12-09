@@ -1465,12 +1465,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const lastCandle = data[data.length - 1];
         const previousCandle = data[data.length - 2];
 
-        const lineColor = previousCandle
-          ? lastCandle.close >= previousCandle.close
-            ? currentTheme?.upColor
-            : currentTheme?.downColor
-          : currentTheme?.upColor;
-
+        const lineColor =
+          previousCandle && lastCandle
+            ? lastCandle.close >= previousCandle.close
+              ? currentTheme?.upColor
+              : currentTheme?.downColor
+            : currentTheme?.upColor;
+        if (!lastCandle) return;
         const y = getY(
           lastCandle.close,
           adjustedMinPrice,
@@ -1566,7 +1567,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, [drawChart, dimensions, data.length]);
 
   // Update the RSI container style to use transform for smoother animation
-  const rsiContainerStyle = {
+  const rsiContainerStyle: React.CSSProperties = {
     zIndex: 7,
     position: "absolute",
     bottom: 0,

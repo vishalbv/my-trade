@@ -2,11 +2,12 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 
 interface TickData {
-  ltp?: number;
+  ltp: number;
+  timestamp: number;
+  type: string;
   volume?: number;
   high?: number;
   low?: number;
-  timestamp?: number;
 }
 
 interface TicksState {

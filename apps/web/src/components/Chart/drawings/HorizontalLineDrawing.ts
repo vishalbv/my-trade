@@ -8,6 +8,7 @@ interface DrawHorizontalLineProps {
   theme: ChartTheme;
   toCanvasCoords: (point: Point) => { x: number; y: number };
   dimensions: { width: number; padding: { left: number; right: number } };
+  isHovered?: boolean;
 }
 
 export const drawHorizontalLine = ({

@@ -82,7 +82,11 @@ const Header: React.FC = () => {
         transition: "opacity 0.3s ease",
       }
     : {};
-  const indexToDisplay = ["NIFTY-50", "FIN-NIFTY", "NIFTY-BANK"];
+  const indexToDisplay: (keyof typeof INDEX_DETAILS)[] = [
+    "NIFTY-50",
+    "FIN-NIFTY",
+    "NIFTY-BANK",
+  ];
 
   return (
     <>
@@ -150,13 +154,11 @@ const Header: React.FC = () => {
 };
 
 interface MarketIndexProps {
-  name: string;
-  value: number;
-  prevValue: number;
+  name: keyof typeof INDEX_DETAILS;
 }
 
 export const MarketIndex = ({ name }: MarketIndexProps) => {
-  const indexData = INDEX_DETAILS[name];
+  const indexData = INDEX_DETAILS[name as keyof typeof INDEX_DETAILS];
 
   const price = useSelector(
     ({ ticks }: RootState) => ticks.shoonya_server[indexData.shoonyaToken] || {}

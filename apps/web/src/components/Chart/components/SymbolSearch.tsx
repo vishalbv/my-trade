@@ -12,7 +12,7 @@ import { INDEX_DETAILS } from "@repo/utils/constants";
 interface SymbolSearchProps {
   isOpen: boolean;
   onClose: () => void;
-  onSymbolSelect: (symbol: string) => void;
+  onSymbolSelect: (symbol: { name: string; type: string }) => void; // Update this line
 }
 
 const INDICES = [
@@ -42,7 +42,7 @@ export const SymbolSearch = ({
     exchange: "NSE",
     text: "",
   });
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedType, setSelectedType] =
     useState<(typeof symbolTypes)[number]["id"]>("stocks");
 
@@ -76,7 +76,6 @@ export const SymbolSearch = ({
   useEffect(() => {
     if (searchTerm.text.length > 2 && searchTerm.exchange) {
       fetchSearchResults(searchTerm.exchange, searchTerm.text).then((res) => {
-        console.log(res, "ppppppp");
         setSearchResults(res || []);
       });
     }

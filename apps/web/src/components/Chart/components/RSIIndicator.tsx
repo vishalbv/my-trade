@@ -47,7 +47,7 @@ export const RSIIndicator: React.FC<RSIIndicatorProps> = ({
     // Calculate dimensions with fractional offset for smooth movement
     const chartWidth =
       dimensions.width - dimensions.padding.left - dimensions.padding.right;
-    const chartHeight = height;
+
     const barWidth = chartWidth / visibleBars;
 
     // Calculate fractional offset for smooth movement
@@ -196,7 +196,7 @@ function calculateRSI(data: OHLCData[], period: number): number[] {
 
   // Calculate price changes only for real candles
   for (let i = 1; i < realData.length; i++) {
-    const change = realData[i].close - realData[i - 1].close;
+    const change = realData[i]!.close - realData[i - 1]!.close;
     gains.push(Math.max(0, change));
     losses.push(Math.max(0, -change));
   }
@@ -212,15 +212,15 @@ function calculateRSI(data: OHLCData[], period: number): number[] {
 
   // Calculate subsequent RSI values
   for (let i = period + 1; i < realData.length; i++) {
-    avgGain = (avgGain * (period - 1) + gains[i - 1]) / period;
-    avgLoss = (avgLoss * (period - 1) + losses[i - 1]) / period;
+    avgGain = (avgGain * (period - 1) + gains[i - 1]!) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i - 1]!) / period;
     rsi.push(100 - 100 / (1 + avgGain / avgLoss));
   }
 
   // Fill initial values with the first calculated RSI
   const firstRSI = rsi[0];
   for (let i = 0; i < period; i++) {
-    rsi.unshift(firstRSI);
+    firstRSI && rsi.unshift(firstRSI);
   }
 
   // Create final RSI array matching the original data length

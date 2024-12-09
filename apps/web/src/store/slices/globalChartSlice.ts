@@ -34,10 +34,13 @@ interface GlobalChartState {
 const defaultLayout: ChartState = {
   ...DEFAULT_CHART_LAYOUT,
 };
+const isClient = typeof window !== "undefined";
 
 const getLocalStorageData = () => {
-  const stored = localStorage.getItem("globalChartState");
-  return stored ? JSON.parse(stored) : {};
+  if (isClient) {
+    const stored = localStorage.getItem("globalChartState");
+    return stored ? JSON.parse(stored) : {};
+  } else return {};
 };
 
 const keysToSaveInLocalStorage = [
@@ -52,13 +55,17 @@ export const globalChartLocalStorageMiddleware: Middleware =
     const result = next(action);
 
     // Only save if the action is from globalChart slice...
-    if (action.type.startsWith("globalChart/")) {
+    if ((action as { type: string }).type.startsWith("globalChart/")) {
       const state = store.getState() as RootState;
-      const dataToSave = keysToSaveInLocalStorage.reduce((acc, key) => {
-        acc[key] = state.globalChart[key];
-        return acc;
-      }, {});
-      localStorage.setItem("globalChartState", JSON.stringify(dataToSave));
+      const dataToSave = keysToSaveInLocalStorage.reduce(
+        (acc: Record<string, any>, key) => {
+          acc[key] = state.globalChart[key];
+          return acc;
+        },
+        {}
+      );
+      isClient &&
+        localStorage.setItem("globalChartState", JSON.stringify(dataToSave));
     }
 
     return result;

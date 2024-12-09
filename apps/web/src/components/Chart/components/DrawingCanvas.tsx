@@ -292,14 +292,14 @@ export const DrawingCanvas = ({
     if (pointIndex < 3) {
       // If dragging left points
       newPoints[pointIndex] = {
-        x: newPoints[pointIndex].x,
+        x: newPoints[pointIndex]!.x,
         y: chartCoords.y,
       };
 
       // Update the corresponding right point
       if (newPoints[rightPointIndex]) {
         newPoints[rightPointIndex] = {
-          x: newPoints[rightPointIndex].x,
+          x: newPoints[rightPointIndex]!.x,
           y: chartCoords.y,
         };
       }
@@ -307,7 +307,7 @@ export const DrawingCanvas = ({
       // If dragging right points
       newPoints[pointIndex] = {
         x: chartCoords.x,
-        y: newPoints[pointIndex - 3].y, // Keep y-value synced with left point
+        y: newPoints[pointIndex - 3]!.y, // Keep y-value synced with left point
       };
     }
 
@@ -680,7 +680,8 @@ export const DrawingCanvas = ({
           isSelected: selectedDrawing?.drawing?.id === drawing.id,
         };
 
-        const drawMethod = drawingMethods[drawing.type];
+        const drawMethod =
+          drawingMethods[drawing.type as keyof typeof drawingMethods];
         if (drawMethod) {
           drawMethod(commonProps);
         }
@@ -783,7 +784,7 @@ export const DrawingCanvas = ({
         selectedDrawing?.symbol === chartState.symbol &&
         selectedDrawing
       ) {
-        dispatch(deleteSelectedDrawing(selectedDrawing));
+        dispatch(deleteSelectedDrawing(selectedDrawing) as any);
       }
     };
 

@@ -30,6 +30,7 @@ interface DrawingToolsProps {
   setSelectedTool: (tool: DrawingTool | null) => void;
   showDrawings: boolean;
   setShowDrawings: (show: boolean) => void;
+  onClearDrawings: () => void;
 }
 
 export function DrawingTools({
@@ -37,6 +38,7 @@ export function DrawingTools({
   setSelectedTool,
   showDrawings,
   setShowDrawings,
+  onClearDrawings,
 }: DrawingToolsProps) {
   const dispatch = useDispatch();
   const currentSymbol = useSelector((state: RootState) => {
@@ -94,7 +96,7 @@ export function DrawingTools({
 
   const handleClearDrawings = () => {
     if (currentSymbol) {
-      dispatch(clearDrawings(currentSymbol));
+      dispatch(clearDrawings(currentSymbol) as any);
     }
   };
 
