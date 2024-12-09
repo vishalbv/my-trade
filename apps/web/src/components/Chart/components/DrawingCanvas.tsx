@@ -6,6 +6,7 @@ import {
   ChartTheme,
   ChartDimensions,
   ViewState,
+  OHLCData,
 } from "../types";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../../store/store";
@@ -25,6 +26,12 @@ import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
 import { deleteSelectedDrawing } from "../../../store/actions/drawingActions";
 
 interface DrawingCanvasProps {
+  priceRangeData: {
+    min: number;
+    max: number;
+    padding: number;
+    range: number;
+  } | null;
   drawings: Drawing[];
   dimensions: ChartDimensions;
   theme: ChartTheme;
@@ -54,6 +61,7 @@ interface DrawingCanvasProps {
 }
 
 export const DrawingCanvas = ({
+  priceRangeData,
   drawings,
   dimensions,
   theme,
@@ -93,6 +101,25 @@ export const DrawingCanvas = ({
   );
   const POINT_RADIUS = 6;
   const POINT_BORDER_WIDTH = 2;
+
+  // Add the getLast10CandlesPriceRange helper at the top level
+  const getLast10CandlesPriceRange = useCallback((data: OHLCData[]) => {
+    const lastCandles = data.slice(-10);
+    if (!lastCandles.length) return { min: 0, max: 0, padding: 0 };
+
+    const prices = lastCandles.flatMap((candle) => [candle.high, candle.low]);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min;
+    const padding = range * 0.15;
+
+    return {
+      min,
+      max,
+      padding,
+      range: range + padding * 2,
+    };
+  }, []);
 
   // Update local drawings when props change
   useEffect(() => {
@@ -143,6 +170,8 @@ export const DrawingCanvas = ({
   // Helper function to convert chart coordinates to canvas coordinates
   const toCanvasCoords = useCallback(
     (point: Point) => {
+      if (!priceRangeData) return { x: 0, y: 0 };
+      const { min, max, padding } = priceRangeData;
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const mainChartHeight = dimensions.height - (viewState.rsiHeight || 30);
@@ -152,24 +181,24 @@ export const DrawingCanvas = ({
       const x =
         dimensions.padding.left + (point.x - viewState.startIndex) * barWidth;
 
-      // Match exactly with getY function calculation
-      const adjustedPriceRange =
-        ((viewState.maxPrice ?? 0) - (viewState.minPrice ?? 0)) /
-        viewState.scaleY;
+      // Use last 10 candles for price range calculation
+      const adjustedMin = min - padding + viewState.offsetY;
+      const adjustedMax = max + padding + viewState.offsetY;
+      const adjustedRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
       const y =
         dimensions.padding.top +
-        (((viewState.maxPrice ?? 0) - point.y) / adjustedPriceRange) *
+        ((adjustedMax - point.y) / adjustedRange) *
           (mainChartHeight -
             dimensions.padding.top -
             dimensions.padding.bottom);
 
       return { x, y };
     },
-    [dimensions, viewState]
+    [dimensions, viewState, priceRangeData]
   );
 
-  // Update toChartCoords to handle snapping correctly
+  // Update toChartCoords to use last 10 candles price range
   const toChartCoords = useCallback(
     (x: number, y: number) => {
       const chartWidth =
@@ -184,22 +213,24 @@ export const DrawingCanvas = ({
       const chartX =
         viewState.startIndex + (snappedX - dimensions.padding.left) / barWidth;
 
-      // Match exactly with inverse of getY function calculation
-      const adjustedPriceRange =
-        ((viewState.maxPrice ?? 0) - (viewState.minPrice ?? 0)) /
-        viewState.scaleY;
+      // Use last 10 candles for price range calculation
+      const adjustedMin =
+        priceRangeData!.min - priceRangeData!.padding + viewState.offsetY;
+      const adjustedMax =
+        priceRangeData!.max + priceRangeData!.padding + viewState.offsetY;
+      const adjustedRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
       const chartY =
-        (viewState.maxPrice ?? 0) -
+        adjustedMax -
         ((y - dimensions.padding.top) /
           (mainChartHeight -
             dimensions.padding.top -
             dimensions.padding.bottom)) *
-          adjustedPriceRange;
+          adjustedRange;
 
       return { x: chartX, y: chartY };
     },
-    [dimensions, viewState, snapToNearestCandle]
+    [dimensions, viewState, snapToNearestCandle, priceRangeData]
   );
 
   const isPointNearby = useCallback(

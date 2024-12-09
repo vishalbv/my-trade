@@ -360,32 +360,96 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add this at the top of the component with other refs
   const prevTimeframe = useRef(timeframeConfig.resolution);
+  const prevSymbol = useRef(chartState.symbol); // Add symbol reference
 
-  // Update the initialization effect
+  // Add this helper function at the top level
+  const calculateInitialScaleY = (data: OHLCData[], chartHeight: number) => {
+    // Get last 10 candles or all if less than 10
+    const lastCandles = data.slice(-10);
+    if (!lastCandles.length) return 1;
+
+    // Calculate price range from last 10 candles
+    const prices = lastCandles.flatMap((candle) => [candle.high, candle.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    const pricePadding = priceRange * 0.15;
+
+    // Calculate total range with padding
+    const totalRange = priceRange + pricePadding * 2;
+
+    // Calculate base scale (inverse relationship with chart height)
+    const baseScale = 650 / chartHeight; // 400 is a reference height
+    return baseScale * (chartHeight / totalRange) - 4;
+  };
+
+  // Add new state for price range
+  const [priceRangeData, setPriceRangeData] = useState<{
+    min: number;
+    max: number;
+    padding: number;
+    range: number;
+  } | null>(null);
+
+  // Add this helper function (outside of component if possible)
+  const calculatePriceRangeFromLast10 = (data: OHLCData[]) => {
+    const lastCandles = data.slice(-10);
+    if (!lastCandles.length) return { min: 0, max: 0, padding: 0, range: 0 };
+
+    const prices = lastCandles.flatMap((candle) => [candle.high, candle.low]);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min;
+    const padding = range * 0.15;
+
+    return {
+      min,
+      max,
+      padding,
+      range: range + padding * 2,
+    };
+  };
+
+  // Update the initialization effect to calculate price range
   useEffect(() => {
     if (!dimensions.width || !combinedData.length) return;
 
     // Reset view state when timeframe changes or when it hasn't been set before
     if (
       viewState.visibleBars === 0 ||
-      timeframeConfig.resolution !== prevTimeframe.current
+      timeframeConfig.resolution !== prevTimeframe.current ||
+      chartState.symbol !== prevSymbol.current // Add symbol check
     ) {
+      // Calculate initial price range
+      const newPriceRange = calculatePriceRangeFromLast10(data);
+      setPriceRangeData(newPriceRange);
+
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
       const visibleDataBars = Math.floor(initialVisibleBars * 0.7);
 
+      // Calculate chart height
+      const chartHeight =
+        dimensions.height -
+        dimensions.padding.top -
+        dimensions.padding.bottom -
+        (isRSIEnabled ? rsiHeight + 34 : 30);
+
+      // Calculate initial scaleY based on last 10 candles
+      const initialScaleY = calculateInitialScaleY(data, chartHeight);
+
       // Reset to initial state
       const initialState: ViewState = {
         scaleX: 1,
-        scaleY: 1,
+        scaleY: initialScaleY,
         offsetX: 0,
         offsetY: 0,
         startIndex: Math.max(0, data.length - visibleDataBars),
         visibleBars: initialVisibleBars,
         theme: currentTheme,
-        minPrice: undefined, // Change null to undefined
-        maxPrice: undefined, // Change null to undefined
+        minPrice: undefined,
+        maxPrice: undefined,
         rsiHeight: isRSIEnabled ? 100 : 0,
       };
 
@@ -417,31 +481,17 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       // Reset view state
       setViewState(initialState);
 
-      // Clear all canvases
-      [
-        mainCanvasRef,
-        overlayCanvasRef,
-        gridCanvasRef,
-        yAxisCanvasRef,
-        xAxisCanvasRef,
-      ].forEach((canvasRef) => {
-        if (canvasRef.current) {
-          const ctx = canvasRef.current.getContext("2d");
-          if (ctx) {
-            ctx.clearRect(0, 0, dimensions.width, dimensions.height);
-          }
-        }
-      });
+      // Update previous references
+      prevTimeframe.current = timeframeConfig.resolution;
+      prevSymbol.current = chartState.symbol; // Add symbol reference
     }
-
-    // Update previous timeframe reference
-    prevTimeframe.current = timeframeConfig.resolution;
   }, [
     combinedData.length,
     dimensions.width,
     currentTheme,
     data.length,
     timeframeConfig.resolution,
+    chartState.symbol,
     isRSIEnabled,
   ]);
 
@@ -536,15 +586,20 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       switch (dragState.mode) {
         case "scaleY": {
           const dy = dragState.startY - e.clientY;
-          const scaleFactor = 1 + dy / 200; // Adjust sensitivity as needed
+          const scaleFactor = 1 + dy / 200;
           const newScaleY = Math.max(
             0.1,
             Math.min(5, dragState.startScaleY * scaleFactor)
           );
 
+          // Use last 10 candles for price range calculation
+          const { min, max, padding } = priceRangeData;
+          const totalRange = (max - min + padding * 2) / newScaleY;
+
           setViewState((prev) => ({
             ...prev,
             scaleY: newScaleY,
+            offsetY: dragState.startOffsetY,
           }));
           break;
         }
@@ -558,7 +613,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           const barWidth = chartWidth / viewState.visibleBars;
           const barsToMove = dx / barWidth;
 
-          // Calculate vertical movement in price
+          // Calculate vertical movement in price using last 10 candles
           const dy = e.clientY - dragState.startY;
           const chartHeight =
             dimensions.height -
@@ -566,23 +621,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             dimensions.padding.bottom -
             (isRSIEnabled ? rsiHeight + 34 : 30);
 
-          // Get visible data for price range calculation
-          const visibleData = combinedData.slice(
-            Math.floor(dragState.startIndex),
-            Math.floor(dragState.startIndex) + viewState.visibleBars
-          );
-
-          // Calculate price range from visible data
-          const prices = visibleData.flatMap((candle) => [
-            candle.high,
-            candle.low,
-          ]);
-          const minPrice = Math.min(...prices);
-          const maxPrice = Math.max(...prices);
-          const priceRange = maxPrice - minPrice;
-          const pricePadding = priceRange * 0.1;
-          const totalPriceRange =
-            (priceRange + 2 * pricePadding) / viewState.scaleY;
+          // Use last 10 candles for price range calculation
+          const { min, max, padding } = priceRangeData;
+          const totalPriceRange = (max - min + padding * 2) / viewState.scaleY;
 
           // Calculate the price movement
           const pricePerPixel = totalPriceRange / chartHeight;
@@ -590,7 +631,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
           // Update view state with new position
           setViewState((prev) => {
-            // Calculate new start index while preventing overscroll
             const proposedStartIndex = dragState.startIndex - barsToMove;
             const maxStartIndex = Math.max(
               0,
@@ -605,7 +645,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               ...prev,
               startIndex: newStartIndex,
               offsetY: dragState.startOffsetY + priceMove,
-              // Keep scales exactly as they were at drag start
               scaleX: dragState.startScaleX,
               scaleY: dragState.startScaleY,
             };
@@ -978,10 +1017,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     };
   }, [dimensions.height, dimensions.padding, isRSIEnabled, rsiHeight]);
 
-  // Update the handleMouseMoveForCrosshair function
+  // Update handleMouseMoveForCrosshair function
   const handleMouseMoveForCrosshair = useCallback(
     (e: React.MouseEvent) => {
-      if (!containerRef.current || !currentTheme) return;
+      if (!containerRef.current || !currentTheme || !priceRangeData) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -1026,7 +1065,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             viewState.startIndex - Math.floor(viewState.startIndex)
           );
 
-          // Rest of the price calculation logic remains the same...
+          // Calculate price using last 10 candles range
           const mainChartHeight =
             dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
           const chartHeight =
@@ -1034,25 +1073,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             dimensions.padding.top -
             dimensions.padding.bottom;
 
-          // Get price range from visible data
-          const visibleData = combinedData.slice(
-            Math.floor(viewState.startIndex),
-            Math.floor(viewState.startIndex) + viewState.visibleBars
-          );
+          // Get price range from last 10 candles
+          const { min, max, padding } = priceRangeData;
+          const adjustedMin = min - padding + viewState.offsetY;
+          const adjustedMax = max + padding + viewState.offsetY;
+          const adjustedRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
-          const prices = visibleData.flatMap((c) => [c.high, c.low]);
-          const minPrice = Math.min(...prices);
-          const maxPrice = Math.max(...prices);
-          const priceRange = maxPrice - minPrice;
-          const pricePadding = priceRange * 0.15;
-
-          const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
-          const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-          const adjustedPriceRange =
-            (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
-
+          // Calculate price based on mouse position
           const priceRatio = (y - dimensions.padding.top) / chartHeight;
-          const price = adjustedMaxPrice - priceRatio * adjustedPriceRange;
+          const price = adjustedMax - priceRatio * adjustedRange;
 
           setMousePosition({
             x: barCenterX,
@@ -1080,10 +1109,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       viewState.scaleY,
       viewState.offsetY,
       combinedData,
-      isRSIEnabled,
-      rsiHeight,
-      currentTheme,
-
+      priceRangeData,
       calculateBarX,
     ]
   );
@@ -1192,43 +1218,32 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add this before calculateGridPrices
   const getY = useCallback(
-    (
-      price: number,
-      adjustedMinPrice: number,
-      adjustedMaxPrice: number,
-      chartHeight: number
-    ) => {
-      const mainChartHeight =
-        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
-      const adjustedPriceRange =
-        (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
+    (price: number, chartHeight: number) => {
+      if (!priceRangeData) return 0;
+      const { min, max, padding } = priceRangeData;
+      const adjustedMin = min - padding + viewState.offsetY;
+      const adjustedMax = max + padding + viewState.offsetY;
+      const adjustedRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
       return (
         dimensions.padding.top +
-        ((adjustedMaxPrice - price) / adjustedPriceRange) *
-          (mainChartHeight - dimensions.padding.top - dimensions.padding.bottom)
+        ((adjustedMax - price) / adjustedRange) *
+          (chartHeight - dimensions.padding.top - dimensions.padding.bottom)
       );
     },
-    [dimensions, viewState.scaleY, isRSIEnabled, rsiHeight]
+    [dimensions, viewState.offsetY, viewState.scaleY, priceRangeData]
   );
 
-  // Update calculateGridPrices to accept getY function
+  // Update calculateGridPrices to use the last 10 candles
   const calculateGridPrices = useCallback(
     (
-      minPrice: number,
-      maxPrice: number,
-      adjustedMinPrice: number,
-      adjustedMaxPrice: number,
       chartHeight: number,
-      getYFunc: (
-        price: number,
-        min: number,
-        max: number,
-        height: number
-      ) => number
+      getYFunc: (price: number, height: number) => number
     ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
-      // Calculate visible price range
-      const visiblePriceRange = adjustedMaxPrice - adjustedMinPrice;
+      const { min, max, padding } = priceRangeData;
+      const adjustedMin = min - padding + viewState.offsetY;
+      const adjustedMax = max + padding + viewState.offsetY;
+      const visiblePriceRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
       // Minimum spacing between labels in pixels
       const minLabelSpacing = 40;
@@ -1249,8 +1264,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       );
 
       // Extend the range for grid lines
-      const extendedMinPrice = adjustedMinPrice - gridPriceStep * 50; // Extend further
-      const extendedMaxPrice = adjustedMaxPrice + gridPriceStep * 50; // Extend further
+      const extendedMinPrice = adjustedMin - gridPriceStep * 50; // Extend further
+      const extendedMaxPrice = adjustedMax + gridPriceStep * 50; // Extend further
 
       // Calculate grid prices
       const firstGridPrice =
@@ -1265,12 +1280,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         price <= extendedMaxPrice;
         price += gridPriceStep
       ) {
-        const y = getYFunc(
-          price,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
+        const y = getYFunc(price, chartHeight);
 
         // Check if we have enough space from the last label
         if (lastY === null || Math.abs(y - lastY) >= minLabelSpacing) {
@@ -1291,7 +1301,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       return { gridPrices, priceLabels };
     },
-    [dimensions, viewState.scaleY]
+    [priceRangeData, viewState.offsetY, viewState.scaleY, getY]
   );
 
   // Update the RSI separator mouse down handler
@@ -1352,28 +1362,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       if (!visibleData.length) return;
 
-      // Calculate price ranges first
-      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      const priceRange = maxPrice - minPrice;
-      const pricePadding = priceRange * 0.15;
-
-      // Calculate adjusted price range with padding
-      const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
-      const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-      // const adjustedPriceRange =
-      //   (adjustedMaxPrice - adjustedMinPrice) / viewState.scaleY;
-
-      // // Get grid prices and labels
-      // const { gridPrices, priceLabels } = calculateGridPrices(
-      //   minPrice,
-      //   maxPrice,
-      //   adjustedMinPrice,
-      //   adjustedMaxPrice,
-      //   chartHeight,
-      //   getY
-      // );
+      // Use last 10 candles for price range
+      const { min, max, padding } = priceRangeData;
+      const adjustedMin = min - padding + viewState.offsetY;
+      const adjustedMax = max + padding + viewState.offsetY;
 
       // Draw horizontal grid lines
       // gridPrices.forEach((price) => {
@@ -1407,30 +1399,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const x = calculateBarX(i, fractionalOffset);
         const candleLeft = x - candleWidth / 2;
 
-        const openY = getY(
-          candle.open,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
-        const closeY = getY(
-          candle.close,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
-        const highY = getY(
-          candle.high,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
-        const lowY = getY(
-          candle.low,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
+        const openY = getY(candle.open, chartHeight);
+        const closeY = getY(candle.close, chartHeight);
+        const highY = getY(candle.high, chartHeight);
+        const lowY = getY(candle.low, chartHeight);
 
         const opacity = candle.display === false ? 0 : 1;
 
@@ -1472,12 +1444,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               : currentTheme?.downColor
             : currentTheme?.upColor;
         if (!lastCandle) return;
-        const y = getY(
-          lastCandle.close,
-          adjustedMinPrice,
-          adjustedMaxPrice,
-          chartHeight
-        );
+        const y = getY(lastCandle.close, chartHeight);
 
         ctx.save();
         ctx.beginPath();
@@ -1496,7 +1463,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       dimensions,
       viewState,
       combinedData,
-      data,
+      priceRangeData,
       isRSIEnabled,
       rsiHeight,
       currentTheme,
@@ -2396,18 +2363,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
 
       // Get grid prices and labels
-      const { gridPrices } = calculateGridPrices(
-        minPrice,
-        maxPrice,
-        adjustedMinPrice,
-        adjustedMaxPrice,
-        chartHeight,
-        getY
-      );
+      const { gridPrices } = calculateGridPrices(chartHeight, getY);
 
       // Draw horizontal grid lines and price labels...
       gridPrices.forEach((price) => {
-        const y = getY(price, adjustedMinPrice, adjustedMaxPrice, chartHeight);
+        const y = getY(price, chartHeight);
 
         // Draw grid line
         ctx.beginPath();
@@ -2437,12 +2397,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         const previousCandle = data[data.length - 2];
 
         if (lastCandle) {
-          const y = getY(
-            lastCandle.close,
-            adjustedMinPrice,
-            adjustedMaxPrice,
-            chartHeight
-          );
+          const y = getY(lastCandle.close, chartHeight);
 
           // Determine color based on previous close
           const isUp = previousCandle
@@ -2616,6 +2571,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
     return (
       <DrawingCanvas
+        priceRangeData={priceRangeData} // Replace data prop with this
         drawings={drawingsForCanvas}
         dimensions={dimensions}
         theme={currentTheme}
