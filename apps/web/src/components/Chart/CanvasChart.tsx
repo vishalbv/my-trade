@@ -1651,7 +1651,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update the RSI container style to use transform for smoother animation
   const rsiContainerStyle: React.CSSProperties = {
-    zIndex: 7,
+    zIndex: 3,
     position: "absolute",
     bottom: 0,
     width: "100%",
@@ -2064,7 +2064,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const xAxisLabelsCanvasRef = useRef<HTMLCanvasElement>(null);
   const xAxisCrosshairCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Update the drawXAxisCrosshair function to use the crosshair canvas
+  // Update the drawXAxisCrosshair function to include label drawing
   const drawXAxisCrosshair = useCallback(() => {
     if (!xAxisCrosshairCanvasRef.current || !currentTheme) return;
 
@@ -2082,8 +2082,37 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     ctx.clearRect(0, 0, dimensions.width, 30);
 
     if (xAxisCrosshair.visible) {
-      // Draw crosshair label...
-      // (existing crosshair drawing code)
+      const timeLabel = timeframeConfig.tickFormat(xAxisCrosshair.timestamp);
+      const timeLabelWidth = ctx.measureText(timeLabel).width + 10;
+      const timeLabelHeight = 20;
+
+      // Calculate label position
+      const minX = dimensions.padding.left;
+      const maxX = dimensions.width - dimensions.padding.right;
+      let labelX = xAxisCrosshair.x - timeLabelWidth / 2;
+
+      // Adjust label position if outside bounds
+      if (labelX < minX) {
+        labelX = minX;
+      } else if (labelX + timeLabelWidth > maxX) {
+        labelX = maxX - timeLabelWidth;
+      }
+
+      // Draw label background
+      ctx.fillStyle = currentTheme.grid;
+      ctx.fillRect(
+        labelX - 5,
+        (30 - timeLabelHeight) / 2,
+        timeLabelWidth + 10,
+        timeLabelHeight
+      );
+
+      // Draw label text
+      ctx.fillStyle = currentTheme.baseText + "d";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `10px ${currentTheme.fontFamily}`;
+      ctx.fillText(timeLabel, labelX + timeLabelWidth / 2, 30 / 2);
     }
   }, [xAxisCrosshair, dimensions, timeframeConfig, currentTheme]);
 
@@ -2461,7 +2490,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         ctx.lineWidth = 0.5;
         ctx.globalAlpha = 0.8;
         ctx.moveTo(x, dimensions.padding.top);
-        ctx.lineTo(x, dimensions.height - 30);
+        ctx.lineTo(x, dimensions.height);
         ctx.stroke();
       });
     },
@@ -2716,6 +2745,56 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               backgroundColor: currentTheme?.background, // Add this to match chart background
             }}
           />
+
+          {/* RSI Section */}
+          {isRSIEnabled && (
+            <>
+              <div
+                style={{
+                  height: "4px",
+                  backgroundColor: currentTheme?.grid,
+                  cursor: "ns-resize",
+                  position: "absolute",
+                  bottom: `${rsiHeight}px`,
+                  width: "100%",
+                  zIndex: 20,
+                }}
+                onMouseDown={handleRSISeparatorMouseDown}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "30px",
+                    height: "2px",
+                    backgroundColor: currentTheme?.text,
+                    opacity: isDraggingRSI ? 0.8 : 0.5,
+                    transition: "opacity 0.2s ease",
+                  }}
+                />
+              </div>
+
+              <div style={rsiContainerStyle}>
+                <RSIIndicator
+                  data={combinedData}
+                  dimensions={{
+                    ...dimensions,
+                    padding: {
+                      ...dimensions.padding,
+                      bottom: 0,
+                    },
+                  }}
+                  theme={currentTheme}
+                  period={14}
+                  height={rsiHeight}
+                  startIndex={viewState.startIndex}
+                  visibleBars={viewState.visibleBars}
+                />
+              </div>
+            </>
+          )}
 
           {/* Crosshair Overlay - Top layer */}
           <canvas
