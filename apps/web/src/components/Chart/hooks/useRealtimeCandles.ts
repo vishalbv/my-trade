@@ -167,12 +167,15 @@ export const useRealtimeCandles = ({
       return updatedCandles;
     });
   }, [tickData, symbol, chartData.length, isMarketActive]);
-
+  console.log(chartData, "pppp");
   // Reset currentCandleStartTime when timeframe changes
   useEffect(() => {
     const interval = getTimeIntervalForTimeframe(timeframe);
     setCurrentCandleStartTime(Math.floor(Date.now() / interval) * interval);
-  }, [timeframe]);
+    console.log("ooopppppppppp");
+    setChartData([]);
+  }, [timeframe, symbol]);
+  console.log(timeframe, "ooopppppppppp");
 
   // Add this new effect for initial data fetch
   useEffect(() => {

@@ -410,41 +410,56 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     };
   };
 
-  // Update the initialization effect to calculate price range
+  useEffect(() => {
+    const newPriceRange = calculatePriceRangeFromLast10(data);
+    setPriceRangeData(newPriceRange);
+  }, [data.slice(-10).length, timeframeConfig.resolution, chartState.symbol]);
+
+  // Add helper function to calculate initial offset
+  const calculateInitialOffset = (data: OHLCData[]) => {
+    const lastCandles = data.slice(-10);
+    if (!lastCandles.length) return 0;
+
+    const prices = lastCandles.flatMap((candle) => [candle.high, candle.low]);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    const padding = priceRange * 0.15;
+
+    // Calculate offset to position candles in the middle-upper part of the chart
+    return (maxPrice - minPrice) * 2; // Adjust this multiplier to change vertical position
+  };
+
+  // Update the initialization effect
   useEffect(() => {
     if (!dimensions.width || !combinedData.length) return;
 
-    // Reset view state when timeframe changes or when it hasn't been set before
     if (
       viewState.visibleBars === 0 ||
       timeframeConfig.resolution !== prevTimeframe.current ||
-      chartState.symbol !== prevSymbol.current // Add symbol check
+      chartState.symbol !== prevSymbol.current
     ) {
-      // Calculate initial price range
-      const newPriceRange = calculatePriceRangeFromLast10(data);
-      setPriceRangeData(newPriceRange);
-
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
       const visibleDataBars = Math.floor(initialVisibleBars * 0.7);
 
-      // Calculate chart height
       const chartHeight =
         dimensions.height -
         dimensions.padding.top -
         dimensions.padding.bottom -
         (isRSIEnabled ? rsiHeight + 34 : 30);
 
-      // Calculate initial scaleY based on last 10 candles
+      // Calculate initial scaleY and offsetY
       const initialScaleY = calculateInitialScaleY(data, chartHeight);
+      const initialOffsetY = calculateInitialOffset(data);
 
       // Reset to initial state
       const initialState: ViewState = {
         scaleX: 1,
-        scaleY: initialScaleY,
+        scaleY: 0.3,
         offsetX: 0,
-        offsetY: 0,
+        offsetY: initialOffsetY, // Use calculated offset
         startIndex: Math.max(0, data.length - visibleDataBars),
         visibleBars: initialVisibleBars,
         theme: currentTheme,
@@ -492,6 +507,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     data.length,
     timeframeConfig.resolution,
     chartState.symbol,
+    priceRangeData,
     isRSIEnabled,
   ]);
 
@@ -592,14 +608,31 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             Math.min(5, dragState.startScaleY * scaleFactor)
           );
 
-          // Use last 10 candles for price range calculation
+          if (!priceRangeData) break;
           const { min, max, padding } = priceRangeData;
-          const totalRange = (max - min + padding * 2) / newScaleY;
+
+          // Get the initial mouse position relative to the chart
+          const chartHeight =
+            dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+          const initialMouseY = dragState.startY - dimensions.padding.top;
+          const chartY = initialMouseY / chartHeight; // Normalized position (0-1)
+
+          // Calculate the price at initial mouse position
+          const oldMin = min - padding + dragState.startOffsetY;
+          const oldMax = max + padding + dragState.startOffsetY;
+          const oldRange = (oldMax - oldMin) / dragState.startScaleY;
+          const priceAtMouseStart = oldMax - chartY * oldRange;
+
+          // Calculate new range and required offset to maintain initial mouse position
+          const newRange = (oldMax - oldMin) / newScaleY;
+          const newMax = oldMin + newRange;
+          const targetPriceAtMouse = oldMax - chartY * newRange;
+          const offsetRequired = priceAtMouseStart - targetPriceAtMouse;
 
           setViewState((prev) => ({
             ...prev,
             scaleY: newScaleY,
-            offsetY: dragState.startOffsetY,
+            offsetY: dragState.startOffsetY + offsetRequired,
           }));
           break;
         }
@@ -687,20 +720,22 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     if (data.length && dimensions.width) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
-      const initialVisibleBars = Math.floor(
-        chartWidth / (10 * viewState.scaleX)
-      );
+      const initialVisibleBars = Math.floor(chartWidth / (10 * 1));
       const visibleDataBars = Math.floor(initialVisibleBars * 0.7); // Show 70% of visible area
 
       setViewState((prev) => ({
         ...prev,
         offsetX: 0,
-        offsetY: 0,
+        offsetY: calculateInitialOffset(data),
         startIndex: Math.max(0, data.length - visibleDataBars), // Position to show 70% real data
         visibleBars: initialVisibleBars,
         theme: currentTheme,
         scaleX: 1,
-        scaleY: 1,
+        scaleY: 0.3,
+
+        minPrice: undefined,
+        maxPrice: undefined,
+        rsiHeight: isRSIEnabled ? 100 : 0,
       }));
     }
   };
@@ -1234,75 +1269,184 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     [dimensions, viewState.offsetY, viewState.scaleY, priceRangeData]
   );
 
-  // Update calculateGridPrices to use the last 10 candles
+  // Update the previousGridLines state type to include a transition ID
+  const [previousGridLines, setPreviousGridLines] = useState<{
+    prices: number[];
+    opacity: number;
+    transitionId: number;
+  }>({ prices: [], opacity: 1, transitionId: 0 });
+
+  // Modify calculateGridPrices to handle transitions better
   const calculateGridPrices = useCallback(
     (
       chartHeight: number,
       getYFunc: (price: number, height: number) => number
-    ): { gridPrices: number[]; priceLabels: { y: number; text: string }[] } => {
+    ): {
+      gridPrices: number[];
+      priceLabels: { y: number; text: string }[];
+      skipFactor: number;
+    } => {
+      if (!priceRangeData)
+        return { gridPrices: [], priceLabels: [], skipFactor: 1 };
+
       const { min, max, padding } = priceRangeData;
       const adjustedMin = min - padding + viewState.offsetY;
       const adjustedMax = max + padding + viewState.offsetY;
       const visiblePriceRange = (adjustedMax - adjustedMin) / viewState.scaleY;
 
-      // Minimum spacing between labels in pixels
-      const minLabelSpacing = 40;
+      // Calculate grid step with 30% smaller spacing
+      let gridPriceStep = calculateNiceNumber(visiblePriceRange * 0.7, 6);
 
-      // Calculate maximum number of ticks based on chart height and minimum spacing
-      const maxPriceTicks = Math.floor(chartHeight / minLabelSpacing);
+      // Extend the range by 5x in both directions
+      const extendedRange = visiblePriceRange * 5;
+      const extendedMin = adjustedMin - extendedRange;
+      const extendedMax = adjustedMax + extendedRange;
 
-      // Calculate initial grid step
-      let gridPriceStep = calculateNiceNumber(visiblePriceRange, maxPriceTicks);
-
-      // Adjust step size based on price range and scale
-      const minStepSize = visiblePriceRange * 0.001;
-      const maxStepSize = visiblePriceRange * 0.2;
-
-      gridPriceStep = Math.max(
-        minStepSize,
-        Math.min(maxStepSize, gridPriceStep / viewState.scaleY)
-      );
-
-      // Extend the range for grid lines
-      const extendedMinPrice = adjustedMin - gridPriceStep * 50; // Extend further
-      const extendedMaxPrice = adjustedMax + gridPriceStep * 50; // Extend further
-
-      // Calculate grid prices
+      // Calculate all possible grid lines with extended range
+      const allGridPrices: number[] = [];
       const firstGridPrice =
-        Math.ceil(extendedMinPrice / gridPriceStep) * gridPriceStep;
-      const gridPrices: number[] = [];
-      const priceLabels: { y: number; text: string }[] = [];
-      let lastY: number | null = null;
+        Math.ceil(extendedMin / gridPriceStep) * gridPriceStep;
 
-      // Add grid lines with dynamic spacing
       for (
         let price = firstGridPrice;
-        price <= extendedMaxPrice;
+        price <= extendedMax;
         price += gridPriceStep
       ) {
-        const y = getYFunc(price, chartHeight);
-
-        // Check if we have enough space from the last label
-        if (lastY === null || Math.abs(y - lastY) >= minLabelSpacing) {
-          // Only add if within visible range with some padding
-          if (
-            y >= dimensions.padding.top - 20 &&
-            y <= chartHeight + dimensions.padding.bottom
-          ) {
-            gridPrices.push(price);
-            priceLabels.push({
-              y,
-              text: price.toFixed(2),
-            });
-            lastY = y;
-          }
-        }
+        allGridPrices.push(price);
       }
 
-      return { gridPrices, priceLabels };
+      // Calculate spacing and skip factor
+      const spacing =
+        allGridPrices.length >= 2
+          ? Math.abs(
+              getYFunc(allGridPrices[0]!, chartHeight) -
+                getYFunc(allGridPrices[1]!, chartHeight)
+            )
+          : 30;
+
+      const skipFactor = Math.max(1, Math.ceil(30 / spacing));
+
+      // Filter grid lines based on skip factor
+      const gridPrices = allGridPrices.filter(
+        (_, index) => index % skipFactor === 0
+      );
+
+      // Create labels for visible grid lines
+      const priceLabels = gridPrices.map((price) => ({
+        y: getYFunc(price, chartHeight),
+        text: price.toFixed(2),
+      }));
+
+      return { gridPrices, priceLabels, skipFactor };
     },
     [priceRangeData, viewState.offsetY, viewState.scaleY, getY]
   );
+
+  // Update drawYAxisLabels to handle transitions better
+  const drawYAxisLabels = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (!ctx || !priceRangeData) return;
+
+      // Clear the canvas first
+      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+      const chartHeight =
+        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
+      const { gridPrices, priceLabels } = calculateGridPrices(
+        chartHeight,
+        getY
+      );
+
+      // Only update previous grid lines when scaling stops
+      if (!dragState?.mode) {
+        setPreviousGridLines((prev) => ({
+          prices: gridPrices,
+          opacity: 1,
+          transitionId: prev.transitionId + 1,
+        }));
+      }
+
+      // Draw current grid lines first
+      ctx.globalAlpha = 1;
+      gridPrices.forEach((price) => {
+        const y = getY(price, chartHeight);
+
+        // Draw grid line
+        ctx.beginPath();
+        ctx.strokeStyle = currentTheme?.grid;
+        ctx.lineWidth = 0.5;
+        ctx.moveTo(dimensions.padding.left, y);
+        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+        ctx.stroke();
+
+        // Draw price label
+        ctx.fillStyle = currentTheme?.text;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.font = `10px ${currentTheme.fontFamily}`;
+        ctx.fillText(
+          price.toFixed(2),
+          dimensions.width - dimensions.padding.right + 5,
+          y
+        );
+      });
+
+      // Draw fading previous grid lines only during scaling
+      if (dragState?.mode === "scaleY" && previousGridLines.opacity > 0) {
+        ctx.globalAlpha = previousGridLines.opacity;
+        previousGridLines.prices.forEach((price) => {
+          const y = getY(price, chartHeight);
+          ctx.beginPath();
+          ctx.strokeStyle = currentTheme?.grid;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(dimensions.padding.left, y);
+          ctx.lineTo(dimensions.width - dimensions.padding.right, y);
+          ctx.stroke();
+        });
+      }
+    },
+    [
+      dimensions,
+      viewState,
+      priceRangeData,
+      currentTheme,
+      getY,
+      isRSIEnabled,
+      rsiHeight,
+      calculateGridPrices,
+      dragState,
+    ]
+  );
+
+  // Update the animation effect
+  useEffect(() => {
+    let animationFrame: number;
+    let startTime: number | null = null;
+
+    const updateGrids = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const duration = 300; // Animation duration in ms
+
+      if (elapsed < duration && dragState?.mode === "scaleY") {
+        setPreviousGridLines((prev) => ({
+          ...prev,
+          opacity: Math.max(0, 1 - elapsed / duration),
+        }));
+        animationFrame = requestAnimationFrame(updateGrids);
+      }
+    };
+
+    if (dragState?.mode === "scaleY") {
+      animationFrame = requestAnimationFrame(updateGrids);
+    }
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [dragState?.mode]);
 
   // Update the RSI separator mouse down handler
   const handleRSISeparatorMouseDown = (e: React.MouseEvent) => {
@@ -2323,140 +2467,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add new canvas ref for y-axis
   const yAxisCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Create new function to draw y-axis grid lines and labels
-  const drawYAxisLabels = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      if (!ctx) return;
-
-      // Clear canvas
-      ctx.clearRect(0, 0, dimensions.width, dimensions.height);
-
-      // Calculate chart dimensions
-      const mainChartHeight =
-        dimensions.height - (isRSIEnabled ? rsiHeight + 34 : 30);
-      const chartHeight =
-        mainChartHeight - dimensions.padding.top - dimensions.padding.bottom;
-
-      // If no data, draw default grid lines at regular intervals...
-      if (!data.length) {
-        // ... existing default grid lines code ...
-        return;
-      }
-
-      const visibleData = combinedData.slice(
-        Math.floor(viewState.startIndex),
-        Math.floor(viewState.startIndex) + viewState.visibleBars
-      );
-
-      if (!visibleData.length) return;
-
-      // Calculate price ranges
-      const prices = visibleData.flatMap((candle) => [candle.high, candle.low]);
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      const priceRange = maxPrice - minPrice;
-      const pricePadding = priceRange * 0.15;
-
-      // Calculate adjusted price range with padding and offset
-      const adjustedMinPrice = minPrice - pricePadding + viewState.offsetY;
-      const adjustedMaxPrice = maxPrice + pricePadding + viewState.offsetY;
-
-      // Get grid prices and labels
-      const { gridPrices } = calculateGridPrices(chartHeight, getY);
-
-      // Draw horizontal grid lines and price labels...
-      gridPrices.forEach((price) => {
-        const y = getY(price, chartHeight);
-
-        // Draw grid line
-        ctx.beginPath();
-        ctx.strokeStyle = currentTheme?.grid;
-        ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.8;
-        ctx.moveTo(dimensions.padding.left, y);
-        ctx.lineTo(dimensions.width - dimensions.padding.right, y);
-        ctx.stroke();
-
-        // Draw price label
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = currentTheme?.text;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.font = `10px ${currentTheme.fontFamily}`;
-        ctx.fillText(
-          price.toFixed(2),
-          dimensions.width - dimensions.padding.right + 5,
-          y
-        );
-      });
-
-      // After drawing regular grid lines and labels, add the last price label
-      if (data.length > 0) {
-        const lastCandle = data[data.length - 1];
-        const previousCandle = data[data.length - 2];
-
-        if (lastCandle) {
-          const y = getY(lastCandle.close, chartHeight);
-
-          // Determine color based on previous close
-          const isUp = previousCandle
-            ? lastCandle.close >= previousCandle.close
-            : true;
-          const backgroundColor = isUp
-            ? currentTheme?.upColor
-            : currentTheme?.downColor;
-
-          // Format the price
-          const priceText = lastCandle.close.toFixed(2);
-
-          // Calculate label dimensions
-          const labelPadding = 4;
-          const textWidth = ctx.measureText(priceText).width;
-          const labelWidth = textWidth + labelPadding * 2;
-          const labelHeight = 22;
-
-          // Draw label background
-          ctx.fillStyle = backgroundColor;
-          ctx.beginPath();
-          ctx.roundRect(
-            dimensions.width - dimensions.padding.right,
-            y - labelHeight / 2,
-            labelWidth + 2,
-            labelHeight,
-            2 // border radius
-          );
-          ctx.fill();
-
-          // Draw price text
-          ctx.fillStyle = "#ffffff"; // White text
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.font = `normal 10px ${currentTheme.fontFamily}`;
-          ctx.fillText(
-            priceText,
-            dimensions.width - dimensions.padding.right + labelPadding,
-            y
-          );
-        }
-      }
-    },
-    [
-      dimensions,
-      viewState.startIndex,
-      viewState.visibleBars,
-      viewState.offsetY,
-      viewState.scaleY,
-      combinedData,
-      data,
-      currentTheme,
-      defaultTheme,
-      calculateGridPrices,
-      getY,
-      isRSIEnabled,
-      rsiHeight,
-    ]
-  );
 
   // Update the main render effect to ensure it runs when needed
   useEffect(() => {
