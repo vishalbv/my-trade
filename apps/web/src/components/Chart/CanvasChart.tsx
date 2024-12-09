@@ -571,7 +571,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       e.currentTarget.style.cursor = "ns-resize";
       setIsCleanClick(false);
     }
-    // Remove the else if block that sets pan mode immediately
     setIsDraggingChart(true);
   };
 
@@ -703,17 +702,16 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       setDragState(null);
       e.currentTarget.style.cursor = "crosshair";
     }
-    setMouseStartPos(null); // Reset mouse start position
+    setMouseStartPos(null);
     setIsDraggingChart(false);
+
+    // Remove global event listeners
+    window.removeEventListener("mousemove", handleGlobalMouseMove);
+    window.removeEventListener("mouseup", handleGlobalMouseUp);
   };
 
-  // Update handleMouseLeave
+  // Update handleMouseLeave - remove the dragState reset
   const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (dragState) {
-      setDragState(null);
-      e.currentTarget.style.cursor = "crosshair";
-    }
-    setMouseStartPos(null); // Reset mouse start position
     setMousePosition((prev) => ({ ...prev, visible: false }));
     setXAxisCrosshair((prev) => ({ ...prev, visible: false }));
 
@@ -724,6 +722,75 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
     }
   };
+
+  // Add new global mouse handlers
+  const handleGlobalMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+
+      // Create a synthetic React mouse event
+      const syntheticEvent = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        currentTarget: containerRef.current,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+        // Add these properties that might be needed by handlers
+        target: containerRef.current,
+        buttons: e.buttons,
+        type: "mousemove",
+      } as unknown as React.MouseEvent<HTMLDivElement>;
+
+      handleMouseMove(syntheticEvent);
+    },
+    [
+      // Include all dependencies needed for dragging functionality
+      handleMouseMove,
+      dragState,
+      viewState.scaleX,
+      viewState.scaleY,
+      viewState.startIndex,
+      viewState.offsetY,
+      dimensions,
+      priceRangeData,
+      isRSIEnabled,
+      rsiHeight,
+    ]
+  );
+
+  const handleGlobalMouseUp = useCallback(
+    (e: MouseEvent) => {
+      if (!containerRef.current) return;
+
+      // Create a synthetic React mouse event
+      const syntheticEvent = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        currentTarget: containerRef.current,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+        target: containerRef.current,
+        type: "mouseup",
+      } as unknown as React.MouseEvent<HTMLDivElement>;
+
+      handleMouseUp(syntheticEvent);
+    },
+    [handleMouseUp]
+  );
+
+  // Move the event listener setup to an effect
+  useEffect(() => {
+    if (isDraggingChart) {
+      window.addEventListener("mousemove", handleGlobalMouseMove);
+      window.addEventListener("mouseup", handleGlobalMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [isDraggingChart, handleGlobalMouseMove, handleGlobalMouseUp]);
 
   // Reset view to default state
   const resetView = () => {
