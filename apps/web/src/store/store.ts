@@ -5,6 +5,8 @@ import ticksReducer from "./slices/ticksSlice";
 import globalChartReducer, {
   globalChartLocalStorageMiddleware,
 } from "./slices/globalChartSlice";
+import { drawingsMiddleware } from "./middlewares/drawingsMiddleware";
+import { updateDispatch } from "../services/webSocket";
 
 export const store: Store = configureStore({
   reducer: {
@@ -16,7 +18,7 @@ export const store: Store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }).concat(globalChartLocalStorageMiddleware),
+    }).concat([globalChartLocalStorageMiddleware, drawingsMiddleware]),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
@@ -27,5 +29,6 @@ export type AppThunk<ReturnType = void> = ThunkAction<
   unknown,
   Action<string>
 >;
+updateDispatch(store.dispatch);
 
 export default store;

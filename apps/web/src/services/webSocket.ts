@@ -1,14 +1,14 @@
 import { setStatesByID, setStatesByIDAndKey } from "../store/slices/stateSlice";
 import { updateShoonyaServerTick } from "../store/slices/ticksSlice";
-import store from "../store/store";
+
 import { allStates } from "../utils/constants";
 import notify, { notifyServerSide } from "./notification";
 
 let socket: WebSocket | null = null;
+let dispatch: any = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const INITIAL_RECONNECT_DELAY = 1000;
-const dispatch = store.dispatch;
 
 function connect() {
   socket = new WebSocket("ws://127.0.0.1:2300");
@@ -71,6 +71,10 @@ export function initializeWebSocket() {
 
 export function getSocket(): WebSocket | null {
   return socket;
+}
+
+export function updateDispatch(fn: any) {
+  dispatch = fn;
 }
 
 export function sendMessage(event: string, data: any) {

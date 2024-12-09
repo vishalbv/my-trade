@@ -1,4 +1,5 @@
 import _app from "./app/index";
+import _drawings from "./drawings/index";
 import _fyers from "./fyers/index";
 import _shoonya from "./shoonya/index";
 import _symbols from "./symbols/index";
@@ -7,4 +8,5 @@ export const _allStates = {
   shoonya: _shoonya,
   fyers: _fyers,
   symbols: _symbols,
+  drawings: _drawings,
 };

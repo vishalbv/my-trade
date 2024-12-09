@@ -9,10 +9,7 @@ import {
 } from "../types";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../../store/store";
-import {
-  deleteSelectedDrawing,
-  setSelectedTool,
-} from "../../../store/slices/globalChartSlice";
+import { setSelectedTool } from "../../../store/slices/globalChartSlice";
 import {
   checkDrawingInteraction,
   drawingMethods,
@@ -25,6 +22,7 @@ import {
   handleRectangleAreaDragging,
 } from "../drawings/RectangleDrawing";
 import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
+import { deleteSelectedDrawing } from "../../../store/actions/drawingActions";
 
 interface DrawingCanvasProps {
   drawings: Drawing[];
@@ -36,6 +34,7 @@ interface DrawingCanvasProps {
   onDrawingComplete: (drawing: Drawing) => void;
   onDrawingUpdate: (drawing: Drawing) => void;
   mousePosition?: { x: number; y: number } | null;
+  isDraggingMainChart?: boolean;
   handleMouseMoveForCrosshair?: (
     e: React.MouseEvent<HTMLCanvasElement>
   ) => void;
@@ -67,6 +66,7 @@ export const DrawingCanvas = ({
   xAxisCrosshair,
   chartState,
   selectedDrawing,
+  isDraggingMainChart,
 }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
@@ -748,7 +748,7 @@ export const DrawingCanvas = ({
   ]);
 
   useEffect(() => {
-    if (!mousePosition || !canvasRef.current) return;
+    if (!mousePosition || !canvasRef.current || isDraggingMainChart) return;
 
     if (
       draggingPoint ||
@@ -777,12 +777,12 @@ export const DrawingCanvas = ({
   // Add keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle delete if we have a selected drawing
       if (
         (e.key === "Delete" || e.key === "Backspace") &&
-        selectedDrawing?.symbol === chartState.symbol
+        selectedDrawing?.symbol === chartState.symbol &&
+        selectedDrawing
       ) {
-        dispatch(deleteSelectedDrawing());
+        dispatch(deleteSelectedDrawing(selectedDrawing));
       }
     };
 

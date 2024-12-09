@@ -14,12 +14,8 @@ import {
 } from "./DrawingToolsIcons";
 import { useDispatch, useSelector } from "react-redux";
 
-import { RootState } from "../../store/store";
-import {
-  clearDrawings,
-  setSelectedTool,
-} from "../../../store/slices/globalChartSlice";
-
+import { RootState } from "../../../store/store";
+import { clearDrawings } from "../../../store/actions/drawingActions";
 export type DrawingTool =
   | "cursor"
   | "horizontalLine"

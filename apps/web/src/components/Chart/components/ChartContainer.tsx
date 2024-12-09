@@ -15,21 +15,22 @@ import { SymbolSearch } from "./SymbolSearch";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
 import {
-  addDrawing,
   initializeLayout,
   updateLayoutSymbol,
   updateLayoutTimeframe,
   setSelectedChartKey,
-  updateDrawing,
   setChartFullScreenId,
   setSelectedDrawing,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
-import { toast } from "@repo/ui/toast";
+
 import { updateFyersToShoonyaMapping } from "../../../store/actions/symbolsActions";
 import { AlertBuySellWindow } from "./AlertBuySellWindow";
-import { BellIcon } from "lucide-react";
+import {
+  addDrawing,
+  updateDrawing,
+} from "../../../store/actions/drawingActions";
 
 interface Indicator {
   id: string;
@@ -89,8 +90,7 @@ export const ChartContainer = ({
   );
 
   const symbolDrawings = useSelector(
-    (state: RootState) =>
-      state.globalChart.symbolDrawings[chartState.symbol] || []
+    (state: RootState) => state.states.drawings[chartState.symbol] || []
   );
 
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
@@ -149,24 +149,6 @@ export const ChartContainer = ({
     dispatch(setChartFullScreenId(chartKey));
     console.log("double clicked");
   };
-
-  const handleBuy = (qty: number) => {
-    toast({
-      title: "Buy Order",
-      description: `Placed buy order for ${qty} shares of ${chartState.symbol}`,
-    });
-    // Add your buy order logic here
-  };
-
-  const handleSell = (qty: number) => {
-    toast({
-      title: "Sell Order",
-      description: `Placed sell order for ${qty} shares of ${chartState.symbol}`,
-    });
-    // Add your sell order logic here
-  };
-
-  console.log("isAlertWindowOpen", selectedDrawing, chartState);
 
   return (
     <div

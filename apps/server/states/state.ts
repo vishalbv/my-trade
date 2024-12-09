@@ -23,7 +23,7 @@ class State {
     newState: Record<string, any>,
     clearAndSet?: boolean
   ): void => {
-    const { _db, ..._newState } = newState || {};
+    const { _db, fromUiState, ..._newState } = newState || {};
     const { _key, ...rest } = _newState;
     this.state = clearAndSet
       ? { ...this.initialState, ...rest }
@@ -31,7 +31,9 @@ class State {
         ? { ...this.state, [_key]: { ...this.state[_key], ...rest } }
         : { ...this.state, ...rest };
 
-    this.pushState(_newState, clearAndSet);
+    if (!fromUiState) {
+      this.pushState(_newState, clearAndSet);
+    }
     if (_db) this.pushToDB(_newState);
   };
   setState = this.updateState;

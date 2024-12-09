@@ -24,13 +24,10 @@ interface GlobalChartState {
   layouts: {
     [key: string]: ChartState;
   };
-  symbolDrawings: {
-    [symbol: string]: Drawing[];
-  };
   chartFullScreenId: string | null;
   selectedDrawing: {
     symbol: string;
-    drawingId: string;
+    drawing: Drawing;
   } | null;
 }
 
@@ -48,14 +45,13 @@ const keysToSaveInLocalStorage = [
   "indicators",
   "showDrawings",
   "layouts",
-  "symbolDrawings",
 ];
 
 export const globalChartLocalStorageMiddleware: Middleware =
   (store) => (next) => (action) => {
     const result = next(action);
 
-    // Only save if the action is from globalChart slice
+    // Only save if the action is from globalChart slice...
     if (action.type.startsWith("globalChart/")) {
       const state = store.getState() as RootState;
       const dataToSave = keysToSaveInLocalStorage.reduce((acc, key) => {
@@ -77,7 +73,6 @@ const initialState: GlobalChartState = {
   layouts: {
     "0": defaultLayout,
   },
-  symbolDrawings: {},
   chartFullScreenId: null,
   selectedDrawing: null,
   ...getLocalStorageData(),
@@ -99,16 +94,6 @@ const globalChartSlice = createSlice({
     },
     setShowDrawings: (state, action: PayloadAction<boolean>) => {
       state.showDrawings = action.payload;
-    },
-    addDrawing: (
-      state,
-      action: PayloadAction<{ symbol: string; drawing: Drawing }>
-    ) => {
-      const { symbol, drawing } = action.payload;
-      if (!state.symbolDrawings[symbol]) {
-        state.symbolDrawings[symbol] = [];
-      }
-      state.symbolDrawings[symbol].push(drawing);
     },
     updateLayoutSymbol: (
       state,
@@ -137,41 +122,18 @@ const globalChartSlice = createSlice({
     setSelectedChartKey: (state, action: PayloadAction<string>) => {
       state.selectedChartKey = action.payload;
     },
-    clearDrawings: (state, action: PayloadAction<string>) => {
-      const symbol = action.payload;
-      state.symbolDrawings[symbol] = [];
-    },
     setChartFullScreenId: (state, action: PayloadAction<string>) => {
       state.chartFullScreenId =
         state.chartFullScreenId === action.payload ? null : action.payload;
     },
-    updateDrawing: (
+    setSelectedDrawing: (
       state,
-      action: PayloadAction<{ symbol: string; drawing: Drawing }>
+      action: PayloadAction<{ symbol: string; drawing: Drawing } | null>
     ) => {
-      const { symbol, drawing } = action.payload;
-      if (state.symbolDrawings[symbol]) {
-        const index = state.symbolDrawings[symbol].findIndex(
-          (d) => d.id === drawing.id
-        );
-        if (index !== -1) {
-          state.symbolDrawings[symbol][index] = drawing;
-        }
-      }
-    },
-    setSelectedDrawing: (state, action) => {
       state.selectedDrawing = action.payload;
     },
     deleteSelectedDrawing: (state) => {
-      if (state.selectedDrawing) {
-        const { symbol, drawing } = state.selectedDrawing;
-        if (state.symbolDrawings[symbol]) {
-          state.symbolDrawings[symbol] = state.symbolDrawings[symbol].filter(
-            (d) => d.id !== drawing.id
-          );
-        }
-        state.selectedDrawing = null;
-      }
+      state.selectedDrawing = null;
     },
   },
 });
@@ -181,13 +143,10 @@ export const {
   setIndicators,
   setSelectedTool,
   setShowDrawings,
-  addDrawing,
   updateLayoutSymbol,
   updateLayoutTimeframe,
   initializeLayout,
   setSelectedChartKey,
-  clearDrawings,
-  updateDrawing,
   setChartFullScreenId,
   setSelectedDrawing,
   deleteSelectedDrawing,

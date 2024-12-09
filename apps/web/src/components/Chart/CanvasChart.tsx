@@ -473,7 +473,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Modify handleMouseDown
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log("selectedDrawing", selectedDrawing);
     if (!containerRef.current) return;
     //clearing drawing selection
     dispatch(setSelectedDrawing(null));
@@ -2634,6 +2633,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         xAxisCrosshair={xAxisCrosshair}
         chartState={chartState}
         selectedDrawing={selectedDrawing}
+        isDraggingMainChart={dragState?.mode === "pan"}
       />
     );
   };
@@ -2642,7 +2642,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const [currentClickPrice, setCurrentClickPrice] = useState<
     number | undefined
   >(undefined);
-  console.log(isCleanClick);
+
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isCleanClick && mousePosition.visible) {
       setCurrentClickPrice(mousePosition.price);

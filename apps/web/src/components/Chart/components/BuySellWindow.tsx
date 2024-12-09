@@ -25,7 +25,7 @@ export const BuySellWindow = ({
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [isNearby, setIsNearby] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  console.log(currentPrice);
+
   const formatPrice = (price: number): string => {
     const roundedPrice = round(price, 0.05);
     const priceStr = roundedPrice.toString();
@@ -65,10 +65,6 @@ export const BuySellWindow = ({
       }
     };
   }, [timer]);
-
-  useEffect(() => {
-    console.log("mounted");
-  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

@@ -36,16 +36,13 @@ const stateReducer = createSlice({
       return action.payload;
     },
     setStatesByID: (state, action: PayloadAction<SetStatesByIDPayload>) => {
-      console.log("setStatesByID", action.payload);
       const { id, data } = action.payload;
       const { _clearAndSet, ...restData } = data;
 
       if (_clearAndSet) {
         state[id] = restData;
       } else {
-        console.log("setting states", id, restData);
         state[id] = { ...state[id], ...restData };
-        console.log("state", state);
       }
     },
     setStatesByIDAndKey: (
@@ -56,9 +53,58 @@ const stateReducer = createSlice({
       state[id] = state[id] || {};
       state[id][key] = { ...state[id][key], ...data };
     },
+    addItemToKeyOfId: (
+      state,
+      action: PayloadAction<{ id: string; key: string; data: any }>
+    ) => {
+      const { id, key, data } = action.payload;
+
+      if (!state[id][key]) {
+        state[id][key] = [];
+      }
+      state[id][key].push(data);
+    },
+
+    updateItemInKeyOfId: (
+      state,
+      action: PayloadAction<{ id: string; key: string; data: any }>
+    ) => {
+      const { id, key, data } = action.payload;
+      if (state[id][key]) {
+        const index = state[id][key].findIndex((d: any) => d.id === data.id);
+        if (index !== -1) {
+          state[id][key][index] = data;
+        }
+      }
+    },
+
+    deleteItemInKeyOfId: (
+      state,
+      action: PayloadAction<{ id: string; key: string; data: any }>
+    ) => {
+      const { id, key, data } = action.payload;
+      if (state[id][key]) {
+        state[id][key] = state[id][key].filter((d: any) => d.id !== data.id);
+      }
+    },
+
+    clearItemsInKeyOfId: (
+      state,
+      action: PayloadAction<{ id: string; key: string }>
+    ) => {
+      const { id, key } = action.payload;
+      state[id][key] = [];
+    },
   },
 });
 
-export const { setAllStates, setStatesByID, setStatesByIDAndKey } =
-  stateReducer.actions;
+export const {
+  setAllStates,
+  setStatesByID,
+  setStatesByIDAndKey,
+  addItemToKeyOfId,
+  updateItemInKeyOfId,
+  deleteItemInKeyOfId,
+  clearItemsInKeyOfId,
+} = stateReducer.actions;
 export default stateReducer.reducer;
