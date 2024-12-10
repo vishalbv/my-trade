@@ -22,8 +22,8 @@ export const ChartLayout = memo(
       (state: any) => state.states?.app?.marketStatus?.activeStatus
     );
 
-    const symbols = useSelector((state) =>
-      Object.values(state.globalChart.layouts).map((l) => l.symbol)
+    const symbols = useSelector((state: any) =>
+      Object.values(state.globalChart.layouts).map((l: any) => l.symbol)
     );
     const previousSymbols = useRef<string[]>([]);
 

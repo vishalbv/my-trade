@@ -192,7 +192,7 @@ export const useRealtimeCandles = ({
           );
 
           if (recentCandles && recentCandles.length > 0) {
-            setChartData((prevCandles) => {
+            setChartData((prevCandles: any) => {
               // Get all candles except the current one
               const allExceptCurrent = prevCandles.slice(0, -1);
               // Get current candle
@@ -200,7 +200,7 @@ export const useRealtimeCandles = ({
 
               // Keep all candles before the ones we're updating
               const oldCandles = allExceptCurrent.filter(
-                (candle) => candle.timestamp < recentCandles[0]!.timestamp
+                (candle: any) => candle.timestamp < recentCandles[0]!.timestamp
               );
 
               return [
