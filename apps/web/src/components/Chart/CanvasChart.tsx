@@ -2769,7 +2769,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               top: 0,
               left: 0,
               zIndex: 4,
-              // imageRendering: "pixelated",
+              imageRendering: "pixelated",
             }}
           />
 
