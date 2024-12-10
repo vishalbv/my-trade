@@ -46,7 +46,11 @@ a {
   color: inherit;
   text-decoration: none;
 }
-
+canvas {
+  image-rendering: pixelated;
+  font-smooth: never;
+  // -webkit-font-smoothing: none;
+}
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;

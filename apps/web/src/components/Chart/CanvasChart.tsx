@@ -2769,6 +2769,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               top: 0,
               left: 0,
               zIndex: 4,
+              // imageRendering: "pixelated",
             }}
           />
 
@@ -2782,6 +2783,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               top: 0,
               right: 0,
               zIndex: 3,
+              //   imageRendering: "pixelated",
+
               backgroundColor: currentTheme?.background, // Add this to match chart background
             }}
           />
@@ -2871,6 +2874,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             top: 0,
             left: 0,
             zIndex: 1,
+            //   imageRendering: "pixelated",
           }}
         />
         {/* Crosshair canvas - top layer */}
@@ -2884,6 +2888,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             left: 0,
             pointerEvents: "auto",
             cursor: xAxisDragState ? "ew-resize" : "default",
+            //   imageRendering: "pixelated",
+
             zIndex: 2,
           }}
           onMouseDown={handleXAxisMouseDown}
