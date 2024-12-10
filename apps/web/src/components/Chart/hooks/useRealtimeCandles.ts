@@ -153,55 +153,64 @@ export const useRealtimeCandles = ({
       const timeUntilNextCandle = nextCandleTime - now;
 
       // Schedule the next candle creation
-      const timeout = setTimeout(async () => {
-        // Add initial candle immediately
+      const timeout = setTimeout(() => {
+        // Create new candle exactly at the interval
         setChartData((prevCandles) => {
           if (prevCandles.length === 0) return prevCandles;
 
           const lastCandle = prevCandles[prevCandles.length - 1];
           if (!lastCandle) return prevCandles;
 
-          // Create new candle only if we're sure we need one
-          if (nextCandleTime > lastCandle.timestamp) {
-            const latestPrice = latestPriceRef.current || lastCandle.close;
-            const newCandle: OHLCData = {
-              timestamp: nextCandleTime,
-              open: latestPrice,
-              high: latestPrice,
-              low: latestPrice,
-              close: latestPrice,
-              volume: 0,
-            };
-            return [...prevCandles, newCandle];
-          }
-
-          return prevCandles;
+          // Always create new candle at interval
+          const latestPrice = latestPriceRef.current || lastCandle.close;
+          const newCandle: OHLCData = {
+            timestamp: nextCandleTime,
+            open: latestPrice,
+            high: latestPrice,
+            low: latestPrice,
+            close: latestPrice,
+            volume: 0,
+          };
+          return [...prevCandles, newCandle];
         });
 
         // Update current candle start time
         setCurrentCandleStartTime(nextCandleTime);
 
-        // Add 500ms delay before fetching historical data
+        // Fetch after 50ms to adjust only the previous candle
         setTimeout(async () => {
-          const fromTimestamp = Math.floor((nextCandleTime - 60 * 1000) / 1000); // Look back 1 minute
-          const toTimestamp = Math.floor(nextCandleTime / 1000);
+          const fromTimestamp = Math.floor(
+            (nextCandleTime - 2 * getTimeIntervalForTimeframe(timeframe)) / 1000
+          ); // Look back 2 intervals
+          const toTimestamp = Math.floor(
+            (nextCandleTime - getTimeIntervalForTimeframe(timeframe)) / 1000
+          ); // Up to previous candle
 
-          // Fetch latest data with delay
           const recentCandles = await fetchHistoricalData(
             fromTimestamp,
             toTimestamp
           );
 
-          // Update with fetched data if available
           if (recentCandles && recentCandles.length > 0) {
             setChartData((prevCandles) => {
-              const oldCandles = prevCandles.filter(
+              // Get all candles except the current one
+              const allExceptCurrent = prevCandles.slice(0, -1);
+              // Get current candle
+              const currentCandle = prevCandles[prevCandles.length - 1];
+
+              // Keep all candles before the ones we're updating
+              const oldCandles = allExceptCurrent.filter(
                 (candle) => candle.timestamp < recentCandles[0]!.timestamp
               );
-              return [...oldCandles, ...recentCandles];
+
+              return [
+                ...oldCandles,
+                ...recentCandles, // Update historical candles
+                currentCandle, // Keep current candle unchanged
+              ];
             });
           }
-        }, 500); // 500ms delay
+        }, 50);
 
         // Schedule the next candle
         scheduleNextCandle();
