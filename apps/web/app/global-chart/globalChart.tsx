@@ -17,6 +17,7 @@ import {
   VerticalSplitLeftIcon,
   VerticalSplitRightIcon,
   VerticalStackIcon,
+  HorizontalThreeIcon,
 } from "../../src/components/Chart/icons/layoutIcons";
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
 
@@ -152,6 +153,11 @@ const layoutOptions: LayoutOption[] = [
     id: "grid",
     label: "2x2 Grid",
     icon: <GridLayoutIcon />,
+  },
+  {
+    id: "horizontalThree",
+    label: "Three Horizontal",
+    icon: <HorizontalThreeIcon />,
   },
 ];
 

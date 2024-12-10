@@ -76,7 +76,8 @@ export type LayoutType =
   | "verticalLeft"
   | "verticalRight"
   | "topTwo"
-  | "grid";
+  | "grid"
+  | "horizontalThree";
 
 export type DrawingTool =
   | "cursor"

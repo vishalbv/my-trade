@@ -268,3 +268,40 @@ export const ExitFullScreenIcon = () => (
     ></path>
   </svg>
 );
+
+export const HorizontalThreeIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect
+      x="1"
+      y="1"
+      width="14"
+      height="14"
+      rx="2"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <line
+      x1="6"
+      y1="1"
+      x2="6"
+      y2="15"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <line
+      x1="10"
+      y1="1"
+      x2="10"
+      y2="15"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+  </svg>
+);

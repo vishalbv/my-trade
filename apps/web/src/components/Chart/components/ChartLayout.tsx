@@ -239,6 +239,33 @@ export const ChartLayout = memo(
             </div>
           );
 
+        case "horizontalThree":
+          return (
+            <div className="grid grid-cols-3 gap-[1px] h-full w-full bg-border">
+              <div className="bg-background h-full">
+                <ChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="0"
+                  indicators={indicators}
+                />
+              </div>
+              <div className="bg-background h-full">
+                <ChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="1"
+                  indicators={indicators}
+                />
+              </div>
+              <div className="bg-background h-full">
+                <ChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="2"
+                  indicators={indicators}
+                />
+              </div>
+            </div>
+          );
+
         default:
           return null;
       }
