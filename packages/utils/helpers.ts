@@ -37,18 +37,18 @@ export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
     return "BSE:" + symbol.tsym;
   }
   const months: Record<string, string> = {
-    JAN: "01",
-    FEB: "02",
-    MAR: "03",
-    APR: "04",
-    MAY: "05",
-    JUN: "06",
-    JUL: "07",
-    AUG: "08",
-    SEP: "09",
-    OCT: "10",
-    NOV: "11",
-    DEC: "12",
+    JAN: "1",
+    FEB: "2",
+    MAR: "3",
+    APR: "4",
+    MAY: "5",
+    JUN: "6",
+    JUL: "7",
+    AUG: "8",
+    SEP: "9",
+    OCT: "O",
+    NOV: "N",
+    DEC: "D",
   };
   let arr = symbol.tsym.match(/[a-zA-Z]+|[0-9]+(?:\.[0-9]+|)/g);
   console.log(arr);

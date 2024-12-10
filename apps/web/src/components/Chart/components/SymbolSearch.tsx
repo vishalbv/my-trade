@@ -39,7 +39,6 @@ export const SymbolSearch = ({
   onSymbolSelect,
 }: SymbolSearchProps) => {
   const [searchTerm, setSearchTerm] = useState({
-    exchange: "NSE",
     text: "",
   });
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -48,18 +47,14 @@ export const SymbolSearch = ({
 
   const handleTypeChange = (type: (typeof symbolTypes)[number]["id"]) => {
     setSelectedType(type);
-    setSearchTerm({
-      exchange: symbolTypes.find((t) => t.id === type)?.exchange || "NSE",
-      text: "",
-    });
     setSearchResults([]);
   };
 
   const fetchSearchResults = async (exchange: string, text: string) => {
     try {
       const response = (await searchSymbol({
-        exchange: searchTerm.exchange,
-        text: searchTerm.text,
+        exchange,
+        text,
         broker: "shoonya",
       })) as any;
 
@@ -74,12 +69,33 @@ export const SymbolSearch = ({
   };
 
   useEffect(() => {
-    if (searchTerm.text.length > 2 && searchTerm.exchange) {
-      fetchSearchResults(searchTerm.exchange, searchTerm.text).then((res) => {
-        setSearchResults(res || []);
-      });
+    if (searchTerm.text.length > 2) {
+      if (selectedType === "stocks") {
+        fetchSearchResults("NSE", searchTerm.text).then((res) => {
+          setSearchResults(res || []);
+        });
+      } else if (selectedType === "options") {
+        // Fetch from both NFO and BFO exchanges for options
+        Promise.all([
+          fetchSearchResults("NFO", searchTerm.text),
+          fetchSearchResults("BFO", searchTerm.text),
+        ])
+          .then(([nfoResults, bfoResults]) => {
+            const mergedResults = [
+              ...(nfoResults || []),
+              ...(bfoResults || []),
+            ];
+            setSearchResults(mergedResults);
+          })
+          .catch((error) => {
+            console.error("Error fetching options data:", error);
+            setSearchResults([]);
+          });
+      }
+    } else {
+      setSearchResults([]);
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedType]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -96,6 +112,7 @@ export const SymbolSearch = ({
           placeholder={`Search ${selectedType}...`}
           className="my-4"
           autoFocus
+          onFocus={(e) => e.target.select()}
         />
         <div className="max-h-[400px] overflow-y-auto">
           <div className="flex gap-2 mb-4">

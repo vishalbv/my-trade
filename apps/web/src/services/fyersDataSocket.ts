@@ -73,7 +73,7 @@ export const fyersDataSocketService = {
   },
 
   unsubscribe: (symbols: string[]) => {
-    if (socketInstance && socketInstance.isConnected()) {
+    if (socketInstance && socketInstance.isConnected() && symbols.length > 0) {
       socketInstance.unsubscribe(symbols);
     }
   },

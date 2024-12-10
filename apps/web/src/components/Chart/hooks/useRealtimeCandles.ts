@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import { getHistory } from "../../../store/actions/appActions";
 import { processMarketData } from "../utils/dataTransformations";
 import { OHLCData } from "../types";
 import { fyersDataSocketService } from "../../../services/fyersDataSocket";
+import { throttle, debounce } from "lodash";
 
 interface UseRealtimeCandlesProps {
   symbol: string;
   timeframe: string;
+  requestTicksSubscription: boolean;
 }
 
 interface HistoryResponse {
@@ -29,9 +31,17 @@ const getTimeIntervalForTimeframe = (timeframe: string): number => {
   }
 };
 
+// Add this helper function
+const getNextCandleTime = (timeframe: string): number => {
+  const now = Date.now();
+  const interval = getTimeIntervalForTimeframe(timeframe);
+  return Math.ceil(now / interval) * interval;
+};
+
 export const useRealtimeCandles = ({
   symbol,
   timeframe,
+  requestTicksSubscription = true,
 }: UseRealtimeCandlesProps) => {
   const [chartData, setChartData] = useState<OHLCData[]>([]);
   const tickData = useSelector((state: any) => state.ticks?.fyers_web);
@@ -49,7 +59,7 @@ export const useRealtimeCandles = ({
 
   // Handle socket subscriptions only when market is active
   useEffect(() => {
-    if (isMarketActive) {
+    if (isMarketActive && requestTicksSubscription) {
       fyersDataSocketService.subscribe([symbol]);
       return () => {
         fyersDataSocketService.unsubscribe([symbol]);
@@ -83,61 +93,39 @@ export const useRealtimeCandles = ({
     }
   };
 
-  useEffect(() => {
-    if (!isMarketActive) return;
+  // Use a ref to store the latest price to avoid unnecessary re-renders
+  const latestPriceRef = useRef<number | null>(null);
 
-    const timeInterval = getTimeIntervalForTimeframe(timeframe);
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const currentIntervalStart =
-        Math.floor(now / timeInterval) * timeInterval;
+  // Optimize the update function for real-time updates
+  const updateChartData = useCallback((currentPrice: number) => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
 
-      if (currentIntervalStart > currentCandleStartTime) {
-        setCurrentCandleStartTime(currentIntervalStart);
+    // Store the latest price
+    latestPriceRef.current = currentPrice;
 
-        // Create new candle immediately
-        setChartData((prevCandles) => {
-          if (prevCandles.length === 0) return prevCandles;
-          const lastCandle = prevCandles[prevCandles.length - 1];
-          if (!lastCandle) return prevCandles;
+    rafRef.current = requestAnimationFrame(() => {
+      setChartData((prevCandles) => {
+        const lastCandle = prevCandles[prevCandles.length - 1];
+        if (!lastCandle) return prevCandles;
 
-          const newCandle: OHLCData = {
-            timestamp: currentIntervalStart,
-            open: lastCandle.close,
-            high: lastCandle.close,
-            low: lastCandle.close,
-            close: lastCandle.close,
-            volume: 0,
-          };
-          return [...prevCandles, newCandle];
-        });
+        // Always update if price changed
+        const updatedCandles = [...prevCandles];
+        const updatedLastCandle = {
+          ...lastCandle,
+          close: currentPrice,
+          high: Math.max(lastCandle.high, currentPrice),
+          low: Math.min(lastCandle.low, currentPrice),
+        };
 
-        // Verify and fix data after 2 seconds
-        setTimeout(async () => {
-          const fromTimestamp = Math.floor((now - 4 * 60 * 1000) / 1000);
-          const toTimestamp = Math.floor(now / 1000);
+        updatedCandles[updatedCandles.length - 1] = updatedLastCandle;
+        return updatedCandles;
+      });
+    });
+  }, []);
 
-          const recentCandles = await fetchHistoricalData(
-            fromTimestamp,
-            toTimestamp
-          );
-
-          if (recentCandles && recentCandles.length > 0) {
-            setChartData((prevCandles) => {
-              const oldCandles = prevCandles.filter(
-                (candle) => candle.timestamp < recentCandles[0]!.timestamp
-              );
-              return [...oldCandles, ...recentCandles];
-            });
-          }
-        }, 2000);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [currentCandleStartTime, timeframe, symbol, isMarketActive]);
-
-  // Update real-time data
+  // Update real-time data immediately
   useEffect(() => {
     if (
       !isMarketActive ||
@@ -149,11 +137,112 @@ export const useRealtimeCandles = ({
 
     const currentPrice = parseFloat(tickData[symbol].ltp);
 
-    setChartData((prevCandles) => {
-      const updatedCandles = [...prevCandles];
-      const lastCandle = updatedCandles[updatedCandles.length - 1];
+    // Only update if price actually changed
+    if (currentPrice !== latestPriceRef.current) {
+      updateChartData(currentPrice);
+    }
+  }, [tickData, symbol, chartData.length, isMarketActive, updateChartData]);
 
-      if (lastCandle) {
+  // Replace the interval check effect with this improved version
+  useEffect(() => {
+    if (!isMarketActive) return;
+
+    const scheduleNextCandle = () => {
+      const now = Date.now();
+      const nextCandleTime = getNextCandleTime(timeframe);
+      const timeUntilNextCandle = nextCandleTime - now;
+
+      // Schedule the next candle creation
+      const timeout = setTimeout(async () => {
+        // Add initial candle immediately
+        setChartData((prevCandles) => {
+          if (prevCandles.length === 0) return prevCandles;
+
+          const lastCandle = prevCandles[prevCandles.length - 1];
+          if (!lastCandle) return prevCandles;
+
+          // Create new candle only if we're sure we need one
+          if (nextCandleTime > lastCandle.timestamp) {
+            const latestPrice = latestPriceRef.current || lastCandle.close;
+            const newCandle: OHLCData = {
+              timestamp: nextCandleTime,
+              open: latestPrice,
+              high: latestPrice,
+              low: latestPrice,
+              close: latestPrice,
+              volume: 0,
+            };
+            return [...prevCandles, newCandle];
+          }
+
+          return prevCandles;
+        });
+
+        // Update current candle start time
+        setCurrentCandleStartTime(nextCandleTime);
+
+        // Add 500ms delay before fetching historical data
+        setTimeout(async () => {
+          const fromTimestamp = Math.floor((nextCandleTime - 60 * 1000) / 1000); // Look back 1 minute
+          const toTimestamp = Math.floor(nextCandleTime / 1000);
+
+          // Fetch latest data with delay
+          const recentCandles = await fetchHistoricalData(
+            fromTimestamp,
+            toTimestamp
+          );
+
+          // Update with fetched data if available
+          if (recentCandles && recentCandles.length > 0) {
+            setChartData((prevCandles) => {
+              const oldCandles = prevCandles.filter(
+                (candle) => candle.timestamp < recentCandles[0]!.timestamp
+              );
+              return [...oldCandles, ...recentCandles];
+            });
+          }
+        }, 500); // 500ms delay
+
+        // Schedule the next candle
+        scheduleNextCandle();
+      }, timeUntilNextCandle);
+
+      return timeout;
+    };
+
+    // Start the scheduling
+    const timeoutId = scheduleNextCandle();
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [timeframe, symbol, isMarketActive, fetchHistoricalData]);
+
+  // Update the real-time data effect to be more precise
+  useEffect(() => {
+    if (
+      !isMarketActive ||
+      !tickData ||
+      !tickData[symbol] ||
+      chartData.length === 0
+    )
+      return;
+
+    const currentPrice = parseFloat(tickData[symbol].ltp);
+
+    // Only update if price actually changed
+    if (currentPrice !== latestPriceRef.current) {
+      setChartData((prevCandles) => {
+        const lastCandle = prevCandles[prevCandles.length - 1];
+        if (!lastCandle) return prevCandles;
+
+        // Only update if this tick belongs to the current candle
+        if (lastCandle.timestamp !== currentCandleStartTime) {
+          return prevCandles;
+        }
+
+        const updatedCandles = [...prevCandles];
         const updatedLastCandle = {
           ...lastCandle,
           close: currentPrice,
@@ -162,20 +251,37 @@ export const useRealtimeCandles = ({
         };
 
         updatedCandles[updatedCandles.length - 1] = updatedLastCandle;
-      }
+        latestPriceRef.current = currentPrice;
+        return updatedCandles;
+      });
+    }
+  }, [
+    tickData,
+    symbol,
+    chartData.length,
+    isMarketActive,
+    currentCandleStartTime,
+  ]);
 
-      return updatedCandles;
-    });
-  }, [tickData, symbol, chartData.length, isMarketActive]);
-  console.log(chartData, "pppp");
+  // Add RAF reference to prevent multiple updates in same frame
+  const rafRef = useRef<number>();
+
+  // Cleanup RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
   // Reset currentCandleStartTime when timeframe changes
   useEffect(() => {
     const interval = getTimeIntervalForTimeframe(timeframe);
     setCurrentCandleStartTime(Math.floor(Date.now() / interval) * interval);
-    console.log("ooopppppppppp");
+
     setChartData([]);
   }, [timeframe, symbol]);
-  console.log(timeframe, "ooopppppppppp");
 
   // Add this new effect for initial data fetch
   useEffect(() => {
