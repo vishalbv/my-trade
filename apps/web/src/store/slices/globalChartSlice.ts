@@ -13,6 +13,7 @@ interface Indicator {
 interface ChartState {
   symbol: string;
   timeframe: string;
+  symbolInfo?: any;
 }
 
 interface GlobalChartState {
@@ -104,11 +105,16 @@ const globalChartSlice = createSlice({
     },
     updateLayoutSymbol: (
       state,
-      action: PayloadAction<{ chartKey: string; symbol: string }>
+      action: PayloadAction<{
+        chartKey: string;
+        symbol: string;
+        symbolInfo?: any;
+      }>
     ) => {
-      const { chartKey, symbol } = action.payload;
+      const { chartKey, symbol, symbolInfo } = action.payload;
       if (state.layouts[chartKey]) {
         state.layouts[chartKey].symbol = symbol;
+        state.layouts[chartKey].symbolInfo = symbolInfo;
       }
     },
     updateLayoutTimeframe: (

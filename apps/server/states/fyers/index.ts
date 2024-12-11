@@ -138,7 +138,34 @@ class Fyers extends State {
         `Failed to fetch historical data: ${JSON.stringify(response)}`
       );
     } catch (error: any) {
+      console.log(error);
       throw new Error(`Historical data error: ${error.message}`);
+    }
+  };
+
+  getOptionChain = async (symbol: string, strikecount = 4) => {
+    try {
+      const response = await fyers.getOptionChain({
+        symbol,
+        strikecount,
+        timestamp: "",
+      });
+
+      if (response.s === "ok") {
+        return {
+          message: response.message || "Option chain retrieved successfully",
+          data: {
+            expiryData: response.data.expiryData,
+            optionsChain: response.data.optionsChain,
+          },
+        };
+      }
+      throw new Error(
+        `Failed to fetch option chain: ${JSON.stringify(response)}`
+      );
+    } catch (error: any) {
+      console.log(error);
+      throw new Error(`Option chain error: ${error.message}`);
     }
   };
 

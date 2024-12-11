@@ -29,3 +29,7 @@ export const getHistory = (body: any) => {
 export const searchSymbol = (body: any) => {
   return postRequest(`searchSymbol`, body);
 };
+
+export const getOptionChain = (body: any) => {
+  return postRequest(`optionChain`, body);
+};

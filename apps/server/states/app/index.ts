@@ -28,14 +28,14 @@ class App extends State {
     //   .catch((error) => this.setState({ indexPrices: [] }));
   };
 
-  // updateDbAtInitOfDay = () => {
-  //   this.setState({
-  //     dataUpdatedTime: moment().valueOf(),
-  //     doneForTheDay: undefined,
-  //     testMode: false,
-  //     _db: true,
-  //   });
-  // };
+  updateDbAtInitOfDay = () => {
+    this.setState({
+      dataUpdatedTime: moment().valueOf(),
+      doneForTheDay: undefined,
+      testMode: false,
+      _db: true,
+    });
+  };
 
   // updateMarketStatus = () => {
   //   if (this.getRefs().marketStatusInterval)

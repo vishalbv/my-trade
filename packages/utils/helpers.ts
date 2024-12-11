@@ -14,11 +14,7 @@ export const getTimeoutTo = (time = moment(), testMode?: boolean) => {
 export const shoonyaToFyersSymbol = (symbol: any, callback: any) => {
   let fyersSymbol = "";
   if (symbol.type === "index") {
-    const indexDetails = INDEX_DETAILS as Record<
-      string,
-      { name: string; fyersName: string }
-    >;
-    fyersSymbol = shoonyaToFyersIndexMapping(indexDetails[symbol.name]);
+    fyersSymbol = indexNamesTofyersIndexMapping(symbol.name);
   } else if (symbol.exch === "NSE") {
     fyersSymbol = "NSE:" + symbol.tsym;
   } else if (symbol.exch === "NFO" || symbol.exch === "BFO") {
@@ -28,8 +24,16 @@ export const shoonyaToFyersSymbol = (symbol: any, callback: any) => {
   return fyersSymbol;
 };
 
-export const shoonyaToFyersIndexMapping = (symbol: any) => {
-  return symbol.indexExchange + ":" + symbol.fyersName + "-INDEX";
+export const indexNamesTofyersIndexMapping = (index: any) => {
+  const indexDetails = INDEX_DETAILS as Record<
+    string,
+    { indexExchange: string; fyersName: string }
+  >;
+  const { indexExchange, fyersName } = indexDetails[index] || {
+    indexExchange: "",
+    fyersName: "",
+  };
+  return indexExchange + ":" + fyersName + "-INDEX";
 };
 
 export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
@@ -63,4 +67,22 @@ export const shoonyaToFyersSymbolOptionMapping = (symbol: any) => {
     arr[5] +
     (arr[4] == "P" ? "PE" : "CE")
   );
+};
+
+// Helper function to check if date is weekend
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+};
+
+export const isHoliday = (date: Date, holidays: string[]): boolean => {
+  const formattedDate = date
+    .toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    .replace(/ /g, "-");
+
+  return holidays.includes(formattedDate) || isWeekend(date);
 };

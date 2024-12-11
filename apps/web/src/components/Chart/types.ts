@@ -40,6 +40,8 @@ export interface ChartTheme {
   controlsBackground: string;
   baseText: string;
   fontFamily: string;
+  upColorDark: string;
+  downColorDark: string;
 }
 
 export interface ViewState {
@@ -106,4 +108,19 @@ export interface DrawingState {
   tool: DrawingTool | null;
   showDrawings: boolean;
   drawings: Drawing[];
+}
+
+export type AlertType =
+  | "priceBelow"
+  | "priceAbove"
+  | "priceBetween"
+  | "priceTouch";
+
+export interface Alert {
+  id?: string;
+  type: AlertType;
+  muted: boolean;
+  timeframe: string;
+  isEnabled?: boolean;
+  drawingId: string;
 }

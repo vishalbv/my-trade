@@ -1,3 +1,4 @@
+import _alerts from "./alerts/index";
 import _app from "./app/index";
 import _drawings from "./drawings/index";
 import _fyers from "./fyers/index";
@@ -9,4 +10,5 @@ export const _allStates = {
   fyers: _fyers,
   symbols: _symbols,
   drawings: _drawings,
+  alerts: _alerts,
 };

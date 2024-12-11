@@ -1,5 +1,12 @@
 export const sidebarIgnorePaths = ["/login", "/"];
-export const allStates = ["app", "shoonya", "fyers", "symbols", "drawings"];
+export const allStates = [
+  "app",
+  "shoonya",
+  "fyers",
+  "symbols",
+  "drawings",
+  "alerts",
+];
 
 export const LINKS = [
   {

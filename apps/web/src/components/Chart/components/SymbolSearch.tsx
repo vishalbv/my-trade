@@ -6,8 +6,12 @@ import {
   DialogTitle,
 } from "@repo/ui/dialog";
 import { Input } from "@repo/ui/input";
-import { searchSymbol } from "../../../store/actions/appActions";
+import {
+  getOptionChain,
+  searchSymbol,
+} from "../../../store/actions/appActions";
 import { INDEX_DETAILS } from "@repo/utils/constants";
+import { indexNamesTofyersIndexMapping } from "@repo/utils/helpers";
 
 interface SymbolSearchProps {
   isOpen: boolean;
@@ -33,6 +37,32 @@ const symbolTypes = [
   { id: "options", label: "Options", exchange: "BFO" },
 ] as const;
 
+const OptionChainItem = ({
+  option,
+  onSelect,
+  index,
+}: {
+  option: any;
+  onSelect: (option: any) => void;
+  index: number;
+}) => (
+  <div
+    key={option.fyToken}
+    className={`px-4 py-1 hover:bg-muted cursor-pointer rounded-md mb-2 ${
+      index == 4 ? "bg-destructive/10" : ""
+    }`}
+    onClick={() => onSelect(option)}
+  >
+    <div className="flex justify-between items-center">
+      <span className="font-medium text-sm">
+        {option.strike_price} {option.option_type}
+      </span>
+      <span className="text-sm text-primary">@ {option.ltp}</span>
+    </div>
+    <div className="text-2xs text-muted-foreground">{option.symbol}</div>
+  </div>
+);
+
 export const SymbolSearch = ({
   isOpen,
   onClose,
@@ -40,13 +70,17 @@ export const SymbolSearch = ({
 }: SymbolSearchProps) => {
   const [searchTerm, setSearchTerm] = useState({
     text: "",
+    optionChainSymbol: "",
+    selectedType: "stocks",
   });
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedType, setSelectedType] =
-    useState<(typeof symbolTypes)[number]["id"]>("stocks");
+  const [optionChainResults, setOptionChainResults] = useState<any>({});
 
   const handleTypeChange = (type: (typeof symbolTypes)[number]["id"]) => {
-    setSelectedType(type);
+    setSearchTerm({
+      ...searchTerm,
+      selectedType: type,
+    });
     setSearchResults([]);
   };
 
@@ -69,12 +103,55 @@ export const SymbolSearch = ({
   };
 
   useEffect(() => {
+    let intervalId: any;
+
+    const fetchOptionChain = async () => {
+      try {
+        const res = await getOptionChain({
+          symbol: indexNamesTofyersIndexMapping(searchTerm.optionChainSymbol),
+          broker: "fyers",
+        });
+        setOptionChainResults(res || []);
+      } catch (error) {
+        console.error("Error fetching option chain:", error);
+      }
+    };
+
+    if (searchTerm.optionChainSymbol) {
+      setSearchResults([]);
+      setSearchTerm({
+        ...searchTerm,
+        selectedType: "stocks",
+        text: "",
+      });
+
+      // Initial fetch
+      fetchOptionChain();
+
+      // Set up interval for subsequent fetches
+      intervalId = setInterval(fetchOptionChain, 2000);
+    }
+
+    // Cleanup interval when component unmounts or optionChainSymbol changes
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [searchTerm.optionChainSymbol]);
+
+  useEffect(() => {
+    setOptionChainResults([]);
+    setSearchTerm({
+      ...searchTerm,
+      optionChainSymbol: "",
+    });
     if (searchTerm.text.length > 2) {
-      if (selectedType === "stocks") {
+      if (searchTerm.selectedType === "stocks") {
         fetchSearchResults("NSE", searchTerm.text).then((res) => {
           setSearchResults(res || []);
         });
-      } else if (selectedType === "options") {
+      } else if (searchTerm.selectedType === "options") {
         // Fetch from both NFO and BFO exchanges for options
         Promise.all([
           fetchSearchResults("NFO", searchTerm.text),
@@ -95,47 +172,25 @@ export const SymbolSearch = ({
     } else {
       setSearchResults([]);
     }
-  }, [searchTerm, selectedType]);
+  }, [searchTerm.text, searchTerm.selectedType]);
+
+  const _onSymbolSelect = (option: any) =>
+    onSymbolSelect({
+      ...option,
+      expiryDate: optionChainResults.expiryData[0].date,
+    });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[650px] h-[640px] flex flex-col">
+        <DialogHeader className="flex gap-12 flex-row items-center">
           <DialogTitle>Symbol Search</DialogTitle>
-        </DialogHeader>
-
-        <Input
-          value={searchTerm.text}
-          onChange={(e) =>
-            setSearchTerm({ ...searchTerm, text: e.target.value })
-          }
-          placeholder={`Search ${selectedType}...`}
-          className="my-4"
-          autoFocus
-          onFocus={(e) => e.target.select()}
-        />
-        <div className="max-h-[400px] overflow-y-auto">
-          <div className="flex gap-2 mb-4">
-            {Object.keys(INDEX_DETAILS).map((index) => (
-              <button
-                key={index}
-                className={`${chipStyles.base} ${chipStyles.inactive}`}
-                onClick={() => {
-                  const symbol = { name: index, type: "index" };
-                  onSymbolSelect(symbol);
-                }}
-              >
-                {index}
-              </button>
-            ))}
-          </div>
-
           <div className="flex gap-2 mb-4">
             {symbolTypes.map((type) => (
               <button
                 key={type.id}
                 className={`${chipStyles.base} ${
-                  selectedType === type.id
+                  searchTerm.selectedType === type.id
                     ? chipStyles.active
                     : chipStyles.inactive
                 }`}
@@ -145,23 +200,98 @@ export const SymbolSearch = ({
               </button>
             ))}
           </div>
-          {searchResults.map((symbol) => (
-            <div
-              key={symbol.token}
-              className="px-4 py-3 hover:bg-muted cursor-pointer flex justify-between items-center rounded-md"
-              onClick={() => {
-                onSymbolSelect(symbol);
-              }}
-            >
-              <div>
-                <div className="font-medium">{symbol.tsym}</div>
-                <div className="text-sm text-muted-foreground">
-                  {symbol.cname || symbol.dname}
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">{symbol.exch}</div>
+        </DialogHeader>
+
+        <div>
+          <Input
+            value={searchTerm.text}
+            onChange={(e) =>
+              setSearchTerm({ ...searchTerm, text: e.target.value })
+            }
+            placeholder={`Search ${searchTerm.selectedType}...`}
+            className="my-4"
+            autoFocus
+            onFocus={(e) => e.target.select()}
+          />
+          <div>
+            <div className="flex gap-2 mb-4">
+              {Object.keys(INDEX_DETAILS).map((index) => (
+                <button
+                  key={index}
+                  className={`${chipStyles.base} ${
+                    searchTerm.optionChainSymbol === index
+                      ? chipStyles.active
+                      : chipStyles.inactive
+                  }`}
+                  onDoubleClick={() => {
+                    const symbol = { name: index, type: "index" };
+                    onSymbolSelect(symbol);
+                  }}
+                  onClick={() => {
+                    setSearchTerm({
+                      ...searchTerm,
+                      optionChainSymbol: index,
+                    });
+                  }}
+                >
+                  {index}
+                </button>
+              ))}
             </div>
-          ))}
+
+            <div className="flex">
+              <div className="w-1/2 pr-2">
+                {optionChainResults?.optionsChain
+                  ?.filter((option: any) => option.option_type === "CE")
+                  .sort((a: any, b: any) => b.strike_price - a.strike_price)
+                  .map((option: any, index: number) => (
+                    <OptionChainItem
+                      key={option.fyToken}
+                      option={option}
+                      onSelect={_onSymbolSelect}
+                      index={index}
+                    />
+                  ))}
+              </div>
+              <div className="w-1/2 pl-2">
+                {optionChainResults?.optionsChain
+                  ?.filter(
+                    (option: any, index: number) => option.option_type === "PE"
+                  )
+                  .map((option: any, index: number) => (
+                    <OptionChainItem
+                      key={option.fyToken}
+                      option={option}
+                      onSelect={_onSymbolSelect}
+                      index={index}
+                    />
+                  ))}
+              </div>
+            </div>
+            <div className="overflow-y-auto h-[450px]">
+              {searchResults.map((symbol) => (
+                <div
+                  key={symbol.token}
+                  className="px-2 py-1 hover:bg-muted cursor-pointer flex justify-between items-center rounded-md mb-2"
+                  onClick={() => {
+                    onSymbolSelect(symbol);
+                  }}
+                >
+                  <div>
+                    <div className="font-medium text-sm mb-1">
+                      {symbol.cname || symbol.dname}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {symbol.tsym}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {symbol.exch}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

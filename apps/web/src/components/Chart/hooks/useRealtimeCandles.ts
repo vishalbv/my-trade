@@ -5,6 +5,7 @@ import { processMarketData } from "../utils/dataTransformations";
 import { OHLCData } from "../types";
 import { fyersDataSocketService } from "../../../services/fyersDataSocket";
 import { throttle, debounce } from "lodash";
+import { isHoliday } from "@repo/utils/helpers";
 
 interface UseRealtimeCandlesProps {
   symbol: string;
@@ -16,26 +17,122 @@ interface HistoryResponse {
   candles?: [number, number, number, number, number, number][];
 }
 
-const getTimeIntervalForTimeframe = (timeframe: string): number => {
-  switch (timeframe) {
-    case "1":
-      return 60000; // 1 minute in ms
-    case "5":
-      return 300000; // 5 minutes in ms
-    case "15":
-      return 900000; // 15 minutes in ms
-    case "D":
-      return 86400000; // 1 day in ms
-    default:
-      return 60000;
-  }
+const MARKET_START_HOUR = 9; // 9:15 AM
+const MARKET_START_MINUTE = 15;
+const MARKET_END_HOUR = 15; // 3:30 PM
+const MARKET_END_MINUTE = 30;
+
+const CANDLES_PER_DAY = {
+  "1": 375, // (6 hours 15 mins = 375 minutes)
+  "5": 75, // (375 / 5 = 75 5-minute candles)
+  "15": 25, // (375 / 15 = 25 15-minute candles)
+  D: 1, // 1 candle per day
 };
 
-// Add this helper function
+const isWithinMarketHours = (date: Date): boolean => {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const timeValue = hours * 60 + minutes;
+  const marketStartTime = MARKET_START_HOUR * 60 + MARKET_START_MINUTE;
+  const marketEndTime = MARKET_END_HOUR * 60 + MARKET_END_MINUTE;
+
+  return timeValue >= marketStartTime && timeValue <= marketEndTime;
+};
+
+const getTimeIntervalForTimeframe = (
+  timeframe: string,
+  currentTime: Date = new Date()
+): number => {
+  const baseInterval = (() => {
+    switch (timeframe) {
+      case "1":
+        return 60000; // 1 minute in ms
+      case "5":
+        return 300000; // 5 minutes in ms
+      case "15":
+        return 900000; // 15 minutes in ms
+      case "D":
+        return 86400000; // 1 day in ms
+      default:
+        return 60000;
+    }
+  })();
+
+  // For intraday timeframes, adjust to market hours
+  if (timeframe !== "D") {
+    const marketOpenTime = new Date(currentTime);
+    marketOpenTime.setHours(MARKET_START_HOUR, MARKET_START_MINUTE, 0, 0);
+
+    const marketCloseTime = new Date(currentTime);
+    marketCloseTime.setHours(MARKET_END_HOUR, MARKET_END_MINUTE, 0, 0);
+
+    // If current time is before market open, return time until market open
+    if (currentTime < marketOpenTime) {
+      return marketOpenTime.getTime() - currentTime.getTime();
+    }
+
+    // If current time is after market close, return time until next market open
+    if (currentTime > marketCloseTime) {
+      marketOpenTime.setDate(marketOpenTime.getDate() + 1);
+      return marketOpenTime.getTime() - currentTime.getTime();
+    }
+  }
+
+  return baseInterval;
+};
+
+const calculateFromTimestamp = (
+  timeframe: string,
+  holidays: string[]
+): number => {
+  const now = new Date();
+
+  // Set fixed day ranges based on timeframe
+  let daysToGoBack = 0;
+
+  switch (timeframe) {
+    case "D":
+      daysToGoBack = 365; // For daily, go back 365 days
+      break;
+    case "15":
+      daysToGoBack = 99; // For 15min, go back 99 days
+      break;
+    case "5":
+      daysToGoBack = 30; // For 5min, also 99 days
+      break;
+    case "1":
+      daysToGoBack = 6; // For 1min, also 99 days
+      break;
+    default:
+      daysToGoBack = 99;
+  }
+
+  let currentDate = new Date(now);
+  currentDate.setDate(currentDate.getDate() - daysToGoBack);
+
+  // For intraday timeframes, set to market opening time
+  if (timeframe !== "D") {
+    currentDate.setHours(MARKET_START_HOUR, MARKET_START_MINUTE, 0, 0);
+  }
+
+  return Math.floor(currentDate.getTime() / 1000);
+};
+
 const getNextCandleTime = (timeframe: string): number => {
-  const now = Date.now();
-  const interval = getTimeIntervalForTimeframe(timeframe);
-  return Math.ceil(now / interval) * interval;
+  const now = new Date();
+  const interval = getTimeIntervalForTimeframe(timeframe, now);
+
+  if (!isWithinMarketHours(now)) {
+    // If outside market hours, return next market open time
+    const nextOpen = new Date(now);
+    nextOpen.setHours(MARKET_START_HOUR, MARKET_START_MINUTE, 0, 0);
+    if (now.getHours() >= MARKET_END_HOUR) {
+      nextOpen.setDate(nextOpen.getDate() + 1);
+    }
+    return nextOpen.getTime();
+  }
+
+  return Math.ceil(now.getTime() / interval) * interval;
 };
 
 export const useRealtimeCandles = ({
@@ -47,6 +144,10 @@ export const useRealtimeCandles = ({
   const tickData = useSelector((state: any) => state.ticks?.fyers_web);
   const isMarketActive = useSelector(
     (state: any) => state.states?.app?.marketStatus?.activeStatus
+  );
+
+  const holidays = useSelector(
+    (state: any) => state.states.app?.holidays || []
   );
 
   // Update currentCandleStartTime to use the correct timeframe interval
@@ -151,10 +252,11 @@ export const useRealtimeCandles = ({
       const now = Date.now();
       const nextCandleTime = getNextCandleTime(timeframe);
       const timeUntilNextCandle = nextCandleTime - now;
-
+      console.log("timeUntilNextCandle", timeUntilNextCandle);
       // Schedule the next candle creation
       const timeout = setTimeout(() => {
         // Create new candle exactly at the interval
+
         setChartData((prevCandles) => {
           if (prevCandles.length === 0) return prevCandles;
 
@@ -178,7 +280,7 @@ export const useRealtimeCandles = ({
         setCurrentCandleStartTime(nextCandleTime);
 
         // Fetch after 50ms to adjust only the previous candle
-        setTimeout(async () => {
+        const ss = setTimeout(async () => {
           const fromTimestamp = Math.floor(
             (nextCandleTime - 2 * getTimeIntervalForTimeframe(timeframe)) / 1000
           ); // Look back 2 intervals
@@ -211,7 +313,7 @@ export const useRealtimeCandles = ({
             });
           }
         }, 50);
-
+        console.log("ss------", ss);
         // Schedule the next candle
         scheduleNextCandle();
       }, timeUntilNextCandle);
@@ -221,13 +323,17 @@ export const useRealtimeCandles = ({
 
     // Start the scheduling
     const timeoutId = scheduleNextCandle();
+    console.log("Scheduled next candle in:", timeoutId, timeframe, symbol);
 
     // Cleanup
     return () => {
       clearTimeout(timeoutId);
+      console.log("Cleared timeout", timeoutId, timeframe, symbol);
     };
-  }, [timeframe, symbol, isMarketActive, fetchHistoricalData]);
-
+  }, [timeframe, symbol, isMarketActive]);
+  useEffect(() => {
+    console.log("mountedddd");
+  }, []);
   // Update the real-time data effect to be more precise
   useEffect(() => {
     if (
@@ -292,12 +398,11 @@ export const useRealtimeCandles = ({
     setChartData([]);
   }, [timeframe, symbol]);
 
-  // Add this new effect for initial data fetch
+  // Update the initial data fetch effect
   useEffect(() => {
     const fetchInitialData = async () => {
-      const now = Date.now();
-      const fromTimestamp = Math.floor(now / 1000 - 40000 * 60); // Last 5 minutes
-      const toTimestamp = Math.floor(now / 1000);
+      const fromTimestamp = calculateFromTimestamp(timeframe, holidays);
+      const toTimestamp = Math.floor(Date.now() / 1000);
 
       const initialCandles = await fetchHistoricalData(
         fromTimestamp,

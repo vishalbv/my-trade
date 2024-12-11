@@ -24,6 +24,7 @@ import {
 import { ActionButtons } from "./ActionButtons";
 import { BuySellWindow } from "./components/BuySellWindow";
 import { setSelectedDrawing } from "../../store/slices/globalChartSlice";
+import { isHoliday } from "@repo/utils/helpers";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -253,24 +254,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     (state: RootState) => state.states.app?.holidays || []
   );
 
-  // Helper function to check if date is weekend
-  const isWeekend = (date: Date): boolean => {
-    const day = date.getDay();
-    return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
-  };
-
-  const isHoliday = (date: Date): boolean => {
-    const formattedDate = date
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-      .replace(/ /g, "-");
-
-    return holidays.includes(formattedDate) || isWeekend(date);
-  };
-
   const createDummyCandles = useCallback(
     (lastCandle: OHLCData | undefined, count: number): OHLCData[] => {
       if (!lastCandle) return [];
@@ -295,7 +278,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           }
 
           // Check if this is a valid trading day
-          if (!isHoliday(nextDate)) {
+          if (!isHoliday(nextDate, holidays)) {
             return nextDate;
           }
 
@@ -1425,6 +1408,57 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           y
         );
       });
+
+      // Draw last price label
+      if (data.length > 0) {
+        const lastCandle = data[data.length - 1];
+        const previousCandle = data[data.length - 2];
+
+        if (lastCandle) {
+          const y = getY(lastCandle.close, chartHeight);
+
+          // Determine color based on previous close
+          const isUp = previousCandle
+            ? lastCandle.close >= previousCandle.close
+            : true;
+          const backgroundColor = isUp
+            ? currentTheme?.upColorDark
+            : currentTheme?.downColorDark;
+
+          // Format the price
+          const priceText = lastCandle.close.toFixed(2);
+
+          // Calculate label dimensions
+          const labelPadding = 4;
+          const textWidth = ctx.measureText(priceText).width;
+          const labelWidth = textWidth + labelPadding * 2;
+          const labelHeight = 22;
+
+          // Draw label background with rounded corners
+          ctx.fillStyle = backgroundColor;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(
+              0,
+              y - labelHeight / 2,
+              labelWidth + 2,
+              labelHeight,
+              2 // border radius
+            );
+          } else {
+            // Fallback for browsers that don't support roundRect
+            ctx.rect(0, y - labelHeight / 2, labelWidth + 2, labelHeight);
+          }
+          ctx.fill();
+
+          // Draw price text
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = `normal 10px ${currentTheme.fontFamily}`;
+          ctx.fillText(priceText, labelPadding, y);
+        }
+      }
     },
     [
       dimensions,
@@ -1434,6 +1468,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       getY,
       calculateGridPrices,
       currentTheme,
+      data, // Add data to dependencies
     ]
   );
 
@@ -2212,7 +2247,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     calculateXAxisLabels,
     dimensions,
     currentTheme,
-    combinedData,
+    combinedData.length,
     formatTimeLabel,
   ]);
 

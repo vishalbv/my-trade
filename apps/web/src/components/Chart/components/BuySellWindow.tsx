@@ -8,7 +8,7 @@ import { placeOrder } from "../../../store/actions/orderActions";
 
 interface BuySellWindowProps {
   className?: string;
-  chartState: { symbol: string; timeframe: string };
+  chartState: { symbol: string; timeframe: string; symbolInfo: any };
   currentPrice?: number;
   rsiHeight: number;
 }
@@ -120,7 +120,7 @@ export const BuySellWindow = ({
       //   $index: indexName,
       //   exchange: data.exch,
       price: limitPrice,
-      fyersSymbol: chartState.symbol,
+      fyersSymbol: chartState.symbolInfo,
     });
   };
 

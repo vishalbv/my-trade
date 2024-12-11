@@ -5,7 +5,7 @@ import ticksReducer from "./slices/ticksSlice";
 import globalChartReducer, {
   globalChartLocalStorageMiddleware,
 } from "./slices/globalChartSlice";
-import { drawingsMiddleware } from "./middlewares/drawingsMiddleware";
+import { serverStateUpdateMiddleware } from "./middlewares/serverStateUpdateMiddleware";
 import { updateDispatch } from "../services/webSocket";
 
 export const store: Store = configureStore({
@@ -18,7 +18,7 @@ export const store: Store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }).concat([globalChartLocalStorageMiddleware, drawingsMiddleware]),
+    }).concat([globalChartLocalStorageMiddleware, serverStateUpdateMiddleware]),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

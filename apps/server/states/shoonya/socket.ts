@@ -140,6 +140,10 @@ export const startShoonyaSocket = async (api: NorenRestApi, retry = false) => {
   }
 };
 
+const pushInitialState = () => {
+  sendMessage("ticks_shoonya_server", getState());
+};
+
 // Export other necessary functions
 export const shoonyaSocket = {
   getState,
@@ -147,4 +151,5 @@ export const shoonyaSocket = {
   subscribeTicks,
   unsubscribeTicks,
   startShoonyaSocket,
+  pushInitialState,
 };

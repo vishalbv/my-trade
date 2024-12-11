@@ -11,7 +11,7 @@ import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
 import { shoonyaSocket, startShoonyaSocket } from "./socket";
-import { positionsFormatter } from "./functions";
+import { fetchShoonyaNameByFyersSymbol, positionsFormatter } from "./functions";
 import _symbols from "../symbols/index";
 
 let api = new NorenRestApi();
@@ -218,8 +218,9 @@ class Shoonya extends State {
         _symbols.getState().fyersToShoonyaMapping[fyersSymbol]
       );
       const { exch = exchange, tsym = shoonyaSymbol } = fyersSymbol
-        ? _symbols.getState().fyersToShoonyaMapping[fyersSymbol]
+        ? fetchShoonyaNameByFyersSymbol(fyersSymbol)
         : {};
+
       const orderParams = {
         buy_or_sell: side == 1 ? "B" : "S",
         product_type: "M",

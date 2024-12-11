@@ -11,5 +11,6 @@ declare module "fyers-api-v3" {
     }): Promise<any>;
     place_order(params: any): Promise<any>;
     getHistory(params: any): Promise<any>;
+    getOptionChain(params: any): Promise<any>;
   }
 }

@@ -92,4 +92,50 @@ export const declareMarketDataApis = () => ({
       };
     }
   },
+
+  "POST /api/optionChain": async ({
+    body,
+  }: {
+    body: {
+      symbol: string;
+      exchange: string;
+      broker: "fyers" | "shoonya";
+    };
+  }) => {
+    try {
+      let optionChainResults;
+
+      switch (body.broker) {
+        // case "shoonya": {
+        //   optionChainResults = await _shoonya.getOptionChain(
+        //     body.exchange,
+        //     body.symbol
+        //   );
+        //   break;
+        // }
+        case "fyers": {
+          optionChainResults = await _fyers.getOptionChain(body.symbol);
+          break;
+        }
+        // Add other broker cases here
+        default:
+          throw new Error("Unsupported broker");
+      }
+
+      return {
+        status: 200,
+        message:
+          optionChainResults.message || "Option chain retrieved successfully",
+        data: optionChainResults.data,
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch option chain",
+      };
+    }
+  },
 });

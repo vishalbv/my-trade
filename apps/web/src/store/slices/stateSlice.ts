@@ -73,7 +73,7 @@ const stateReducer = createSlice({
       if (state[id][key]) {
         const index = state[id][key].findIndex((d: any) => d.id === data.id);
         if (index !== -1) {
-          state[id][key][index] = data;
+          state[id][key][index] = { ...state[id][key][index], ...data };
         }
       }
     },

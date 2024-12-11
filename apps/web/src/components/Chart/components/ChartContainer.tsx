@@ -230,7 +230,7 @@ export const ChartContainer = memo(
             {selectedDrawing?.symbol === chartState.symbol && (
               <AlertBuySellWindow
                 symbol={chartState.symbol}
-                drawingId={selectedDrawing.drawingId}
+                drawingId={selectedDrawing?.drawing?.id}
                 onClose={() => dispatch(setSelectedDrawing(null))}
               />
             )}
@@ -238,22 +238,36 @@ export const ChartContainer = memo(
         </div>
 
         {/* Chart Content */}
-        <SymbolSearch
-          isOpen={isSymbolSearchOpen}
-          onClose={() => setIsSymbolSearchOpen(false)}
-          onSymbolSelect={(symbol) => {
-            dispatch(
-              updateLayoutSymbol({
-                chartKey,
-                symbol: shoonyaToFyersSymbol(
-                  symbol,
-                  updateFyersToShoonyaMapping
-                ),
-              })
-            );
-            setIsSymbolSearchOpen(false);
-          }}
-        />
+        {isSymbolSearchOpen && (
+          <SymbolSearch
+            isOpen={isSymbolSearchOpen}
+            onClose={() => setIsSymbolSearchOpen(false)}
+            onSymbolSelect={(symbol: any) => {
+              console.log("symbol", symbol);
+              if (symbol.fyToken) {
+                // if symbol has fyToken, then no need to update fyers to shoonya mapping
+                dispatch(
+                  updateLayoutSymbol({
+                    chartKey,
+                    symbol: symbol.symbol,
+                    symbolInfo: symbol,
+                  })
+                );
+              } else {
+                dispatch(
+                  updateLayoutSymbol({
+                    chartKey,
+                    symbol: shoonyaToFyersSymbol(
+                      symbol,
+                      updateFyersToShoonyaMapping
+                    ),
+                  })
+                );
+              }
+              setIsSymbolSearchOpen(false);
+            }}
+          />
+        )}
         <div className="flex-1 min-h-0" onDoubleClick={handleDoubleClick}>
           <CanvasChart
             key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}-${chartFullScreenId}`}

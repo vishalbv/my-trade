@@ -4,6 +4,7 @@ import _app from "../states/app/index";
 import { _allStates } from "../states/allstates";
 import { checkLoginSession } from "../utils/helpers";
 import logger from "./logger";
+import { shoonyaSocket } from "../states/shoonya/socket";
 
 interface WebSocketMessage {
   event: string;
@@ -18,6 +19,8 @@ const pushInitialState = async () => {
     Object.values(_allStates).forEach((i) => {
       i.pushState();
     });
+    //send existing ticks when new connection is made
+    shoonyaSocket.pushInitialState();
   }
 };
 

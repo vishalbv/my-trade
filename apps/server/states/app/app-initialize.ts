@@ -9,11 +9,16 @@
 
 import logger from "../../services/logger";
 import { _allStates } from "../allstates";
-import { isDatesEqual } from "@repo/utils/helpers";
+import {
+  indexNamesTofyersIndexMapping,
+  isDatesEqual,
+} from "@repo/utils/helpers";
 import _app from "./index";
 import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
+import { INDEX_DETAILS } from "@repo/utils/constants";
+import _fyers from "../fyers/index";
 
 // import { checkAllLoginStatus } from "./functions.js";
 // import fetch from "node-fetch";
@@ -304,19 +309,44 @@ const updateDbAtInitOfDay = async () => {
   // fetchGetDB("patterns").then((data) => _app.setState({ patterns: data }));
 };
 
+const setUpcomingExpiryDates = async () => {
+  const expiryDates = await Promise.all(
+    Object.keys(INDEX_DETAILS).map((i) =>
+      _fyers.getOptionChain(indexNamesTofyersIndexMapping(i))
+    )
+  );
+
+  const formattedExpiryDates = Object.keys(INDEX_DETAILS).reduce(
+    (acc, key, index) => {
+      return {
+        ...acc,
+        [key]: expiryDates[index].data.expiryData,
+      };
+    },
+    {}
+  );
+
+  _app.setState({
+    upcomingExpiryDates: formattedExpiryDates,
+    _db: true,
+  });
+};
+
 const initializeApp = async () => {
   logger.info("initializing project state");
+
   // NOTIFY.info("Server Restared and initializing Backend State");
   await initializeStateFromDB();
   await checkAllLoginStatus();
+  await setUpcomingExpiryDates();
   // await _ticksShoonyaService.startSocket();
   if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
-    // try {
-    //   // await setOptionsNames();
-    // //   await setOptionsNamesUpdated();
-    // } catch (e) {
-    //   logger.info("error in setOptionsNamesUpdated", e);
-    // }
+    try {
+      // await setOptionsNames();
+      //   await setOptionsNamesUpdated();
+    } catch (e) {
+      logger.info("error in setOptionsNamesUpdated", e);
+    }
     await updateDbAtInitOfDay();
   }
   await startingFunctionsAtInitialize();
