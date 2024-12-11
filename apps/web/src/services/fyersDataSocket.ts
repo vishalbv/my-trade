@@ -70,9 +70,9 @@ export const fyersDataSocketService = {
     );
     if (socketInstance && socketInstance.isConnected()) {
       console.log("Subscribing to symbols:------", symbols);
-      socketInstance.subscribe(symbols);
+      socketInstance.subscribe([...symbols]);
       setTimeout(() => {
-        socketInstance.subscribe(symbols);
+        socketInstance.subscribe([...symbols]);
       }, 1000);
     } else {
       symbols.forEach((symbol) => subscribedSymbolsBeforeConnect.add(symbol));
@@ -82,6 +82,7 @@ export const fyersDataSocketService = {
 
   unsubscribe: (symbols: string[]) => {
     if (socketInstance && socketInstance.isConnected() && symbols.length > 0) {
+      console.log("unSubscribing to symbols:------", symbols);
       socketInstance.unsubscribe(symbols);
     }
   },

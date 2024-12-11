@@ -92,7 +92,6 @@ export const ChartContainer = memo(
       [chartState.symbol, chartState.timeframe]
     );
     const { chartData } = useRealtimeCandles(realtimeCandlesConfig);
-    const memoizedChartData = useMemo(() => chartData, [chartData]);
 
     const currentTimeframe = timeframeOptions.find(
       (t) => t.value === chartState.timeframe
@@ -276,7 +275,7 @@ export const ChartContainer = memo(
         <div className="flex-1 min-h-0" onDoubleClick={handleDoubleClick}>
           <CanvasChart
             key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}-${chartFullScreenId}`}
-            data={memoizedChartData}
+            data={chartData}
             timeframeConfig={currentTimeframeConfig}
             indicators={indicators}
             selectedTool={selectedTool}
@@ -288,13 +287,6 @@ export const ChartContainer = memo(
           />
         </div>
       </div>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.chartKey === nextProps.chartKey &&
-      prevProps.timeframeConfigs === nextProps.timeframeConfigs &&
-      prevProps.indicators === nextProps.indicators
     );
   }
 );

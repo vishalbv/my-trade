@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { ThunkDispatch } from "redux-thunk";
-import { AnyAction } from "redux";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +14,6 @@ import {
   addAlert,
   updateAlert,
   deleteAlert,
-  toggleAlertEnabled,
 } from "../../../store/actions/alertActions";
 import type { RootState } from "../../../store/store";
 import type { AppDispatch } from "../../../store/store";

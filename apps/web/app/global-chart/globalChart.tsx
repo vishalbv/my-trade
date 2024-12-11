@@ -110,7 +110,8 @@ type LayoutType =
   | "verticalLeft"
   | "verticalRight"
   | "topTwo"
-  | "grid";
+  | "grid"
+  | "horizontalThree";
 
 interface LayoutOption {
   id: LayoutType;

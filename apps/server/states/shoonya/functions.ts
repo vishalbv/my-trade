@@ -80,7 +80,7 @@ export const fetchShoonyaNameByFyersSymbol = (fyersSymbol: {
     if (!baseSymbol) return;
 
     const [day, month, year] = fyersSymbol.expiryDate.split("-");
-    const monthNames = {
+    const monthNames: { [key: string]: string } = {
       "01": "JAN",
       "02": "FEB",
       "03": "MAR",

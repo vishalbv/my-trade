@@ -338,15 +338,17 @@ const initializeApp = async () => {
   // NOTIFY.info("Server Restared and initializing Backend State");
   await initializeStateFromDB();
   await checkAllLoginStatus();
-  await setUpcomingExpiryDates();
+
   // await _ticksShoonyaService.startSocket();
   if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
     try {
       // await setOptionsNames();
       //   await setOptionsNamesUpdated();
+      await setUpcomingExpiryDates();
     } catch (e) {
       logger.info("error in setOptionsNamesUpdated", e);
     }
+
     await updateDbAtInitOfDay();
   }
   await startingFunctionsAtInitialize();

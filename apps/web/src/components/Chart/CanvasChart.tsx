@@ -35,7 +35,7 @@ interface CanvasChartProps {
   drawings: Drawing[];
   onDrawingComplete: (drawing: Drawing) => void;
   onDrawingUpdate: (drawing: Drawing) => void; // Make this required, not optional
-  chartState: { symbol: string; timeframe: string };
+  chartState: { symbol: string; timeframe: string; symbolInfo: any };
 }
 
 interface MousePosition {

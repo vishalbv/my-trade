@@ -102,6 +102,8 @@ const checkSocketRunning = () => {
   setTimeout(() => {
     if (!getState()._socketReady && apiInstance) {
       startShoonyaSocket(apiInstance, true);
+    } else {
+      checkSocketRunning();
     }
   }, 4000);
 };

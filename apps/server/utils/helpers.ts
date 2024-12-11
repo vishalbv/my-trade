@@ -8,6 +8,12 @@ import logger from "../services/logger";
 import { _allStates } from "../states/allstates";
 import statesDbService from "../services/statesDb";
 
+const DATE_FORMAT = "DD-MM-YYYY";
+
+export const parseDate = (dateString: string) => {
+  return moment(dateString, DATE_FORMAT);
+};
+
 export const checkLoginSession = async (callback: () => void) => {
   try {
     const appState = await statesDbService.getStateById("app");
@@ -15,7 +21,7 @@ export const checkLoginSession = async (callback: () => void) => {
     if (appState) {
       const { lastLoginDate, refreshTokenExpiry } = appState;
       if (refreshTokenExpiry) {
-        if (moment().isAfter(moment(refreshTokenExpiry))) {
+        if (moment(refreshTokenExpiry, "DD-MM-YYYY").isAfter(moment())) {
           statesDbService.upsertState("app", {
             refreshTokenExpiry: null,
           });

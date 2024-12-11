@@ -211,14 +211,9 @@ class Shoonya extends State {
       } = body;
 
       console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
-      console.log(
-        "fyersSymbol",
-        fyersSymbol,
-        _symbols.getState().fyersToShoonyaMapping,
-        _symbols.getState().fyersToShoonyaMapping[fyersSymbol]
-      );
+
       const { exch = exchange, tsym = shoonyaSymbol } = fyersSymbol
-        ? fetchShoonyaNameByFyersSymbol(fyersSymbol)
+        ? fetchShoonyaNameByFyersSymbol(fyersSymbol as any) || {}
         : {};
 
       const orderParams = {
