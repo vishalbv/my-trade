@@ -101,32 +101,32 @@ export const ChartContainer = memo(
       (state: RootState) => state.states.drawings[chartState.symbol] || []
     );
 
-    const [containerWidth, setContainerWidth] = useState<number | null>(null);
+    // const [containerWidth, setContainerWidth] = useState<number | null>(null);
 
     const selectedDrawing = useSelector(
       (state: RootState) => state.globalChart.selectedDrawing
     );
 
-    const scheduleRender = useOptimizedRenderer();
-    const chartRef = useRef<HTMLDivElement>(null);
+    // const scheduleRender = useOptimizedRenderer();
+    // const chartRef = useRef<HTMLDivElement>(null);
 
-    const handleResize = useCallback(() => {
-      if (!chartRef.current) return;
+    // const handleResize = useCallback(() => {
+    //   if (!chartRef.current) return;
 
-      scheduleRender(chartKey, () => {
-        const width = chartRef.current!.offsetWidth;
-        const roundedWidth = Math.round(width / 30) * 30;
-        setContainerWidth(roundedWidth);
-      });
-    }, [chartKey, scheduleRender]);
+    //   scheduleRender(chartKey, () => {
+    //     const width = chartRef.current!.offsetWidth;
+    //     const roundedWidth = Math.round(width / 30) * 30;
+    //     setContainerWidth(roundedWidth);
+    //   });
+    // }, [chartKey, scheduleRender]);
 
-    useEffect(() => {
-      const observer = new ResizeObserver(debounce(handleResize, 100));
-      if (chartRef.current) {
-        observer.observe(chartRef.current);
-      }
-      return () => observer.disconnect();
-    }, [handleResize]);
+    // useEffect(() => {
+    //   const observer = new ResizeObserver(debounce(handleResize, 100));
+    //   if (chartRef.current) {
+    //     observer.observe(chartRef.current);
+    //   }
+    //   return () => observer.disconnect();
+    // }, [handleResize]);
 
     useEffect(() => {
       if (containerRef.current) {
@@ -164,9 +164,95 @@ export const ChartContainer = memo(
       console.log("double clicked");
     };
 
+    const [containerDimensions, setContainerDimensions] = useState({
+      width: 0,
+      height: 0,
+    });
+    const previousDimensions = useRef({ width: 0, height: 0 });
+    const animationRef = useRef<number>();
+
+    // Smooth dimension transition
+    const updateDimensions = useCallback(
+      (newWidth: number, newHeight: number) => {
+        const startWidth = previousDimensions.current.width;
+        const startHeight = previousDimensions.current.height;
+        const startTime = performance.now();
+        const duration = 300; // Animation duration in ms
+
+        // Cancel any existing animation
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+
+        const animate = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          // Ease out cubic function for smooth transition
+          const t = 1 - Math.pow(1 - progress, 3);
+
+          const currentWidth = Math.round(
+            startWidth + (newWidth - startWidth) * t
+          );
+          const currentHeight = Math.round(
+            startHeight + (newHeight - startHeight) * t
+          );
+
+          setContainerDimensions({
+            width: currentWidth,
+            height: currentHeight,
+          });
+
+          if (progress < 1) {
+            animationRef.current = requestAnimationFrame(animate);
+          } else {
+            previousDimensions.current = { width: newWidth, height: newHeight };
+          }
+        };
+
+        animationRef.current = requestAnimationFrame(animate);
+      },
+      []
+    );
+
+    // ResizeObserver setup
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          // Only update if change is significant (> 1px)
+          if (
+            Math.abs(width - previousDimensions.current.width) > 1 ||
+            Math.abs(height - previousDimensions.current.height) > 1
+          ) {
+            updateDimensions(Math.round(width), Math.round(height));
+          }
+        }
+      });
+
+      observer.observe(containerRef.current);
+
+      return () => {
+        observer.disconnect();
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    }, [updateDimensions]);
+
+    // Clean up animation on unmount
+    useEffect(() => {
+      return () => {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    }, []);
+
     return (
       <div
-        ref={containerRef}
         className={cn(
           "flex flex-col h-full",
           selectedChartKey === chartKey && selectedLayout !== "single"
@@ -272,9 +358,13 @@ export const ChartContainer = memo(
             }}
           />
         )}
-        <div className="flex-1 min-h-0" onDoubleClick={handleDoubleClick}>
+        <div
+          className="flex-1 min-h-0"
+          onDoubleClick={handleDoubleClick}
+          ref={containerRef}
+        >
           <CanvasChart
-            key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}-${containerWidth}-${chartFullScreenId}`}
+            key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
             data={chartData}
             timeframeConfig={currentTimeframeConfig}
             indicators={indicators}
@@ -284,6 +374,12 @@ export const ChartContainer = memo(
             onDrawingComplete={handleDrawingComplete}
             onDrawingUpdate={handleDrawingUpdate}
             chartState={chartState}
+            dimensions={{
+              ...containerDimensions,
+              width: containerDimensions.width,
+              height: containerDimensions.height - 30,
+              padding: { top: 0, right: 60, bottom: 0, left: 0 },
+            }}
           />
         </div>
       </div>

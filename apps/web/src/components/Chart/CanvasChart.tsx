@@ -36,6 +36,11 @@ interface CanvasChartProps {
   onDrawingComplete: (drawing: Drawing) => void;
   onDrawingUpdate: (drawing: Drawing) => void; // Make this required, not optional
   chartState: { symbol: string; timeframe: string; symbolInfo: any };
+  dimensions: {
+    width: number;
+    height: number;
+    padding: { top: number; right: number; bottom: number; left: number };
+  };
 }
 
 interface MousePosition {
@@ -78,6 +83,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   onDrawingComplete,
   onDrawingUpdate,
   chartState,
+  dimensions,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -99,12 +105,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const selectedDrawing = useSelector(
     (state: RootState) => state.globalChart.selectedDrawing
   );
-
-  const [dimensions, setDimensions] = useState<ChartDimensions>({
-    width: 0,
-    height: 0,
-    padding: { top: 0, right: 60, bottom: 0, left: 0 },
-  });
 
   const [viewState, setViewState] = useState<ViewState>({
     scaleX: 1,
@@ -231,23 +231,23 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     requestAnimationFrame(animate);
   }, [animation]);
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (mainCanvasRef.current) {
-        const rect = mainCanvasRef.current.getBoundingClientRect();
-        setDimensions((prev: ChartDimensions) => ({
-          ...prev,
-          width: rect.width,
-          height: rect.height,
-        }));
-      }
-    };
+  // // Handle window resize
+  // useEffect(() => {
+  //   const handleResize = () => {
+  //     if (mainCanvasRef.current) {
+  //       const rect = mainCanvasRef.current.getBoundingClientRect();
+  //       setDimensions((prev: ChartDimensions) => ({
+  //         ...prev,
+  //         width: rect.width,
+  //         height: rect.height,
+  //       }));
+  //     }
+  //   };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  //   handleResize();
+  //   window.addEventListener("resize", handleResize);
+  //   return () => window.removeEventListener("resize", handleResize);
+  // }, []);
 
   // Update the createDummyCandles function
   const holidays = useSelector(

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Bell, Menu, LogOut } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
@@ -15,6 +15,7 @@ import { useSelector } from "react-redux";
 
 import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
+import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -29,9 +30,21 @@ const Header: React.FC = () => {
   const { fundInfo = {}, moneyManage = {} } = useSelector(
     ({ states }: RootState) => states.shoonya || {}
   );
+  const [showPositionsOrders, setShowPositionsOrders] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        setShowPositionsOrders((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
 
   const checkTimerAndLogout = async () => {
@@ -90,34 +103,39 @@ const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-nav text-nav-foreground p-2 flex justify-between items-center h-14">
-        <div className="flex items-center">
-          <PnL />
-          <div className="text-center">
-            <div className="text-xs text-foreground/60 mb-1">Margin left</div>
-            <div className="text-foreground/90 text-sm">
-              {fundInfo.marginAvailable}
+      <header className="bg-nav text-nav-foreground">
+        <div className="flex justify-between items-center h-14 p-2">
+          <div className="flex items-center">
+            <PnL />
+            <div className="text-center">
+              <div className="text-xs text-foreground/60 mb-1">Margin left</div>
+              <div className="text-foreground/90 text-sm">
+                {fundInfo.marginAvailable}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-4 text-sm gap-2">
-          {indexToDisplay.map((index) => (
-            <MarketIndex key={index} name={index} />
-          ))}
-        </div>
+          <div className="flex items-center space-x-4 text-sm gap-2">
+            {indexToDisplay.map((index) => (
+              <MarketIndex key={index} name={index} />
+            ))}
+          </div>
 
-        <div className="flex items-center space-x-2">
-          {/* <Button variant="ghost" size="icon">
+          <div className="flex items-center space-x-2">
+            {/* <Button variant="ghost" size="icon">
             <Menu className="h-5 w-5" />
           </Button> */}
-          <ThemeSwitcher />
+            <ThemeSwitcher />
 
-          <Button variant="primary-hover" size="icon">
-            <Bell className="h-5 w-5" />
-          </Button>
-          <Button variant="primary-hover" size="icon" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
-          </Button>
+            <Button variant="primary-hover" size="icon">
+              <Bell className="h-5 w-5" />
+            </Button>
+            <Button variant="primary-hover" size="icon" onClick={handleLogout}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          {showPositionsOrders && <PositionsAndOrders />}
         </div>
       </header>
 
