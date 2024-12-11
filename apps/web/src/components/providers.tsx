@@ -12,7 +12,7 @@ import { fyersDataSocketService } from "../services/fyersDataSocket";
 export function Provider({ children, ...props }: any) {
   return (
     <div id="app">
-      <StoreProvider store={store}>
+      <StoreProvider store={store} stabilityCheck="never">
         <Drawer />
 
         <NextThemesProvider

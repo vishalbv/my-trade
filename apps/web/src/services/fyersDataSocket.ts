@@ -64,11 +64,19 @@ export const fyersDataSocketService = {
   },
 
   subscribe: (symbols: string[]) => {
+    console.log(
+      "socketInstance",
+      socketInstance && socketInstance.isConnected()
+    );
     if (socketInstance && socketInstance.isConnected()) {
+      console.log("Subscribing to symbols:------", symbols);
       socketInstance.subscribe(symbols);
+      setTimeout(() => {
+        socketInstance.subscribe(symbols);
+      }, 1000);
     } else {
       symbols.forEach((symbol) => subscribedSymbolsBeforeConnect.add(symbol));
-      console.error("Socket not connected");
+      console.log("Socket not connected");
     }
   },
 

@@ -16,6 +16,8 @@ interface ChartLayoutProps {
   indicators: Indicator[];
 }
 
+const MemoizedChartContainer = memo(ChartContainer);
+
 export const ChartLayout = memo(
   ({ layout, timeframeConfigs, indicators }: ChartLayoutProps) => {
     const isMarketActive = useSelector(
@@ -70,7 +72,7 @@ export const ChartLayout = memo(
         case "single":
           return (
             <div className="h-full w-full">
-              <ChartContainer
+              <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
@@ -82,14 +84,14 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
@@ -102,14 +104,14 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-rows-2 gap-[1px] h-full w-full bg-border">
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
@@ -123,14 +125,14 @@ export const ChartLayout = memo(
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
               <div className="grid grid-rows-2 gap-[1px] h-full">
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="0"
                     indicators={indicators}
                   />
                 </div>
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="1"
                     indicators={indicators}
@@ -138,7 +140,7 @@ export const ChartLayout = memo(
                 </div>
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="2"
                   indicators={indicators}
@@ -151,7 +153,7 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
@@ -159,14 +161,14 @@ export const ChartLayout = memo(
               </div>
               <div className="grid grid-rows-2 gap-[1px] h-full">
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="1"
                     indicators={indicators}
                   />
                 </div>
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="2"
                     indicators={indicators}
@@ -181,14 +183,14 @@ export const ChartLayout = memo(
             <div className="grid grid-rows-2 gap-[1px] h-full w-full bg-border">
               <div className="grid grid-cols-2 gap-[1px] h-full">
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="0"
                     indicators={indicators}
                   />
                 </div>
                 <div className="bg-background h-full">
-                  <ChartContainer
+                  <MemoizedChartContainer
                     timeframeConfigs={timeframeConfigs}
                     chartKey="1"
                     indicators={indicators}
@@ -196,7 +198,7 @@ export const ChartLayout = memo(
                 </div>
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="2"
                   indicators={indicators}
@@ -209,28 +211,28 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-cols-2 grid-rows-2 gap-[1px] h-full w-full bg-border">
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="2"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="3"
                   indicators={indicators}
@@ -243,21 +245,21 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-cols-3 gap-[1px] h-full w-full bg-border">
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
                 />
               </div>
               <div className="bg-background h-full">
-                <ChartContainer
+                <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="2"
                   indicators={indicators}

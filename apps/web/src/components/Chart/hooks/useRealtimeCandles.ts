@@ -169,30 +169,30 @@ export const useRealtimeCandles = ({
   }, [symbol, isMarketActive]);
 
   // First, let's extract fetchHistoricalData to be reusable
-  const fetchHistoricalData = async (
-    fromTimestamp: number,
-    toTimestamp: number
-  ) => {
-    try {
-      const response = (await getHistory({
-        symbol,
-        resolution: timeframe,
-        date_format: 0,
-        range_from: fromTimestamp.toString(),
-        range_to: toTimestamp.toString(),
-        cont_flag: 1,
-        broker: "fyers",
-      })) as HistoryResponse;
+  const fetchHistoricalData = useCallback(
+    async (fromTimestamp: number, toTimestamp: number) => {
+      try {
+        const response = (await getHistory({
+          symbol,
+          resolution: timeframe,
+          date_format: 0,
+          range_from: fromTimestamp.toString(),
+          range_to: toTimestamp.toString(),
+          cont_flag: 1,
+          broker: "fyers",
+        })) as HistoryResponse;
 
-      if (response?.candles && Array.isArray(response.candles)) {
-        return processMarketData(response.candles);
+        if (response?.candles && Array.isArray(response.candles)) {
+          return processMarketData(response.candles);
+        }
+        return null;
+      } catch (error) {
+        console.error("Error fetching historical data:", error);
+        return null;
       }
-      return null;
-    } catch (error) {
-      console.error("Error fetching historical data:", error);
-      return null;
-    }
-  };
+    },
+    [symbol, timeframe]
+  );
 
   // Use a ref to store the latest price to avoid unnecessary re-renders
   const latestPriceRef = useRef<number | null>(null);
@@ -244,49 +244,60 @@ export const useRealtimeCandles = ({
     }
   }, [tickData, symbol, chartData.length, isMarketActive, updateChartData]);
 
-  // Replace the interval check effect with this improved version
-  useEffect(() => {
-    if (!isMarketActive) return;
+  // Add these refs at the top of the hook
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-    const scheduleNextCandle = () => {
-      const now = Date.now();
-      const nextCandleTime = getNextCandleTime(timeframe);
-      const timeUntilNextCandle = nextCandleTime - now;
-      console.log("timeUntilNextCandle", timeUntilNextCandle);
-      // Schedule the next candle creation
-      const timeout = setTimeout(() => {
-        // Create new candle exactly at the interval
+  // Add a ref to track if we're currently updating
+  const isUpdatingRef = useRef(false);
 
-        setChartData((prevCandles) => {
-          if (prevCandles.length === 0) return prevCandles;
+  // Modify the scheduleNextCandle function
+  const scheduleNextCandle = useCallback(() => {
+    if (isUpdatingRef.current) return; // Prevent concurrent updates
 
-          const lastCandle = prevCandles[prevCandles.length - 1];
-          if (!lastCandle) return prevCandles;
+    // Clear any existing timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
 
-          // Always create new candle at interval
-          const latestPrice = latestPriceRef.current || lastCandle.close;
-          const newCandle: OHLCData = {
-            timestamp: nextCandleTime,
-            open: latestPrice,
-            high: latestPrice,
-            low: latestPrice,
-            close: latestPrice,
-            volume: 0,
-          };
-          return [...prevCandles, newCandle];
-        });
+    const now = Date.now();
+    const nextCandleTime = getNextCandleTime(timeframe);
+    const timeUntilNextCandle = nextCandleTime - now;
 
-        // Update current candle start time
-        setCurrentCandleStartTime(nextCandleTime);
+    timeoutRef.current = setTimeout(() => {
+      isUpdatingRef.current = true;
 
-        // Fetch after 50ms to adjust only the previous candle
-        const ss = setTimeout(async () => {
+      setChartData((prevCandles) => {
+        if (prevCandles.length === 0) return prevCandles;
+
+        const lastCandle = prevCandles[prevCandles.length - 1];
+        if (!lastCandle) return prevCandles;
+
+        const latestPrice = latestPriceRef.current || lastCandle.close;
+        const newCandle: OHLCData = {
+          timestamp: nextCandleTime,
+          open: latestPrice,
+          high: latestPrice,
+          low: latestPrice,
+          close: latestPrice,
+          volume: 0,
+        };
+        return [...prevCandles, newCandle];
+      });
+
+      setCurrentCandleStartTime(nextCandleTime);
+
+      fetchTimeoutRef.current = setTimeout(async () => {
+        try {
           const fromTimestamp = Math.floor(
             (nextCandleTime - 2 * getTimeIntervalForTimeframe(timeframe)) / 1000
-          ); // Look back 2 intervals
+          );
           const toTimestamp = Math.floor(
             (nextCandleTime - getTimeIntervalForTimeframe(timeframe)) / 1000
-          ); // Up to previous candle
+          );
 
           const recentCandles = await fetchHistoricalData(
             fromTimestamp,
@@ -294,81 +305,88 @@ export const useRealtimeCandles = ({
           );
 
           if (recentCandles && recentCandles.length > 0) {
-            setChartData((prevCandles: any) => {
-              // Get all candles except the current one
+            setChartData((prevCandles) => {
               const allExceptCurrent = prevCandles.slice(0, -1);
-              // Get current candle
               const currentCandle = prevCandles[prevCandles.length - 1];
+              if (!currentCandle) return prevCandles;
 
-              // Keep all candles before the ones we're updating
               const oldCandles = allExceptCurrent.filter(
-                (candle: any) => candle.timestamp < recentCandles[0]!.timestamp
+                (candle) => candle.timestamp < recentCandles[0]!.timestamp
               );
 
               return [
                 ...oldCandles,
-                ...recentCandles, // Update historical candles
-                currentCandle, // Keep current candle unchanged
-              ];
+                ...recentCandles,
+                currentCandle,
+              ] as OHLCData[];
             });
           }
-        }, 50);
-        console.log("ss------", ss);
-        // Schedule the next candle
-        scheduleNextCandle();
-      }, timeUntilNextCandle);
+        } catch (error) {
+          console.error("Error updating candles:", error);
+        } finally {
+          isUpdatingRef.current = false;
+          scheduleNextCandle();
+        }
+      }, 50);
+    }, timeUntilNextCandle);
+  }, [timeframe, fetchHistoricalData]);
 
-      return timeout;
-    };
+  // Replace the interval check effect with this improved version
+  useEffect(() => {
+    if (!isMarketActive) return;
 
     // Start the scheduling
-    const timeoutId = scheduleNextCandle();
-    console.log("Scheduled next candle in:", timeoutId, timeframe, symbol);
+    scheduleNextCandle();
 
-    // Cleanup
+    // Cleanup function
     return () => {
-      clearTimeout(timeoutId);
-      console.log("Cleared timeout", timeoutId, timeframe, symbol);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
     };
   }, [timeframe, symbol, isMarketActive]);
-  useEffect(() => {
-    console.log("mountedddd");
-  }, []);
-  // Update the real-time data effect to be more precise
+
+  // Modify the real-time update effect
   useEffect(() => {
     if (
       !isMarketActive ||
       !tickData ||
       !tickData[symbol] ||
-      chartData.length === 0
+      chartData.length === 0 ||
+      isUpdatingRef.current
     )
       return;
 
     const currentPrice = parseFloat(tickData[symbol].ltp);
-
-    // Only update if price actually changed
     if (currentPrice !== latestPriceRef.current) {
-      setChartData((prevCandles) => {
-        const lastCandle = prevCandles[prevCandles.length - 1];
-        if (!lastCandle) return prevCandles;
+      isUpdatingRef.current = true;
+      try {
+        setChartData((prevCandles) => {
+          const lastCandle = prevCandles[prevCandles.length - 1];
+          if (!lastCandle) return prevCandles;
 
-        // Only update if this tick belongs to the current candle
-        if (lastCandle.timestamp !== currentCandleStartTime) {
-          return prevCandles;
-        }
+          if (lastCandle.timestamp !== currentCandleStartTime) {
+            return prevCandles;
+          }
 
-        const updatedCandles = [...prevCandles];
-        const updatedLastCandle = {
-          ...lastCandle,
-          close: currentPrice,
-          high: Math.max(lastCandle.high, currentPrice),
-          low: Math.min(lastCandle.low, currentPrice),
-        };
+          const updatedCandles = [...prevCandles];
+          const updatedLastCandle = {
+            ...lastCandle,
+            close: currentPrice,
+            high: Math.max(lastCandle.high, currentPrice),
+            low: Math.min(lastCandle.low, currentPrice),
+          };
 
-        updatedCandles[updatedCandles.length - 1] = updatedLastCandle;
-        latestPriceRef.current = currentPrice;
-        return updatedCandles;
-      });
+          updatedCandles[updatedCandles.length - 1] = updatedLastCandle;
+          latestPriceRef.current = currentPrice;
+          return updatedCandles;
+        });
+      } finally {
+        isUpdatingRef.current = false;
+      }
     }
   }, [
     tickData,
