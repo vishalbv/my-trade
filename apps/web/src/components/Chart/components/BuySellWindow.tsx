@@ -150,13 +150,13 @@ export const BuySellWindow = ({
     <div
       ref={containerRef}
       className={cn(
-        "absolute right-16 bg-background/25 backdrop-blur-sm rounded-md p-1 transition-opacity duration-200 border border-border z-40",
+        "absolute left-16 top-16 bg-background/25 backdrop-blur-sm rounded-md p-1 transition-opacity duration-200 border border-border z-40",
         timer || isNearby ? "opacity-100" : "opacity-25",
         className
       )}
-      style={{
-        bottom: `calc(10% + ${rsiHeight > 0 ? `${rsiHeight}px` : "20px"})`,
-      }}
+      // style={{
+      //   bottom: `calc(10% + ${rsiHeight > 0 ? `${rsiHeight}px` : "20px"})`,
+      // }}
       onDoubleClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-1 w-[160px]">
