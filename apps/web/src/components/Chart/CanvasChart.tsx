@@ -343,6 +343,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Add this at the top of the component with other refs
   const prevTimeframe = useRef(timeframeConfig.resolution);
+  const prevData0 = useRef(data[0]);
   const prevSymbol = useRef(chartState.symbol); // Add symbol reference
 
   // Add this helper function at the top level
@@ -415,12 +416,12 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update the initialization effect
   useEffect(() => {
-    if (!dimensions.width || !combinedData.length) return;
+    if (!dimensions.width || !data.length) return;
 
     if (
-      viewState.visibleBars === 0 ||
-      timeframeConfig.resolution !== prevTimeframe.current ||
-      chartState.symbol !== prevSymbol.current
+      (timeframeConfig.resolution !== prevTimeframe.current ||
+        chartState.symbol !== prevSymbol.current) &&
+      data[0] !== prevData0.current
     ) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
@@ -481,13 +482,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Update previous references
       prevTimeframe.current = timeframeConfig.resolution;
+      prevData0.current = data[0];
       prevSymbol.current = chartState.symbol; // Add symbol reference
     }
   }, [
-    combinedData.length,
+    data[0],
     dimensions.width,
     currentTheme,
-    data.length,
     timeframeConfig.resolution,
     chartState.symbol,
     priceRangeData,
@@ -495,21 +496,21 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   ]);
 
   // Add a new effect to handle automatic scrolling when at the right edge
-  useEffect(() => {
-    if (!combinedData.length) return;
+  // useEffect(() => {
+  //   if (!combinedData.length) return;
 
-    const isAtRightEdge =
-      viewState.startIndex + viewState.visibleBars >=
-      combinedData.length - Math.floor(viewState.visibleBars * 0.1);
+  //   const isAtRightEdge =
+  //     viewState.startIndex + viewState.visibleBars >=
+  //     combinedData.length - Math.floor(viewState.visibleBars * 0.1);
 
-    if (isAtRightEdge) {
-      // If we're near the right edge, automatically scroll to show new candles
-      setViewState((prev) => ({
-        ...prev,
-        startIndex: Math.max(0, combinedData.length - prev.visibleBars),
-      }));
-    }
-  }, [combinedData.length, viewState.visibleBars]);
+  //   if (isAtRightEdge) {
+  //     // If we're near the right edge, automatically scroll to show new candles
+  //     setViewState((prev) => ({
+  //       ...prev,
+  //       startIndex: Math.max(0, combinedData.length - prev.visibleBars),
+  //     }));
+  //   }
+  // }, [combinedData.length, viewState.visibleBars]);
 
   // Add this state to track if we're dragging
   const [isCleanClick, setIsCleanClick] = useState(true);
@@ -799,6 +800,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }));
     }
   };
+
+  // useEffect(() => {
+  //   resetView();
+  // }, [chartState.symbol, combinedData.length]);
 
   // Enhanced zoom handler with animation
   const handleZoom = useCallback(

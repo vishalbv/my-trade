@@ -364,7 +364,7 @@ export const ChartContainer = memo(
           ref={containerRef}
         >
           <CanvasChart
-            key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
+            // key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
             data={chartData}
             timeframeConfig={currentTimeframeConfig}
             indicators={indicators}
