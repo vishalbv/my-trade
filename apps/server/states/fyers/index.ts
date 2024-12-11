@@ -143,7 +143,13 @@ class Fyers extends State {
     }
   };
 
-  getOptionChain = async (symbol: string, strikecount = 4) => {
+  getOptionChain = async ({
+    symbol,
+    strikecount = 4,
+  }: {
+    symbol: string;
+    strikecount?: number;
+  }) => {
     try {
       const response = await fyers.getOptionChain({
         symbol,

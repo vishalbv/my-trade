@@ -98,8 +98,8 @@ export const declareMarketDataApis = () => ({
   }: {
     body: {
       symbol: string;
-      exchange: string;
       broker: "fyers" | "shoonya";
+      strikecount?: number;
     };
   }) => {
     try {
@@ -114,7 +114,10 @@ export const declareMarketDataApis = () => ({
         //   break;
         // }
         case "fyers": {
-          optionChainResults = await _fyers.getOptionChain(body.symbol);
+          optionChainResults = await _fyers.getOptionChain({
+            symbol: body.symbol,
+            strikecount: body.strikecount,
+          });
           break;
         }
         // Add other broker cases here

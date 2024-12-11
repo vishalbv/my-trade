@@ -16,6 +16,20 @@ interface ChartState {
   symbolInfo?: any;
 }
 
+interface OptionChainData {
+  symbol: string;
+  expiry: string;
+  data: any; // Replace 'any' with your option chain type
+  atmStrike: number;
+}
+
+interface ChartLayoutUpdate {
+  [key: string]: {
+    symbol?: string;
+    timeframe?: string;
+  };
+}
+
 interface GlobalChartState {
   selectedLayout: LayoutType;
   indicators: Indicator[];
@@ -30,6 +44,8 @@ interface GlobalChartState {
     symbol: string;
     drawing: Drawing;
   } | null;
+  scalpingMode: boolean;
+  optionChainData: OptionChainData | null;
 }
 
 const defaultLayout: ChartState = {
@@ -83,6 +99,8 @@ const initialState: GlobalChartState = {
   },
   chartFullScreenId: null,
   selectedDrawing: null,
+  scalpingMode: false,
+  optionChainData: null,
   ...getLocalStorageData(),
 };
 
@@ -148,6 +166,34 @@ const globalChartSlice = createSlice({
     deleteSelectedDrawing: (state) => {
       state.selectedDrawing = null;
     },
+    setScalpingMode: (state, action: PayloadAction<boolean>) => {
+      state.scalpingMode = action.payload;
+
+      // If turning off scalping mode, revert to single layout
+      if (!action.payload) {
+        state.selectedLayout = "single";
+        // Copy the middle chart (index 1) settings to the main chart (index 0)
+        if (state.layouts["1"]) {
+          state.layouts["0"] = { ...state.layouts["1"] };
+        }
+      }
+    },
+    updateChartLayout: (state, action: PayloadAction<ChartLayoutUpdate>) => {
+      Object.entries(action.payload).forEach(([key, value]) => {
+        if (!state.layouts[key]) {
+          state.layouts[key] = { ...defaultLayout };
+        }
+        if (value.symbol) {
+          state.layouts[key].symbol = value.symbol;
+        }
+        if (value.timeframe) {
+          state.layouts[key].timeframe = value.timeframe;
+        }
+      });
+    },
+    setOptionChainData: (state, action: PayloadAction<OptionChainData>) => {
+      state.optionChainData = action.payload;
+    },
   },
 });
 
@@ -163,6 +209,9 @@ export const {
   setChartFullScreenId,
   setSelectedDrawing,
   deleteSelectedDrawing,
+  setScalpingMode,
+  updateChartLayout,
+  setOptionChainData,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

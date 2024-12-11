@@ -342,9 +342,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, [data, createDummyCandles]);
 
   // Add this at the top of the component with other refs
-  const prevTimeframe = useRef(timeframeConfig.resolution);
-  const prevData0 = useRef(data[0]);
-  const prevSymbol = useRef(chartState.symbol); // Add symbol reference
+  const prevTimeframe = useRef(null);
+  const prevData0 = useRef(null);
+  const prevSymbol = useRef(null); // Add symbol reference
 
   // Add this helper function at the top level
   const calculateInitialScaleY = (data: OHLCData[], chartHeight: number) => {
@@ -421,6 +421,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     if (
       (timeframeConfig.resolution !== prevTimeframe.current ||
         chartState.symbol !== prevSymbol.current) &&
+      data[0] &&
       data[0] !== prevData0.current
     ) {
       const chartWidth =
@@ -560,6 +561,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
   // Update handleMouseMove
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    setHideCrosshair(false);
     handleMouseMoveForCrosshair(e);
 
     if (mouseStartPos) {
@@ -679,6 +681,18 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       }
     }
   };
+
+  const dimensionsRef = useRef(dimensions);
+  const [hideCrosshair, setHideCrosshair] = useState(false);
+  useEffect(() => {
+    if (
+      dimensionsRef.current.width !== dimensions.width ||
+      dimensionsRef.current.height !== dimensions.height
+    ) {
+      setHideCrosshair(true);
+      dimensionsRef.current = dimensions;
+    }
+  }, [dimensions]);
 
   // Update handleMouseUp
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -2285,6 +2299,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const xAxisHeight = 30;
 
     // Draw vertical line - extend to bottom of x-axis
+    console.log("mousePosition.x-----", mousePosition.x);
     ctx.beginPath();
     ctx.moveTo(mousePosition.x, 0);
     ctx.lineTo(mousePosition.x, dimensions.height); // Extend through x-axis
@@ -2353,10 +2368,11 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     rsiHeight,
     getChartDimensions,
   ]);
-
+  console.log("drawCrosshair", dimensions);
   // Keep both effects
   useEffect(() => {
     drawCrosshair();
+    console.log("drawCrosshair------", dimensions);
   }, [drawCrosshair]);
 
   useEffect(() => {
@@ -2880,18 +2896,20 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           )}
 
           {/* Crosshair Overlay - Top layer */}
-          <canvas
-            ref={overlayCanvasRef}
-            style={{
-              width: "100%",
-              height: "100%",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              zIndex: 4,
-              pointerEvents: "none",
-            }}
-          />
+          {!hideCrosshair && (
+            <canvas
+              ref={overlayCanvasRef}
+              style={{
+                width: "100%",
+                height: "100%",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 4,
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
       </div>
 

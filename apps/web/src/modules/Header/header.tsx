@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Bell, Menu, LogOut } from "lucide-react";
+import { Bell, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,11 +8,12 @@ import { sidebarIgnorePaths } from "../../utils/constants";
 import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
 import { logout } from "../../store/actions/appActions";
+import { useDispatch, useSelector } from "react-redux";
+import { setScalpingMode } from "../../store/slices/globalChartSlice";
+import { useScalpingMode } from "../../hooks/useScalpingMode";
 
 import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
-import { useSelector } from "react-redux";
-
 import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
@@ -32,6 +33,9 @@ const Header: React.FC = () => {
   );
   const [showPositionsOrders, setShowPositionsOrders] = useState(false);
 
+  const dispatch = useDispatch();
+  const { scalpingMode } = useSelector((state: RootState) => state.globalChart);
+  useScalpingMode(scalpingMode);
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -83,6 +87,13 @@ const Header: React.FC = () => {
     if (timeoutId) clearTimeout(timeoutId);
   };
 
+  const handleScalpingMode = () => {
+    dispatch(setScalpingMode(!scalpingMode));
+    if (pathname !== "/global-chart") {
+      router.push("/global-chart");
+    }
+  };
+
   if (sidebarIgnorePaths.includes(pathname)) return null;
 
   const overlayStyle = mounted
@@ -121,9 +132,17 @@ const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* <Button variant="ghost" size="icon">
-            <Menu className="h-5 w-5" />
-          </Button> */}
+            <Button
+              variant="outline"
+              onClick={handleScalpingMode}
+              className={cn(
+                "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground",
+                scalpingMode && "!text-yellow-500"
+              )}
+            >
+              <Zap className="h-5 w-5" />
+              <span className="mb-1">scalper</span>
+            </Button>
             <ThemeSwitcher />
 
             <Button variant="primary-hover" size="icon">

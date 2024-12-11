@@ -312,7 +312,7 @@ const updateDbAtInitOfDay = async () => {
 const setUpcomingExpiryDates = async () => {
   const expiryDates = await Promise.all(
     Object.keys(INDEX_DETAILS).map((i) =>
-      _fyers.getOptionChain(indexNamesTofyersIndexMapping(i))
+      _fyers.getOptionChain({ symbol: indexNamesTofyersIndexMapping(i) })
     )
   );
 
