@@ -23,7 +23,10 @@ import {
   setSelectedDrawing,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
-import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
+import {
+  indexNamesTofyersIndexMapping,
+  shoonyaToFyersSymbol,
+} from "@repo/utils/helpers";
 
 import { updateFyersToShoonyaMapping } from "../../../store/actions/symbolsActions";
 import { AlertBuySellWindow } from "./AlertBuySellWindow";
@@ -33,6 +36,9 @@ import {
 } from "../../../store/actions/drawingActions";
 import { useOptimizedRenderer } from "../hooks/useOptimizedRenderer";
 import { debounce } from "lodash";
+import { useKeyPress } from "../hooks/useKeyPress";
+import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui/popover";
+import { INDEX_DETAILS } from "@repo/utils/constants";
 
 interface Indicator {
   id: string;
@@ -53,12 +59,80 @@ interface ChartContainerProps {
   className?: string;
 }
 
+interface SymbolOption {
+  symbol: string;
+  strike_price?: number;
+  option_type?: string;
+  fyToken?: string;
+}
+
 const timeframeOptions = [
   { value: "1", label: "1 Minute", shortLabel: "1m" },
   { value: "5", label: "5 Minutes", shortLabel: "5m" },
   { value: "15", label: "15 Minutes", shortLabel: "15m" },
   { value: "D", label: "1 Day", shortLabel: "1D" },
 ];
+
+const SymbolScrollList = memo(
+  ({
+    options,
+    selectedIndex,
+    onSelect,
+    highlightMiddle,
+    selectedSymbol,
+  }: {
+    options: SymbolOption[];
+    selectedIndex: number;
+    onSelect: (option: SymbolOption) => void;
+    highlightMiddle?: boolean;
+    selectedSymbol?: string;
+  }) => {
+    const listRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (listRef.current) {
+        const selectedElement = listRef.current.children[
+          selectedIndex
+        ] as HTMLElement;
+        if (selectedElement) {
+          selectedElement.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
+        }
+      }
+    }, [selectedIndex]);
+
+    return (
+      <div
+        ref={listRef}
+        className="max-h-[200px] overflow-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
+      >
+        {options.map((option, index) => (
+          <div
+            key={option.symbol}
+            className={cn(
+              "px-2 py-1 cursor-pointer text-xs",
+              selectedIndex === index && "bg-blue-500 text-white",
+              highlightMiddle &&
+                index === Math.floor(options.length / 2) &&
+                "bg-green-100 dark:bg-green-900",
+              selectedSymbol === option.symbol &&
+                "bg-gray-200 dark:bg-gray-700",
+              "hover:bg-blue-100 dark:hover:bg-blue-900",
+              "transition-colors duration-150"
+            )}
+            onClick={() => onSelect(option)}
+          >
+            {option.strike_price
+              ? `${option.strike_price} ${option.option_type}`
+              : option.symbol.split(":")[1]?.replace("-INDEX", "")}
+          </div>
+        ))}
+      </div>
+    );
+  }
+);
 
 export const ChartContainer = memo(
   ({
@@ -163,7 +237,6 @@ export const ChartContainer = memo(
 
     const handleDoubleClick = () => {
       dispatch(setChartFullScreenId(chartKey));
-      console.log("double clicked");
     };
 
     const [containerDimensions, setContainerDimensions] = useState({
@@ -253,10 +326,118 @@ export const ChartContainer = memo(
       };
     }, []);
 
+    const [isSymbolScrollOpen, setIsSymbolScrollOpen] = useState(false);
+    const { scalpingMode, optionChainData } = useSelector(
+      (state: RootState) => state.globalChart
+    );
+    const getFilteredOptions = useCallback(() => {
+      if (chartKey === "1") {
+        return [
+          ...Object.keys(INDEX_DETAILS).map((index) => ({
+            symbol: indexNamesTofyersIndexMapping(index),
+          })),
+        ];
+      }
+
+      if (!optionChainData?.data) return [];
+
+      return optionChainData.data
+        .filter((item) =>
+          chartKey === "0"
+            ? item.option_type === "CE"
+            : item.option_type === "PE"
+        )
+        .map((item) => ({
+          symbol: item.symbol,
+          strike_price: item.strike_price,
+          option_type: item.option_type,
+          fyToken: item.fyToken,
+        }));
+    }, [chartKey, optionChainData]);
+
+    const [selectedScrollIndex, setSelectedScrollIndex] = useState(() => {
+      const options = getFilteredOptions();
+      const currentIndex = options.findIndex(
+        (opt) => opt.symbol === chartState.symbol
+      );
+      return currentIndex >= 0 ? currentIndex : 0;
+    });
+
+    // useEffect(() => {
+    //   if (!isSymbolScrollOpen) return;
+
+    //   const handleKeyDown = (e: KeyboardEvent) => {
+    //     if (!scalpingMode || selectedChartKey !== chartKey) return;
+
+    //     const options = getFilteredOptions();
+    //     if (options.length === 0) return;
+
+    //     if (e.key === "ArrowUp") {
+    //       e.preventDefault();
+    //       setSelectedScrollIndex((prev) =>
+    //         prev <= 0 ? options.length - 1 : prev - 1
+    //       );
+    //     } else if (e.key === "ArrowDown") {
+    //       console.log("arrow down");
+    //       e.preventDefault();
+    //       setSelectedScrollIndex((prev) =>
+    //         prev >= options.length - 1 ? 0 : prev + 1
+    //       );
+    //     } else if (e.key === "Enter") {
+    //       e.preventDefault();
+    //       const selectedOption = options[selectedScrollIndex];
+    //       if (selectedOption) {
+    //         handleSymbolSelect(selectedOption);
+    //         setIsSymbolScrollOpen(false);
+    //       }
+    //     } else if (e.key === "Escape") {
+    //       setIsSymbolScrollOpen(false);
+    //     }
+    //   };
+
+    //   window.addEventListener("keydown", handleKeyDown);
+    //   return () => window.removeEventListener("keydown", handleKeyDown);
+    // }, [
+    //   isSymbolScrollOpen,
+    //   selectedScrollIndex,
+    //   getFilteredOptions,
+    //   scalpingMode,
+    //   selectedChartKey,
+    //   chartKey,
+    // ]);
+
+    const handleSymbolSelect = (option: SymbolOption) => {
+      if (option.fyToken) {
+        dispatch(
+          updateLayoutSymbol({
+            chartKey,
+            symbol: option.symbol,
+            symbolInfo: option,
+          })
+        );
+      } else {
+        dispatch(
+          updateLayoutSymbol({
+            chartKey,
+            symbol: shoonyaToFyersSymbol(option, updateFyersToShoonyaMapping),
+          })
+        );
+      }
+      setIsSymbolScrollOpen(false);
+    };
+
+    useEffect(() => {
+      const options = getFilteredOptions();
+      const currentIndex = options.findIndex(
+        (opt) => opt.symbol === chartState.symbol
+      );
+      setSelectedScrollIndex(currentIndex >= 0 ? currentIndex : 0);
+    }, [chartState.symbol, getFilteredOptions]);
+
     return (
       <div
         className={cn(
-          "flex flex-col h-full",
+          "flex flex-col h-full relative",
           selectedChartKey === chartKey && selectedLayout !== "single"
             ? "border-blue-500 border dark:border-0.5"
             : "border-transparent border dark:border-0.5",
@@ -268,6 +449,38 @@ export const ChartContainer = memo(
           className
         )}
         onMouseDown={handleChartClick}
+        onKeyDown={(e) => {
+          if (
+            scalpingMode &&
+            selectedChartKey === chartKey &&
+            (e.key === "ArrowUp" || e.key === "ArrowDown")
+          ) {
+            e.preventDefault();
+            const options = getFilteredOptions();
+            if (options.length === 0) return;
+
+            if (!isSymbolScrollOpen) {
+              setIsSymbolScrollOpen(true);
+            } else {
+              setSelectedScrollIndex((prev) => {
+                if (e.key === "ArrowUp") {
+                  return prev <= 0 ? options.length - 1 : prev - 1;
+                } else {
+                  return prev >= options.length - 1 ? 0 : prev + 1;
+                }
+              });
+            }
+          } else if (e.key === "Enter" && isSymbolScrollOpen) {
+            e.preventDefault();
+            const selectedOption = getFilteredOptions()[selectedScrollIndex];
+            if (selectedOption) {
+              handleSymbolSelect(selectedOption);
+            }
+          } else if (e.key === "Escape" && isSymbolScrollOpen) {
+            setIsSymbolScrollOpen(false);
+          }
+        }}
+        tabIndex={0}
       >
         {/* Chart Header */}
         <div className="flex items-center p-1 border-b border-border bg-background">
@@ -339,7 +552,6 @@ export const ChartContainer = memo(
             isOpen={isSymbolSearchOpen}
             onClose={() => setIsSymbolSearchOpen(false)}
             onSymbolSelect={(symbol: any) => {
-              console.log("symbol", symbol);
               setChartData([]);
               if (symbol.fyToken) {
                 // if symbol has fyToken, then no need to update fyers to shoonya mapping
@@ -388,6 +600,34 @@ export const ChartContainer = memo(
             }}
           />
         </div>
+        {scalpingMode &&
+          selectedChartKey === chartKey &&
+          isSymbolScrollOpen && (
+            <Popover
+              open={isSymbolScrollOpen}
+              onOpenChange={setIsSymbolScrollOpen}
+            >
+              <PopoverTrigger asChild>
+                <div className="absolute inset-0 flex items-center justify-center" />
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[160px] p-0 shadow-md"
+                align="center"
+                alignOffset={0}
+                side="bottom"
+                sideOffset={-500}
+                avoidCollisions={false}
+              >
+                <SymbolScrollList
+                  options={getFilteredOptions()}
+                  selectedIndex={selectedScrollIndex}
+                  onSelect={handleSymbolSelect}
+                  highlightMiddle={chartKey !== "2"}
+                  selectedSymbol={chartState.symbol}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
       </div>
     );
   }

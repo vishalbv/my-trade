@@ -6,15 +6,13 @@ import { initializeWebSocket } from "../services/webSocket";
 import { Toaster } from "@repo/ui/toaster";
 import store, { RootState } from "../store/store";
 import { Provider as StoreProvider, useSelector } from "react-redux";
-import Drawer from "../modules/Drawers/drawer";
+
 import AuthCheckComponent from "../services/authCheck";
 import { fyersDataSocketService } from "../services/fyersDataSocket";
 export function Provider({ children, ...props }: any) {
   return (
     <div id="app">
       <StoreProvider store={store} stabilityCheck="never">
-        <Drawer />
-
         <NextThemesProvider
           {...props.theme}
           attribute="class"

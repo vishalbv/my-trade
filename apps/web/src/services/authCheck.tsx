@@ -23,7 +23,7 @@ function AuthCheckComponent(props: any) {
 
   const handleClick = (e: MouseEvent) => {
     // Skip check if current path is in ignore list
-    console.log(pathname);
+
     if (IGNORE_PATHS.includes(pathname)) {
       return;
     }

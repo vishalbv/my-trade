@@ -4,7 +4,7 @@ import { Orders } from "./orders";
 
 export const PositionsAndOrders: React.FC = () => {
   return (
-    <div className="w-full border-t border-border max-h-[400px] overflow-auto">
+    <div className="w-full border-t border-border max-h-[400px] overflow-auto bg-background/30">
       <div className="flex w-full">
         <div className="w-1/2 flex">
           <Header title="POSITIONS" />

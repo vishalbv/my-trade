@@ -342,9 +342,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   }, [data, createDummyCandles]);
 
   // Add this at the top of the component with other refs
-  const prevTimeframe = useRef(null);
-  const prevData0 = useRef(null);
-  const prevSymbol = useRef(null); // Add symbol reference
+  const prevTimeframe = useRef<string | null>(null);
+  const prevData0 = useRef<OHLCData | null>(null);
+  const prevSymbol = useRef<string | null>(null); // Add symbol reference
 
   // Add this helper function at the top level
   const calculateInitialScaleY = (data: OHLCData[], chartHeight: number) => {

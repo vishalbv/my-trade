@@ -43,12 +43,10 @@ export const ChartLayout = memo(
         );
 
         if (symbolsToUnsubscribe.length > 0) {
-          console.log("Unsubscribing from:", symbolsToUnsubscribe);
           fyersDataSocketService.unsubscribe(symbolsToUnsubscribe);
         }
 
         if (symbolsToSubscribe.length > 0) {
-          console.log("Subscribing to:", symbolsToSubscribe);
           fyersDataSocketService.subscribe(symbolsToSubscribe);
         }
 
@@ -61,7 +59,6 @@ export const ChartLayout = memo(
       return () => {
         const uniqueSymbols = [...new Set(symbols)];
         if (uniqueSymbols.length > 0) {
-          console.log("Component unmounting - cleanup:", uniqueSymbols);
           fyersDataSocketService.unsubscribe(uniqueSymbols);
         }
       };

@@ -102,28 +102,11 @@ export const DrawingCanvas = ({
   const POINT_RADIUS = 6;
   const POINT_BORDER_WIDTH = 2;
 
-  // Add the getLast10CandlesPriceRange helper at the top level
-  const getLast10CandlesPriceRange = useCallback((data: OHLCData[]) => {
-    const lastCandles = data.slice(-10);
-    if (!lastCandles.length) return { min: 0, max: 0, padding: 0 };
-
-    const prices = lastCandles.flatMap((candle) => [candle.high, candle.low]);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const range = max - min;
-    const padding = range * 0.15;
-
-    return {
-      min,
-      max,
-      padding,
-      range: range + padding * 2,
-    };
-  }, []);
-
   // Update local drawings when props change
   useEffect(() => {
-    setLocalDrawings(drawings);
+    if (JSON.stringify(drawings) !== JSON.stringify(localDrawings)) {
+      setLocalDrawings(drawings);
+    }
   }, [drawings]);
 
   // Add calculateBarX function to match CanvasChart

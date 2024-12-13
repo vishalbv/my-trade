@@ -23,7 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@repo/ui/tooltip";
-import Clock from "../../components/clock";
+
 import { RootState } from "../../store/store";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleLeftNav } from "../../store/slices/webAppSlice";
@@ -191,7 +191,6 @@ const Sidebar: React.FC = () => {
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
-          <Clock simpleClock={true} />
         </div>
       )}
     </aside>

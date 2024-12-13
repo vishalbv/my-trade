@@ -46,6 +46,7 @@ const Header: React.FC = () => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.stopPropagation();
         setShowPositionsOrders((prev) => !prev);
       }
     };
@@ -208,7 +209,7 @@ export const MarketIndex = ({ name }: MarketIndexProps) => {
     ({ ticks }: RootState) => ticks.shoonya_server[indexData.shoonyaToken] || {}
   );
 
-  const change = price.lp - price.c;
+  // const change = price.lp - price.c;
   const percentageChange = price.pc;
 
   return (
@@ -216,10 +217,10 @@ export const MarketIndex = ({ name }: MarketIndexProps) => {
       <span className="font-medium text-xs text-muted-foreground">{name}</span>
       <span className="mx-1">{price.lp}</span>
 
-      <span className={cn("text-xs", PRICECOLOR(change))}>
+      {/* <span className={cn("text-xs", PRICECOLOR(change))}>
         {change >= 0 ? "+" : ""}
         {change.toFixed(2)}
-      </span>
+      </span> */}
       <span className={cn("text-xs", PRICECOLOR(Number(percentageChange)))}>
         ({percentageChange}%)
       </span>

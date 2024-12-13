@@ -14,7 +14,7 @@ type Status = (typeof statuses)[number]["value"];
 
 export const Orders: React.FC = () => {
   const orderBook = useSelector(
-    (state: RootState) => state.states.shoonya?.orders || []
+    (state: RootState) => state.states.shoonya?.orderBook || []
   );
   const [filter, setFilter] = useState<Status>("COMPLETE");
 
@@ -24,32 +24,27 @@ export const Orders: React.FC = () => {
       : orderBook.filter((order) => order.status === filter);
 
   return (
-    <div className="flex-1 h-full">
+    <div className="flex-1 max-h-[200px] overflow-auto">
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-2 py-1 border-b border-border">
-          <span className="text-sm font-medium">
-            Orders (
-            {orderBook.filter((i) => i.status === "COMPLETE").length || 0})
-          </span>
-          <div className="flex gap-1">
-            {statuses.map((status) => (
-              <Button
-                key={status.value}
-                variant={filter === status.value ? "secondary" : "ghost"}
-                size="sm"
-                className="text-xs h-7"
-                onClick={() => setFilter(status.value)}
-              >
-                {status.label}
-              </Button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2 px-2 h-8 text-xs font-medium text-muted-foreground border-b border-border bg-muted/50">
+          <div className="min-w-[150px] flex-1">Instrument</div>
+          <div className="w-[50px]"></div>
+          <div className="min-w-[50px]">Time</div>
+          <div className="min-w-[80px] text-right">Qty.</div>
+          <div className="min-w-[80px] text-right">Price</div>
+          <div className="w-28 ml-auto text-right">Status</div>
         </div>
 
-        <div className="flex-1 overflow-auto space-y-2 p-2">
-          {filteredOrders.map((order) => (
-            <OrderCard key={order.norenordno} order={order} />
-          ))}
+        <div className="flex-1 overflow-auto">
+          {filteredOrders.length > 0 ? (
+            filteredOrders.map((order) => (
+              <OrderCard key={order.norenordno} order={order} />
+            ))
+          ) : (
+            <div className="text-[10px] text-muted-foreground text-center py-4">
+              No orders yet
+            </div>
+          )}
         </div>
       </div>
     </div>

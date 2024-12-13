@@ -38,7 +38,7 @@ const DrawerIcons = () => {
   );
 
   return (
-    <div className="fixed bottom-0 right-0 flex gap-2 z-50">
+    <div className="flex gap-2">
       <IconButton
         icon={<Clipboard />}
         label="Tasks"

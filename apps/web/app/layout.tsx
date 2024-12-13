@@ -5,6 +5,7 @@ import { Provider } from "../src/components/providers";
 import Header from "../src/modules/Header/header";
 import Sidebar from "../src/modules/Sidebar/sidebar";
 import NoSsrWrapper from "./no-ssr-wrapper";
+import { Footer } from "../src/modules/Footer/footer";
 
 const oleoScript = Oleo_Script({
   weight: ["400", "700"],
@@ -46,6 +47,7 @@ export default function RootLayout({
               <div className="flex flex-col flex-1 overflow-hidden">
                 <Header />
                 <main className="flex-1 overflow-y-auto mb-6">{children}</main>
+                <Footer />
               </div>
             </div>
           </Provider>

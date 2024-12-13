@@ -14,6 +14,12 @@ const config: Config = {
       fontSize: {
         "2xs": "0.625rem", // 10px
       },
+      height: {
+        fill: "-webkit-fill-available",
+      },
+      width: {
+        fill: "-webkit-fill-available",
+      },
       colors: {
         sidebar: {
           bg: "hsl(var(--sidebar-bg))",
@@ -65,6 +71,10 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        "highlight-fade": {
+          "0%": { backgroundColor: "var(--primary-50)" },
+          "100%": { backgroundColor: "transparent" },
+        },
         "diagonal-slide-out": {
           "0%": {
             clipPath: "polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)",
@@ -99,12 +109,13 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         "diagonal-slide-out":
           "diagonal-slide-out 8s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "highlight-fade": "highlight-fade 2s ease-out",
       },
       borderWidth: {
         "0.5": "0.5px", // Add custom border width
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("tailwind-scrollbar")],
 };
 export default config;
