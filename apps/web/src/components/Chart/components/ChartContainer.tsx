@@ -91,7 +91,9 @@ export const ChartContainer = memo(
       }),
       [chartState.symbol, chartState.timeframe]
     );
-    const { chartData } = useRealtimeCandles(realtimeCandlesConfig);
+    const { chartData, setChartData } = useRealtimeCandles(
+      realtimeCandlesConfig
+    );
 
     const currentTimeframe = timeframeOptions.find(
       (t) => t.value === chartState.timeframe
@@ -258,7 +260,11 @@ export const ChartContainer = memo(
           selectedChartKey === chartKey && selectedLayout !== "single"
             ? "border-blue-500 border dark:border-0.5"
             : "border-transparent border dark:border-0.5",
-          chartFullScreenId === chartKey && "absolute inset-0 z-50",
+          chartFullScreenId === chartKey
+            ? "absolute inset-0 z-50"
+            : chartFullScreenId
+              ? "w-0"
+              : "",
           className
         )}
         onMouseDown={handleChartClick}
@@ -334,6 +340,7 @@ export const ChartContainer = memo(
             onClose={() => setIsSymbolSearchOpen(false)}
             onSymbolSelect={(symbol: any) => {
               console.log("symbol", symbol);
+              setChartData([]);
               if (symbol.fyToken) {
                 // if symbol has fyToken, then no need to update fyers to shoonya mapping
                 dispatch(
@@ -364,7 +371,6 @@ export const ChartContainer = memo(
           ref={containerRef}
         >
           <CanvasChart
-            // key={`${selectedLayout}-${chartKey}-${chartState.symbol}-${chartState.timeframe}`}
             data={chartData}
             timeframeConfig={currentTimeframeConfig}
             indicators={indicators}

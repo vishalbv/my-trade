@@ -7,6 +7,7 @@ import globalChartReducer, {
 } from "./slices/globalChartSlice";
 import { serverStateUpdateMiddleware } from "./middlewares/serverStateUpdateMiddleware";
 import { updateDispatch } from "../services/webSocket";
+import webAppReducer from "./slices/webAppSlice";
 
 export const store: Store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store: Store = configureStore({
     drawer: drawerReducer,
     ticks: ticksReducer,
     globalChart: globalChartReducer,
+    webApp: webAppReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

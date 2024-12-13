@@ -71,11 +71,14 @@ function receiveQuote(data: any) {
 
 function handleOrderUpdate(order: any) {
   // Handle order updates
+  console.log("order--outside", order);
+
   _shoonya.getOrderBook();
   if (order.status == "REJECTED") {
     logger.error(order);
     return notify.error(order.rejreason);
   } else if (order.status == "COMPLETE" || order.status == "COMPLETED") {
+    console.log("order--inside", order);
     //TO-DO added delay to get positions and fund info
 
     setTimeout(() => {

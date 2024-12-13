@@ -15,7 +15,7 @@ export const Positions: React.FC = () => {
   );
 
   return (
-    <div className="space-y-2 w-full">
+    <div className="space-y-2 w-full max-h-[200px] overflow-auto">
       {positions.map((position: Position, index: number) => (
         <div key={index} className="p-2 rounded-md border border-border">
           <div className="text-sm">{position.tradingSymbol}</div>

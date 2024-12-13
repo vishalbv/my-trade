@@ -25,8 +25,9 @@ interface OptionChainData {
 
 interface ChartLayoutUpdate {
   [key: string]: {
-    symbol?: string;
-    timeframe?: string;
+    symbol: string;
+    timeframe: string;
+    symbolInfo: any;
   };
 }
 
@@ -170,26 +171,16 @@ const globalChartSlice = createSlice({
       state.scalpingMode = action.payload;
 
       // If turning off scalping mode, revert to single layout
-      if (!action.payload) {
-        state.selectedLayout = "single";
-        // Copy the middle chart (index 1) settings to the main chart (index 0)
-        if (state.layouts["1"]) {
-          state.layouts["0"] = { ...state.layouts["1"] };
-        }
-      }
+      // if (!action.payload) {
+      //   state.selectedLayout = "single";
+      //   // Copy the middle chart (index 1) settings to the main chart (index 0)
+      //   if (state.layouts["1"]) {
+      //     state.layouts["0"] = { ...state.layouts["1"] };
+      //   }
+      // }
     },
     updateChartLayout: (state, action: PayloadAction<ChartLayoutUpdate>) => {
-      Object.entries(action.payload).forEach(([key, value]) => {
-        if (!state.layouts[key]) {
-          state.layouts[key] = { ...defaultLayout };
-        }
-        if (value.symbol) {
-          state.layouts[key].symbol = value.symbol;
-        }
-        if (value.timeframe) {
-          state.layouts[key].timeframe = value.timeframe;
-        }
-      });
+      state.layouts = action.payload;
     },
     setOptionChainData: (state, action: PayloadAction<OptionChainData>) => {
       state.optionChainData = action.payload;

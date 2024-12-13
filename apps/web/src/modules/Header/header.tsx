@@ -10,13 +10,15 @@ import { useTheme } from "next-themes";
 import { logout } from "../../store/actions/appActions";
 import { useDispatch, useSelector } from "react-redux";
 import { setScalpingMode } from "../../store/slices/globalChartSlice";
-import { useScalpingMode } from "../../hooks/useScalpingMode";
 
 import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
 import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
+import { useScalpingMode } from "../../hooks/useScalpingMode";
+import { toggleLeftNav } from "../../store/slices/webAppSlice";
+// import { useScalpingMode } from "../../hooks/useScalpingMode";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -36,6 +38,7 @@ const Header: React.FC = () => {
   const dispatch = useDispatch();
   const { scalpingMode } = useSelector((state: RootState) => state.globalChart);
   useScalpingMode(scalpingMode);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -88,10 +91,14 @@ const Header: React.FC = () => {
   };
 
   const handleScalpingMode = () => {
+    // dispatch(toggleLeftNav(!scalpingMode ? true : false));
     dispatch(setScalpingMode(!scalpingMode));
-    if (pathname !== "/global-chart") {
-      router.push("/global-chart");
-    }
+
+    setTimeout(() => {
+      if (pathname !== "/global-chart") {
+        router.push("/global-chart");
+      }
+    }, 300);
   };
 
   if (sidebarIgnorePaths.includes(pathname)) return null;

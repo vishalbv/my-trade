@@ -24,6 +24,9 @@ import {
   TooltipTrigger,
 } from "@repo/ui/tooltip";
 import Clock from "../../components/clock";
+import { RootState } from "../../store/store";
+import { useDispatch, useSelector } from "react-redux";
+import { toggleLeftNav } from "../../store/slices/webAppSlice";
 
 const leftbraItems = [
   {
@@ -55,10 +58,13 @@ const leftbraItems = [
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const active = pathname?.split("/")[1] || "";
   const [showPWDTooltip, setShowPWDTooltip] = useState(false);
   const [showTOTPTooltip, setShowTOTPTooltip] = useState(false);
+  const isLeftNavCollapsed = useSelector(
+    (state: RootState) => state.webApp.isLeftNavCollapsed
+  );
+  const dispatch = useDispatch();
 
   const handleCopy = (type: "PWD" | "TOTP") => {
     // Add your copy logic here
@@ -79,21 +85,25 @@ const Sidebar: React.FC = () => {
     <aside
       className={cn(
         "bg-nav text-nav-foreground min-h-screen flex flex-col transition-all duration-300 px-2",
-        isCollapsed ? "w-16" : "w-52"
+        isLeftNavCollapsed ? "w-16" : "w-52"
       )}
     >
       <div className="flex items-center justify-between h-14">
         <Link href="/home" className="flex items-center whitespace-nowrap">
-          <AppLogo logo={!isCollapsed ? true : false} />
+          <AppLogo logo={!isLeftNavCollapsed ? true : false} />
         </Link>
 
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => dispatch(toggleLeftNav(!isLeftNavCollapsed))}
           className="text-nav-foreground/60 hover:text-nav-foreground hover:bg-nav-hover -mr-2"
         >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {isLeftNavCollapsed ? (
+            <ChevronRight size={20} />
+          ) : (
+            <ChevronLeft size={20} />
+          )}
         </Button>
       </div>
       <nav className="flex-grow mt-2">
@@ -107,20 +117,20 @@ const Sidebar: React.FC = () => {
                   active === item.href.split("/")[1]
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-nav-hover hover:text-nav-foreground",
-                  isCollapsed && "justify-center"
+                  isLeftNavCollapsed && "justify-center"
                 )}
                 prefetch={true}
               >
                 <item.icon
-                  className={cn("w-5 h-5 mr-3", isCollapsed && "mr-0")}
+                  className={cn("w-5 h-5 mr-3", isLeftNavCollapsed && "mr-0")}
                 />
-                {!isCollapsed && item.label}
+                {!isLeftNavCollapsed && item.label}
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      {!isCollapsed && (
+      {!isLeftNavCollapsed && (
         <div className="mt-auto space-y-4 pb-4 text-xs [&>div]:h-5">
           <div className="flex items-center justify-between">
             <span>SHOONYA</span>

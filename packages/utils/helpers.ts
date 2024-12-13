@@ -24,11 +24,29 @@ export const shoonyaToFyersSymbol = (symbol: any, callback: any) => {
   return fyersSymbol;
 };
 
-export const indexNamesTofyersIndexMapping = (index: any) => {
+export const indexNamesTofyersIndexMapping = (index: any, reverse = false) => {
   const indexDetails = INDEX_DETAILS as Record<
     string,
     { indexExchange: string; fyersName: string }
   >;
+
+  if (reverse) {
+    // Remove "-INDEX" suffix and split by ":"
+    const [exchange, fyersName] = index.replace("-INDEX", "").split(":");
+
+    // Find the original index name by searching through indexDetails
+    for (const [indexName, details] of Object.entries(indexDetails)) {
+      if (
+        details.indexExchange === exchange &&
+        details.fyersName === fyersName
+      ) {
+        return indexName;
+      }
+    }
+    return ""; // Return empty string if no match found
+  }
+
+  // Original forward mapping logic
   const { indexExchange, fyersName } = indexDetails[index] || {
     indexExchange: "",
     fyersName: "",

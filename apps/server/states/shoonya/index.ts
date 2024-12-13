@@ -100,6 +100,7 @@ class Shoonya extends State {
     api
       .getOrderbook()
       .then(({ data }) => {
+        console.log("data", data);
         this.setState({
           orderBook: data?.length && data.length > 0 ? data : [],
         });

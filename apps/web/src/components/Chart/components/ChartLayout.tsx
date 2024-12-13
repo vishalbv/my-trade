@@ -71,52 +71,44 @@ export const ChartLayout = memo(
       switch (layout) {
         case "single":
           return (
-            <div className="h-full w-full">
-              <MemoizedChartContainer
-                timeframeConfigs={timeframeConfigs}
-                chartKey="0"
-                indicators={indicators}
-              />
-            </div>
+            <MemoizedChartContainer
+              timeframeConfigs={timeframeConfigs}
+              chartKey="0"
+              indicators={indicators}
+            />
           );
 
         case "horizontal":
           return (
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="0"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="1"
-                  indicators={indicators}
-                />
-              </div>
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="0"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="1"
+                indicators={indicators}
+              />
             </div>
           );
 
         case "vertical":
           return (
             <div className="grid grid-rows-2 gap-[1px] h-full w-full bg-border">
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="0"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="1"
-                  indicators={indicators}
-                />
-              </div>
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="0"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="1"
+                indicators={indicators}
+              />
             </div>
           );
 
@@ -124,56 +116,48 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
               <div className="grid grid-rows-2 gap-[1px] h-full">
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="0"
-                    indicators={indicators}
-                  />
-                </div>
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="1"
-                    indicators={indicators}
-                  />
-                </div>
-              </div>
-              <div className="bg-background h-full">
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  chartKey="2"
+                  chartKey="0"
+                  indicators={indicators}
+                />
+
+                <MemoizedChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="1"
                   indicators={indicators}
                 />
               </div>
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="2"
+                indicators={indicators}
+              />
             </div>
           );
 
         case "verticalRight":
           return (
             <div className="grid grid-cols-2 gap-[1px] h-full w-full bg-border">
-              <div className="bg-background h-full">
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="0"
+                indicators={indicators}
+              />
+
+              <div className="grid grid-rows-2 gap-[1px] h-full">
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  chartKey="0"
+                  chartKey="1"
                   indicators={indicators}
                 />
-              </div>
-              <div className="grid grid-rows-2 gap-[1px] h-full">
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="1"
-                    indicators={indicators}
-                  />
-                </div>
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="2"
-                    indicators={indicators}
-                  />
-                </div>
+
+                <MemoizedChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="2"
+                  indicators={indicators}
+                />
               </div>
             </div>
           );
@@ -182,89 +166,76 @@ export const ChartLayout = memo(
           return (
             <div className="grid grid-rows-2 gap-[1px] h-full w-full bg-border">
               <div className="grid grid-cols-2 gap-[1px] h-full">
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="0"
-                    indicators={indicators}
-                  />
-                </div>
-                <div className="bg-background h-full">
-                  <MemoizedChartContainer
-                    timeframeConfigs={timeframeConfigs}
-                    chartKey="1"
-                    indicators={indicators}
-                  />
-                </div>
-              </div>
-              <div className="bg-background h-full">
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
-                  chartKey="2"
+                  chartKey="0"
+                  indicators={indicators}
+                />
+
+                <MemoizedChartContainer
+                  timeframeConfigs={timeframeConfigs}
+                  chartKey="1"
                   indicators={indicators}
                 />
               </div>
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="2"
+                indicators={indicators}
+              />
             </div>
           );
 
         case "grid":
           return (
             <div className="grid grid-cols-2 grid-rows-2 gap-[1px] h-full w-full bg-border">
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="0"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="1"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="2"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="3"
-                  indicators={indicators}
-                />
-              </div>
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="0"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="1"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="2"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="3"
+                indicators={indicators}
+              />
             </div>
           );
 
         case "horizontalThree":
           return (
             <div className="grid grid-cols-3 gap-[1px] h-full w-full bg-border">
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="0"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="1"
-                  indicators={indicators}
-                />
-              </div>
-              <div className="bg-background h-full">
-                <MemoizedChartContainer
-                  timeframeConfigs={timeframeConfigs}
-                  chartKey="2"
-                  indicators={indicators}
-                />
-              </div>
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="0"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="1"
+                indicators={indicators}
+              />
+
+              <MemoizedChartContainer
+                timeframeConfigs={timeframeConfigs}
+                chartKey="2"
+                indicators={indicators}
+              />
             </div>
           );
 

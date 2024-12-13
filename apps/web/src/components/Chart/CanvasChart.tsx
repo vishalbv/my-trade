@@ -2299,7 +2299,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     const xAxisHeight = 30;
 
     // Draw vertical line - extend to bottom of x-axis
-    console.log("mousePosition.x-----", mousePosition.x);
+
     ctx.beginPath();
     ctx.moveTo(mousePosition.x, 0);
     ctx.lineTo(mousePosition.x, dimensions.height); // Extend through x-axis
@@ -2368,11 +2368,10 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     rsiHeight,
     getChartDimensions,
   ]);
-  console.log("drawCrosshair", dimensions);
+
   // Keep both effects
   useEffect(() => {
     drawCrosshair();
-    console.log("drawCrosshair------", dimensions);
   }, [drawCrosshair]);
 
   useEffect(() => {
@@ -2701,7 +2700,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           drawing,
           combinedData
         );
-        console.log(drawing, timestampDrawing);
+
         onDrawingComplete(timestampDrawing);
       },
       [combinedData, onDrawingComplete]

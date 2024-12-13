@@ -22,6 +22,7 @@ import {
 import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
 
 import { ChartTools } from "../../src/components/Chart/components/ChartTools";
+import { useScalpingMode } from "../../src/hooks/useScalpingMode";
 
 interface TimeframeConfig {
   resolution: string;
@@ -164,8 +165,14 @@ const layoutOptions: LayoutOption[] = [
 
 export default function GlobalChart() {
   const dispatch = useDispatch();
-  const { selectedLayout, indicators, selectedTool, showDrawings } =
-    useSelector((state: RootState) => state.globalChart);
+
+  const {
+    selectedLayout,
+    indicators,
+    selectedTool,
+    showDrawings,
+    scalpingMode,
+  } = useSelector((state: RootState) => state.globalChart);
 
   return (
     <div className="flex flex-col h-full relative">
