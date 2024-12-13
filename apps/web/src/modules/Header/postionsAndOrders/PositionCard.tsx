@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@repo/utils/ui/helpers";
 import { DisplayName } from "./components";
 import { Button } from "@repo/ui/button";
@@ -12,12 +12,17 @@ interface PositionCardProps {
     c?: number;
     pc?: number;
   };
-  onOrderPlace: (position: any, side: 1 | -1) => void;
-  onInputChange: (
-    token: string,
-    values: { price?: string; qty?: string }
-  ) => void;
-  inputs: Record<string, { price?: string; qty?: string }>;
+  onOrderPlace: ({
+    position,
+    side,
+    qty,
+    limitPrice,
+  }: {
+    position: any;
+    side: 1 | -1;
+    qty?: number;
+    limitPrice?: number;
+  }) => void;
 }
 
 export const getCurrentValue = (i: any, lp: any) => {
@@ -28,11 +33,21 @@ export const PositionCard: React.FC<PositionCardProps> = ({
   position,
   tick,
   onOrderPlace,
-  onInputChange,
-  inputs,
 }) => {
   const { dname, netqty, token, avgprc = 0, exch, tsym } = position;
   const pnl = getCurrentValue(position, tick?.lp || 0);
+  const [inputs, setInputs] = useState<{ price?: string; qty?: number }>({});
+
+  const handleInputChange = (values: { price?: string; qty?: number }) => {
+    setInputs((prev: any) => ({
+      ...prev,
+      ...values,
+    }));
+  };
+
+  useEffect(() => {
+    handleInputChange({ qty: netqty });
+  }, [netqty]);
 
   return (
     <div className="flex items-center justify-between px-2 h-9 text-xs border-b border-border hover:bg-muted/30">
@@ -59,10 +74,10 @@ export const PositionCard: React.FC<PositionCardProps> = ({
           <div className="relative flex-1">
             <Input
               type="number"
-              value={inputs[token]?.qty || ""}
-              onChange={(e) => onInputChange(token, { qty: e.target.value })}
+              value={inputs?.qty || ""}
+              onChange={(e) => handleInputChange({ qty: +e.target.value })}
               className="mr-2 ml-2 h-full w-16 text-[12px] px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center"
-              step={15}
+              step={position.ls}
             />
           </div>
           <div className="flex gap-0.5 w-full">
@@ -70,7 +85,9 @@ export const PositionCard: React.FC<PositionCardProps> = ({
               size="sm"
               variant="outline"
               className="h-full w-1/2 p-0 text-[10px] hover:bg-green-500/50 hover:text-green-500 hover:border-green-500"
-              onDoubleClick={() => onOrderPlace(position, 1)}
+              onDoubleClick={() =>
+                onOrderPlace({ position, side: 1, qty: inputs?.qty })
+              }
             >
               B
             </Button>
@@ -78,7 +95,9 @@ export const PositionCard: React.FC<PositionCardProps> = ({
               size="sm"
               variant="outline"
               className="h-full w-1/2 p-0 text-[10px] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500"
-              onDoubleClick={() => onOrderPlace(position, -1)}
+              onDoubleClick={() =>
+                onOrderPlace({ position, side: -1, qty: inputs?.qty })
+              }
             >
               S
             </Button>

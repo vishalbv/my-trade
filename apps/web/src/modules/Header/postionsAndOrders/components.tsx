@@ -9,6 +9,7 @@ export const DisplayName: React.FC<{ dname?: string; tsym?: string }> = ({
     ? dname.split(" ").filter((_, k) => k !== 1)
     : tsym
         ?.match(/[\d.]+|\D+/g)
+        .filter((_, k) => k !== 1 && k !== 2)
         ?.map((i, k, arr) => (k == arr.length - 2 ? i.slice(-5) : i));
 
   if (!parts) return null;

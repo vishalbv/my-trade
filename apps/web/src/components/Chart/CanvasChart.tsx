@@ -25,6 +25,7 @@ import { ActionButtons } from "./ActionButtons";
 import { BuySellWindow } from "./components/BuySellWindow";
 import { setSelectedDrawing } from "../../store/slices/globalChartSlice";
 import { isHoliday } from "@repo/utils/helpers";
+import { PendingOrdersCanvas } from "./components/PendingOrdersCanvas";
 
 interface CanvasChartProps {
   data: OHLCData[];
@@ -2959,6 +2960,15 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       {renderDrawingCanvas()}
 
+      <PendingOrdersCanvas
+        dimensions={dimensions}
+        mousePosition={mousePosition}
+        getY={getY}
+        theme={currentTheme}
+        isRSIEnabled={isRSIEnabled}
+        rsiHeight={rsiHeight}
+      />
+
       {/* Bottom Action Bar Container */}
       <ActionButtons
         handleZoom={handleZoom}
@@ -2967,11 +2977,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         rsiHeight={isRSIEnabled ? rsiHeight : 0}
       />
 
-      <BuySellWindow
-        chartState={chartState}
-        currentPrice={currentClickPrice}
-        rsiHeight={isRSIEnabled ? rsiHeight : 0}
-      />
+      {!chartState.symbol.endsWith("-INDEX") && (
+        <BuySellWindow
+          chartState={chartState}
+          currentPrice={currentClickPrice}
+          rsiHeight={isRSIEnabled ? rsiHeight : 0}
+        />
+      )}
     </div>
   );
 };

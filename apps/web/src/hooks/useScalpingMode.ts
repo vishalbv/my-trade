@@ -86,18 +86,23 @@ export const useScalpingMode = (scalpingMode: boolean) => {
     // Store option chain data
     dispatch(setOptionChainData(optionChainData));
 
-    const ceSymbolInfo = res?.optionsChain?.[strikecount * 2 + 1];
-    const peSymbolInfo = res?.optionsChain?.[strikecount * 2 + 2];
+    // Filter CE and PE options
+    const ceOptions =
+      res?.optionsChain?.filter((opt) => opt.symbol.endsWith("CE")) || [];
+    const peOptions =
+      res?.optionsChain?.filter((opt) => opt.symbol.endsWith("PE")) || [];
 
-    if (ceSymbolInfo && peSymbolInfo) {
-      // Update CE and PE symbols
+    // Get middle options
+    const middleCE = ceOptions[Math.floor(ceOptions.length / 2)];
+    const middlePE = peOptions[Math.floor(peOptions.length / 2)];
 
+    if (middleCE && middlePE) {
       dispatch(
         updateChartLayout({
           "0": {
-            symbol: ceSymbolInfo.symbol,
+            symbol: middleCE.symbol,
             timeframe: "1",
-            symbolInfo: { ...ceSymbolInfo, expiryDate },
+            symbolInfo: { ...middleCE, expiryDate },
           },
           "1": {
             symbol,
@@ -105,9 +110,9 @@ export const useScalpingMode = (scalpingMode: boolean) => {
             symbolInfo: { symbol, expiryDate },
           },
           "2": {
-            symbol: peSymbolInfo.symbol,
+            symbol: middlePE.symbol,
             timeframe: "1",
-            symbolInfo: { ...peSymbolInfo, expiryDate },
+            symbolInfo: { ...middlePE, expiryDate },
           },
         })
       );

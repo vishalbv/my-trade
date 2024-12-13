@@ -92,6 +92,15 @@ class NorenRestApi {
     return this.#postRequest("searchscrip", values);
   }
 
+  async scripinfo(exchange, token) {
+    const values = {
+      uid: this.#username,
+      exch: exchange,
+      token,
+    };
+    return this.#postRequest("scripinfo", values);
+  }
+
   async getQuotes(exchange, token) {
     const values = {
       uid: this.#username,

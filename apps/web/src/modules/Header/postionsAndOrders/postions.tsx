@@ -2,29 +2,25 @@ import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
 import { PositionCard } from "./PositionCard";
+import { placeOrder } from "../../../store/actions/orderActions";
 
 export const Positions: React.FC = () => {
   const positions = useSelector(
     (state: RootState) => state.states.shoonya?.positions || []
   );
   const ticks = useSelector((state: RootState) => state.ticks.shoonya_server);
-  const [inputs, setInputs] = useState<
-    Record<string, { price?: string; qty?: string }>
-  >({});
 
-  const handleInputChange = (
-    token: string,
-    values: { price?: string; qty?: string }
-  ) => {
-    setInputs((prev) => ({
-      ...prev,
-      [token]: { ...prev[token], ...values },
-    }));
-  };
-
-  const handleOrderPlace = (position: any, side: 1 | -1) => {
-    // Implement your order placement logic here
-    console.log("Place order", position, side);
+  const handleOrderPlace = ({ position, qty, limitPrice, side }: any) => {
+    placeOrder({
+      broker: "shoonya",
+      qty: qty || position.netqty,
+      side: side,
+      frzqty: +position.frzqty,
+      type: 2,
+      exchange: position.exch,
+      price: limitPrice,
+      shoonyaSymbol: position.tsym,
+    });
   };
 
   return (
@@ -40,14 +36,12 @@ export const Positions: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           {positions.length > 0 ? (
-            positions.map((position) => (
+            positions.map((position: any) => (
               <PositionCard
                 key={position.token}
                 position={position}
                 tick={ticks[position.token]}
                 onOrderPlace={handleOrderPlace}
-                onInputChange={handleInputChange}
-                inputs={inputs}
               />
             ))
           ) : (

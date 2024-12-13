@@ -94,6 +94,8 @@ class Shoonya extends State {
     // Start the socket connection using the existing api instance
     await startShoonyaSocket(api);
     this.getPositions();
+    this.getOrderBook();
+    this.scripinfo("NSE", "26009");
   };
 
   getOrderBook = () =>
@@ -187,6 +189,12 @@ class Shoonya extends State {
     }
   };
 
+  scripinfo = async (exchange: string, token: string) => {
+    const data = await api.scripinfo(exchange, token);
+    console.log("data", data);
+    return data;
+  };
+
   placeOrder = async (
     body: {
       side: number;
@@ -197,6 +205,7 @@ class Shoonya extends State {
       $index?: string;
       exchange?: string;
       price?: number;
+      frzqty?: number;
     },
     disableMoneyManage = false
   ) => {
@@ -209,20 +218,20 @@ class Shoonya extends State {
         $index,
         exchange = "NSE",
         price,
+        frzqty = qty,
       } = body;
 
       console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
 
-      const { exch = exchange, tsym = shoonyaSymbol } = fyersSymbol
+      const { exch, tsym } = fyersSymbol
         ? fetchShoonyaNameByFyersSymbol(fyersSymbol as any) || {}
-        : {};
+        : { exch: null, tsym: null };
 
-      const orderParams = {
+      const baseOrderParams = {
         buy_or_sell: side == 1 ? "B" : "S",
         product_type: "M",
-        exchange: exch,
-        tradingsymbol: tsym,
-        quantity: qty,
+        exchange: exch || exchange,
+        tradingsymbol: tsym || shoonyaSymbol,
         discloseqty: 0,
         price_type: price ? "LMT" : "MKT",
         price: price || 0,
@@ -231,18 +240,67 @@ class Shoonya extends State {
         remarks: "ALGO_SHOONYA",
       };
 
-      const response = await api.placeOrder(orderParams);
+      const numOrders = Math.ceil(qty / frzqty);
+      const responses = [];
+      let remainingQty = qty;
 
-      if (response?.data) {
-        return {
-          data: response.data,
+      for (let i = 0; i < numOrders; i++) {
+        const orderQty = Math.min(remainingQty, frzqty);
+        const orderParams = {
+          ...baseOrderParams,
+          quantity: orderQty,
         };
-      } else {
-        throw new Error("Order placement failed");
+
+        const response = await api.placeOrder(orderParams);
+        responses.push(response.data);
+        remainingQty -= orderQty;
       }
+
+      return {
+        data: responses.length === 1 ? responses[0] : responses,
+      };
     } catch (error: any) {
       logger.error("Order placement failed", error);
       throw new Error(`Failed to place order: ${error.message}`);
+    }
+  };
+
+  modifyOrder = async (norenordno: string, price: number) => {
+    try {
+      const response = await api.modifyOrder({
+        norenordno,
+        price: price.toString(),
+      });
+
+      if (response.data?.stat === "Ok") {
+        // Refresh order book after modification
+        this.getOrderBook();
+        return { success: true, data: response.data };
+      } else {
+        throw new Error(response.data?.emsg || "Failed to modify order");
+      }
+    } catch (error: any) {
+      logger.error("Error modifying order:", error);
+      throw new Error(`Failed to modify order: ${error.message}`);
+    }
+  };
+
+  cancelOrder = async (norenordno: string) => {
+    try {
+      const response = await api.cancelOrder({
+        norenordno,
+      });
+
+      if (response.data?.stat === "Ok") {
+        // Refresh order book after cancellation
+        this.getOrderBook();
+        return { success: true, data: response.data };
+      } else {
+        throw new Error(response.data?.emsg || "Failed to cancel order");
+      }
+    } catch (error: any) {
+      logger.error("Error canceling order:", error);
+      throw new Error(`Failed to cancel order: ${error.message}`);
     }
   };
 }
