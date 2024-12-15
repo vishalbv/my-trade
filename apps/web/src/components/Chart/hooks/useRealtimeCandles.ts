@@ -81,10 +81,7 @@ const getTimeIntervalForTimeframe = (
   return baseInterval;
 };
 
-const calculateFromTimestamp = (
-  timeframe: string,
-  holidays: string[]
-): number => {
+const calculateFromTimestamp = (timeframe: string): number => {
   const now = new Date();
 
   // Set fixed day ranges based on timeframe
@@ -144,10 +141,6 @@ export const useRealtimeCandles = ({
   const tickData = useSelector((state: any) => state.ticks?.fyers_web);
   const isMarketActive = useSelector(
     (state: any) => state.states?.app?.marketStatus?.activeStatus
-  );
-
-  const holidays = useSelector(
-    (state: any) => state.states.app?.holidays || []
   );
 
   // Update currentCandleStartTime to use the correct timeframe interval
@@ -419,7 +412,7 @@ export const useRealtimeCandles = ({
   // Update the initial data fetch effect
   useEffect(() => {
     const fetchInitialData = async () => {
-      const fromTimestamp = calculateFromTimestamp(timeframe, holidays);
+      const fromTimestamp = calculateFromTimestamp(timeframe);
       const toTimestamp = Math.floor(Date.now() / 1000);
 
       const initialCandles = await fetchHistoricalData(

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "PORT=2300 bun --watch --inspect-brk=localhost:2299/debug run index.ts",
     "prod": "PORT=2300 bun run dist/index.js",
+    "test": "bun run test/test.ts",
     "debug": "bun --watch --inspect-brk=localhost:2299/debug run index.ts",
     "build": "bun build index.ts --target node --minify --outdir ./dist"
   },

@@ -64,6 +64,29 @@ class DatabaseService {
       .toArray();
   }
 
+  async upsertDocument(
+    collectionName: keyof DBCollections,
+    id: string,
+    data: any
+  ) {
+    logger.info("Upserting state:", { id, data });
+    try {
+      return await this.getCollection(collectionName).updateOne(
+        { id },
+        {
+          $set: {
+            ...data,
+            updatedAt: Date.now(),
+          },
+        },
+        { upsert: true }
+      );
+    } catch (error) {
+      logger.error("Error upserting state:", error);
+      throw error;
+    }
+  }
+
   async updateDocument(
     collectionName: keyof DBCollections,
     id: string,

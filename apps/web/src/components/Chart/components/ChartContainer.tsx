@@ -126,7 +126,7 @@ const SymbolScrollList = memo(
           >
             {option.strike_price
               ? `${option.strike_price} ${option.option_type}`
-              : option.symbol.split(":")[1]?.replace("-INDEX", "")}
+              : option.symbol}
           </div>
         ))}
       </div>
@@ -334,7 +334,9 @@ export const ChartContainer = memo(
       if (chartKey === "1") {
         return [
           ...Object.keys(INDEX_DETAILS).map((index) => ({
-            symbol: indexNamesTofyersIndexMapping(index),
+            symbol: index,
+            type: "index",
+            name: index,
           })),
         ];
       }

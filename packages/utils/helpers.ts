@@ -102,5 +102,7 @@ export const isHoliday = (date: Date, holidays: string[]): boolean => {
     })
     .replace(/ /g, "-");
 
-  return holidays.includes(formattedDate) || isWeekend(date);
+  return (
+    holidays.map(([date]) => date).includes(formattedDate) || isWeekend(date)
+  );
 };

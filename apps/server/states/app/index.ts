@@ -47,6 +47,7 @@ class App extends State {
   //   this.setRefs({ marketStatusInterval });
   // };
 }
+
 const _app = new App();
 
 export default _app;

@@ -2,10 +2,40 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { Calendar } from "lucide-react";
+import { RootState } from "../../store/store";
+import { useSelector } from "react-redux";
 
 export function MarketHolidays() {
-  // This could be fetched from an API
-  const nextHoliday = "26th Dec 2024";
+  const holidays = useSelector(
+    (state: RootState) => state.states.app?.holidays || []
+  );
+
+  // Function to check if a date is tomorrow
+  const isTomorrow = (dateStr: string) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [day, month, year] = dateStr.split("-");
+    const holidayDate = new Date(`${year}-${month}-${day}`);
+
+    return tomorrow.toDateString() === holidayDate.toDateString();
+  };
+
+  // Filter future dates and get next 5 holidays
+  const nextHolidays = holidays
+    .filter((holiday) => {
+      const [day, month, year] = holiday[0].split("-");
+      const holidayDate = new Date(`${year}-${month}-${day}`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return holidayDate >= today;
+    })
+    .slice(0, 5)
+    .map((holiday, index) => ({
+      date: holiday[0],
+      reason: holiday[1],
+      isTomorrow: index === 0 && isTomorrow(holiday[0]),
+    }));
 
   return (
     <Card className="shadow-md">
@@ -15,11 +45,16 @@ export function MarketHolidays() {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Next Holiday</span>
-            <span className="font-medium">{nextHoliday}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Christmas Day</p>
+          {nextHolidays.map((holiday, index) => (
+            <div key={index} className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">
+                {holiday.reason}
+              </span>
+              <span className="text-sm font-medium">
+                {holiday.isTomorrow ? "Tomorrow" : holiday.date}
+              </span>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

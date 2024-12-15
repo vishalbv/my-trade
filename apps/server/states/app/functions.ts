@@ -4,6 +4,9 @@
 import { getTimeoutTo, isDatesEqual } from "@repo/utils/helpers";
 import moment from "moment";
 import _app from "./index";
+import _shoonya from "../shoonya/index";
+// import notify from "../../services/notification";
+// import dbService from "../../services/db";
 
 // import {
 //   getReportsFromDB,
@@ -55,24 +58,6 @@ import _app from "./index";
 //   }
 // };
 
-// export const generateReport = async () => {
-//   const { fundInfo, moneyManage, accountLockData, positions } =
-//     _shoonya.getState();
-//   const { doneForTheDay } = _app.getState();
-//   await postToReportsDB(moment().format("DD-MM-YYYY"), {
-//     shoonya: {
-//       fundInfo,
-//       moneyManage,
-//       accountLockData,
-//       positions,
-//     },
-//     app: {
-//       doneForTheDay,
-//     },
-//   });
-//   NOTIFY.speak("report is generated");
-// };
-
 // export const generateTask = async (task) => {
 //   await postToTasksDB(moment().valueOf(), task);
 //   // NOTIFY.speak("report is generated");
@@ -94,7 +79,7 @@ export const updateMarketStatus = (setState: any) => {
     now.days() == 6 ||
     _app
       .getState()
-      .holidays.some((i: any) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
+      .holidays.some(([i]: string) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
 
   let times = [
     {

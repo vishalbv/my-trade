@@ -5,6 +5,7 @@ type NotifyType = "success" | "error" | "info";
 interface ToastData {
   description: string;
   title?: string;
+  speak?: boolean;
   [key: string]: any; // Allow for additional properties
 }
 
@@ -14,16 +15,13 @@ const notify = {
   success: (data: ToastInput) => showToast(data, "success"),
   error: (data: ToastInput) => showToast(data, "error"),
   info: (data: ToastInput) => showToast(data, "info"),
-  speak: (data: ToastInput, type?: NotifyType) => {
-    speakText(typeof data === "string" ? data : data.description);
-    if (type) {
-      showToast(data, type);
-    }
-  },
 };
 
 const showToast = (data: ToastInput, type: NotifyType) => {
   const toastData = typeof data === "string" ? { description: data } : data;
+  if (toastData.speak) {
+    speakText(toastData.description);
+  }
   toast({
     title: toastData.title,
     description: toastData.description,
@@ -38,7 +36,7 @@ export const notifyServerSide = ({
   data: ToastInput;
   type: NotifyType;
 }) => {
-  showToast(data, type);
+  notify[type](data);
 };
 
 export const speakText = (text: string, pitch?: number, rate?: number) => {

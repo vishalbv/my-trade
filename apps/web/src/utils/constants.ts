@@ -72,3 +72,9 @@ export const DEFAULT_CHART_LAYOUT = {
   timeframe: "1",
   drawings: [],
 };
+
+export const STYLES = {
+  footer: {
+    height: "24px",
+  },
+};

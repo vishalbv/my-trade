@@ -160,7 +160,7 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
         <span
           className={cn(
             "flex items-center gap-2 px-2 py-0 rounded-full h-full",
-            "w-[80px] border border-0.5"
+            "w-[80px] border border-0.5 bg-background"
             // isActive ? "bg-text border-text" : cn("bg-background")
           )}
           style={{
@@ -208,7 +208,7 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
         {/* Y-axis price label */}
         <span
           className={cn(
-            "min-w-[50px] px-1 py-0 rounded text-center h-5 flex items-center justify-center text-foreground mr-2"
+            "min-w-[50px] px-1 py-0 rounded text-center h-5 flex items-center justify-center text-white mr-2"
           )}
           style={{ background: side === 1 ? theme.upColor : theme.downColor }}
         >

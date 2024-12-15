@@ -2,10 +2,10 @@ import styles from "./activeDot.module.scss";
 
 export const ActiveDot = ({
   status,
-  readyStatus,
+  readyStatus = false,
 }: {
   status: boolean;
-  readyStatus: boolean;
+  readyStatus?: boolean;
 }) => {
   return (
     <span className={styles.pulseDot}>

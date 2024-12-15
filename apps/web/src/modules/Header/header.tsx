@@ -145,7 +145,8 @@ const Header: React.FC = () => {
               onClick={handleScalpingMode}
               className={cn(
                 "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground",
-                scalpingMode && "!text-yellow-500"
+                scalpingMode &&
+                  "dark:!text-yellow-500 !text-yellow-800 border-yellow-800/50 dark:border-yellow-500/50"
               )}
             >
               <Zap className="h-5 w-5" />

@@ -16,7 +16,7 @@ import {
 import { usePathname } from "next/navigation";
 import { cn } from "../../../../../packages/ui/lib/utils";
 import AppLogo from "../../components/appLogo";
-import { sidebarIgnorePaths } from "../../utils/constants";
+import { sidebarIgnorePaths, STYLES } from "../../utils/constants";
 import {
   Tooltip,
   TooltipContent,
@@ -84,9 +84,10 @@ const Sidebar: React.FC = () => {
   return (
     <aside
       className={cn(
-        "bg-nav text-nav-foreground min-h-screen flex flex-col transition-all duration-300 px-2",
+        "bg-nav text-nav-foreground flex flex-col transition-all duration-300 px-2",
         isLeftNavCollapsed ? "w-16" : "w-52"
       )}
+      style={{ height: `calc(100vh - ${STYLES.footer.height})` }}
     >
       <div className="flex items-center justify-between h-14">
         <Link href="/home" className="flex items-center whitespace-nowrap">

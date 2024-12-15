@@ -24,12 +24,7 @@ export function TopMovers() {
 
   return (
     <Card className="shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-        <CardTitle className="text-sm font-medium">
-          NIFTY 50 Top Movers
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex justify-between">
+      <CardContent className="flex justify-between mt-4">
         <Block
           title="Top Gainers"
           icon={<TrendingUp className="w-4 h-4 text-green-500" />}

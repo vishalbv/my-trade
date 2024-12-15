@@ -150,7 +150,7 @@ const pushInitialState = () => {
 };
 
 // Export other necessary functions
-export const shoonyaSocket = {
+export const _shoonyaSocket = {
   getState,
   setState,
   subscribeTicks,

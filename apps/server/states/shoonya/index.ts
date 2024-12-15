@@ -10,9 +10,10 @@ import NorenRestApi from "../../services/shoonyaApi/RestApi";
 import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
-import { shoonyaSocket, startShoonyaSocket } from "./socket";
+import { _shoonyaSocket, startShoonyaSocket } from "./socket";
 import { fetchShoonyaNameByFyersSymbol, positionsFormatter } from "./functions";
 import _symbols from "../symbols/index";
+import { startMoneyManagementInterval } from "./moneyManagement";
 
 let api = new NorenRestApi();
 const secret = "5GY64JV73GK3A676S6GC63463L33I535";
@@ -28,6 +29,21 @@ class Shoonya extends State {
     const _old = this.getState();
     console.log({ _old, _new });
     this.updateState(_new, fromDB);
+
+    if (_new?.moneyManage || _new?.fundInfo) {
+      const { moneyManage, fundInfo } = this.getState();
+      let _moneyManage = {
+        ...moneyManage,
+        maxLossOfDayInRs: (
+          +fundInfo?.openBalance *
+          (+moneyManage?.maxLossOfDay +
+            (+moneyManage?.isExtendedMaxLossOfDay ? 15 : 0)) *
+          0.01
+        ).toFixed(),
+      };
+      this.updateState({ moneyManage: _moneyManage, _db: true });
+    }
+
     if (
       (_new.access_token && _old.access_token !== _new.access_token) ||
       fromDB
@@ -47,7 +63,7 @@ class Shoonya extends State {
             _db: true,
           });
         } else {
-          shoonyaSocket.subscribeTicks(
+          _shoonyaSocket.subscribeTicks(
             data.map((i: any) => i.exch + "|" + i.token)
           );
           this.setState(
@@ -96,6 +112,9 @@ class Shoonya extends State {
     this.getPositions();
     this.getOrderBook();
     this.scripinfo("NSE", "26009");
+
+    // Start money management monitoring
+    startMoneyManagementInterval();
   };
 
   getOrderBook = () =>

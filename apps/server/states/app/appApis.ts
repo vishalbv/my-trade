@@ -7,6 +7,9 @@ import _fyers from "../fyers/index";
 import _shoonya from "../shoonya/index";
 import statesDbService from "../../services/statesDb";
 
+import dbService from "../../services/db";
+import { generateReport } from "../../reports";
+
 interface RequestBody {
   broker: string;
   [key: string]: any;
@@ -113,6 +116,32 @@ export const declareAppApis = () => ({
           error instanceof Error
             ? error.message
             : "An error occurred during logout",
+      };
+    }
+  },
+
+  "POST /api/generateReport": async ({ body }: { body: RequestBody }) => {
+    try {
+      await generateReport();
+      return { status: 200, message: "Report generated" };
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Error in generating report",
+      };
+    }
+  },
+
+  "POST /api/getReports": async ({ body }: { body: RequestBody }) => {
+    try {
+      const reports = await dbService.getDocuments("reports");
+      return { status: 200, message: "Report fetched", data: reports };
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Error in fetching report",
       };
     }
   },

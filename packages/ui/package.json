@@ -17,7 +17,9 @@
     "./dialog": "./components/ui/dialog.tsx",
     "./dropdown-menu": "./components/ui/dropdown-menu.tsx",
     "./separator": "./components/ui/separator.tsx",
-    "./popover": "./components/ui/popover.tsx"
+    "./popover": "./components/ui/popover.tsx",
+    "./label": "./components/ui/label.tsx",
+    "./table": "./components/ui/table.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -38,6 +40,7 @@
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",

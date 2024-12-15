@@ -33,3 +33,11 @@ export const searchSymbol = (body: any) => {
 export const getOptionChain = (body: any) => {
   return postRequest(`optionChain`, body);
 };
+
+export const generateReport = (body: any) => {
+  return postRequest(`generateReport`, body);
+};
+
+export const getReports = (body: any) => {
+  return postRequest(`getReports`, body);
+};

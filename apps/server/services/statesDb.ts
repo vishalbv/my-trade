@@ -27,16 +27,7 @@ class StatesDbService {
   async upsertState(id: string, data: any) {
     logger.info("Upserting state:", { id, data });
     try {
-      return await dbService.getCollection("states").updateOne(
-        { id },
-        {
-          $set: {
-            ...data,
-            updatedAt: Date.now(),
-          },
-        },
-        { upsert: true }
-      );
+      return await dbService.upsertDocument("states", id, data);
     } catch (error) {
       logger.error("Error upserting state:", error);
       throw error;
