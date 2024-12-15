@@ -20,10 +20,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     prd = "CNC",
     exch,
     tsym,
+    rejreason,
   } = order;
 
   return (
-    <div className="flex items-center justify-between px-2 h-9 text-xs border-b border-border hover:bg-muted/30">
+    <div
+      className={cn(
+        "px-2 h-9 text-xs border-b border-border hover:bg-muted/30 flex flex-col justify-center",
+        status === "REJECTED" && "h-14"
+      )}
+    >
       <div className="flex items-center gap-2 w-full">
         <div className="min-w-[150px] flex-1 flex items-center gap-2">
           <DisplayName dname={dname} tsym={tsym} />
@@ -65,6 +71,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
           )}
         </div>
       </div>
+      {rejreason && (
+        <div className="text-2xs text-destructive mt-1">{rejreason}</div>
+      )}
     </div>
   );
 };

@@ -153,7 +153,79 @@ class Shoonya extends State {
     }
   };
 
-  closeAllPositions = () => {};
+  closeAll = async ({
+    type = "positions",
+  }: {
+    type: "positions" | "orders" | "indexOptions" | "stockOptions";
+  }) => {
+    try {
+      // Get current positions
+      const positionsResponse = await api.getPositions();
+      const positions = positionsResponse.data;
+
+      if (!positions || positions.stat === "Not_Ok") {
+        return { success: true, message: "No positions to close" };
+      }
+
+      let positionsToClose = positions.filter(
+        (position: any) => position.netqty !== "0"
+      );
+
+      // Filter based on type
+      if (type === "indexOptions") {
+        positionsToClose = positionsToClose.filter(
+          (position: any) =>
+            position.tsym.includes("NIFTY") ||
+            position.tsym.includes("BANKNIFTY")
+        );
+      } else if (type === "stockOptions") {
+        positionsToClose = positionsToClose.filter(
+          (position: any) =>
+            !position.tsym.includes("NIFTY") &&
+            !position.tsym.includes("BANKNIFTY")
+        );
+      } else if (type === "orders") {
+        // Cancel all pending orders
+        const orderbook = await api.getOrderbook();
+        const pendingOrders = orderbook.data.filter((order: any) =>
+          ["OPEN", "PENDING"].includes(order.status)
+        );
+
+        const cancelPromises = pendingOrders.map((order: any) =>
+          this.cancelOrder(order.norenordno)
+        );
+
+        await Promise.all(cancelPromises);
+        return {
+          success: true,
+          message: `Cancelled ${cancelPromises.length} orders`,
+        };
+      }
+
+      const closePromises = positionsToClose.map(async (position: any) => {
+        const qty = Math.abs(parseInt(position.netqty));
+        const side = parseInt(position.netqty) > 0 ? -1 : 1; // -1 for sell, 1 for buy
+
+        return this.placeOrder({
+          side,
+          qty,
+          shoonyaSymbol: position.tsym,
+          exchange: position.exch,
+        });
+      });
+
+      const results = await Promise.all(closePromises);
+
+      return {
+        success: true,
+        data: results,
+        message: `Closed ${closePromises.length} ${type}`,
+      };
+    } catch (error: any) {
+      logger.error("Error closing positions:", error);
+      throw new Error(`Failed to close positions: ${error.message}`);
+    }
+  };
 
   logout = async () => {
     logger.info("logging out from shoonya");

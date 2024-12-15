@@ -2743,6 +2743,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         chartState={chartState}
         selectedDrawing={selectedDrawing}
         disableHandleInteraction={!!dragState?.mode}
+        setHideCrosshair={setHideCrosshair}
       />
     );
   };

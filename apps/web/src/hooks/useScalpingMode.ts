@@ -122,7 +122,9 @@ export const useScalpingMode = (scalpingMode: boolean) => {
   useEffect(() => {
     if (scalpingMode && mainLayout.symbol && initialsetup) {
       const symbol = indexNamesTofyersIndexMapping(mainLayout.symbol, true);
-      const expiryDate = upcomingExpiryDates[symbol][0].date;
+      const expiryDate = mainLayout.symbol.endsWith("EQ")
+        ? ""
+        : upcomingExpiryDates[symbol][0].date;
       fetchOptionDetails(mainLayout.symbol, expiryDate);
     }
   }, [scalpingMode, mainLayout.symbol, initialsetup]);

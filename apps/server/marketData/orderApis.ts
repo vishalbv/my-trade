@@ -95,4 +95,32 @@ export const declareOrderApis = () => ({
       };
     }
   },
+
+  "POST /api/closeAll": async ({ body }: { body: RequestBody }) => {
+    const { broker, type } = body;
+
+    try {
+      if (broker === "fyers") {
+        // Add Fyers implementation if needed
+        return { status: 404, message: "Not implemented for Fyers" };
+      } else if (broker === "shoonya") {
+        const response = await _shoonya.closeAll({ type });
+        return {
+          status: 200,
+          message: response.message || "positions closed successfully",
+          data: response.data,
+        };
+      } else {
+        return { status: 404, message: "Broker not found" };
+      }
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while cancelling order",
+      };
+    }
+  },
 });

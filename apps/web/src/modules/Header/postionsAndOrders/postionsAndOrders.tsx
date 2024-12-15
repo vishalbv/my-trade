@@ -1,8 +1,7 @@
 import React from "react";
 import { Positions } from "./postions";
 import { Orders } from "./orders";
-import { Button } from "@repo/ui/button";
-import { X, MoveLeft } from "lucide-react";
+import { CloseAllDropdown } from "./CloseAllDropdown";
 
 export const PositionsAndOrders: React.FC = () => {
   return (
@@ -13,30 +12,10 @@ export const PositionsAndOrders: React.FC = () => {
           <Header title="POSITIONS" />
         </div>
 
-        <div className="w-[200px] flex border-l border-border">
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full flex items-center gap-2 border border-destructive"
-            >
-              <X size={16} />
-              Close All
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full flex items-center gap-2"
-            >
-              <MoveLeft size={16} />
-              Move Orders
-            </Button>
-          </div>
-        </div>
+        <CloseAllDropdown />
 
         <div className="flex-1 flex border-l border-border">
           <Header title="ORDERS" />
-
           <Orders />
         </div>
       </div>

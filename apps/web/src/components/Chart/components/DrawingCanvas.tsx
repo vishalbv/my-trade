@@ -24,6 +24,8 @@ import {
 } from "../drawings/RectangleDrawing";
 import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
 import { deleteSelectedDrawing } from "../../../store/actions/drawingActions";
+import { useOpenOrdersDrawing } from "../hooks/useOpenOrdersDrawing";
+import { OrderLabel } from "./OrderLabel";
 
 interface DrawingCanvasProps {
   priceRangeData: {
@@ -230,7 +232,28 @@ export const DrawingCanvas = ({
     [toCanvasCoords]
   );
 
+  const {
+    // drawOpenOrders,
+    orders,
+
+    // updateOrderPrice,
+
+    handleDragStart,
+    handleDrag,
+    handleDragEnd,
+    draggingOrder,
+    handleQuantityChange,
+
+    handleCancelOrder,
+    // isOverCloseButton,
+    // setHoveredCloseButton,
+  } = useOpenOrdersDrawing({
+    dimensions,
+    toChartCoords,
+  });
+
   const handleInteraction = (x: number, y: number) => {
+    // Remove order interaction check and only keep drawing interaction
     const {
       foundPoint,
       foundLine,
@@ -469,7 +492,7 @@ export const DrawingCanvas = ({
     }
   };
 
-  // Update handleMouseMove to use the new snapping logic
+  // Update handleMouseMove to use handleInteraction for orders too
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     handleMouseMoveForCrosshair?.(e);
@@ -482,7 +505,6 @@ export const DrawingCanvas = ({
     const xPosition = xAxisCrosshair?.visible
       ? xAxisCrosshair.x
       : snapToNearestCandle(x);
-
     const chartCoords = toChartCoords(xPosition, y);
 
     if (draggingPoint) {
@@ -516,11 +538,10 @@ export const DrawingCanvas = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Check for drawing interaction
+    // Remove order interaction check
     const { foundPoint, foundLine } = handleInteraction(x, y);
 
     if (foundPoint || foundLine) {
-      // If clicking on a drawing, select it
       const drawing = localDrawings.find(
         (d) => d.id === (hoveredPoint?.drawingId || hoveredLine)
       );
@@ -533,7 +554,6 @@ export const DrawingCanvas = ({
         );
       }
     } else {
-      // If clicking elsewhere, deselect drawing
       dispatch(setSelectedDrawing(null));
     }
 
@@ -632,9 +652,18 @@ export const DrawingCanvas = ({
     }
   };
 
-  // Update handleMouseUp to sync with parent only when dragging ends
+  // Update handleMouseUp to include order updates
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (draggingPoint) {
+    if (draggingOrder) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect && onOrderUpdate) {
+        const y = e.clientY - rect.top;
+        const chartCoords = toChartCoords(dimensions.padding.left, y);
+        const newPrice = chartCoords.y.toFixed(2);
+        onOrderUpdate(draggingOrder, newPrice);
+      }
+      handleDragEnd();
+    } else if (draggingPoint) {
       // Find the modified drawing
       const modifiedDrawing = localDrawings.find(
         (d) => d.id === draggingPoint.drawingId
@@ -669,6 +698,9 @@ export const DrawingCanvas = ({
     // Clear canvas
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
     ctx.scale(dpr, dpr);
+
+    // Draw open orders first
+    // drawOpenOrders();
 
     if (showDrawings) {
       // Draw completed drawings
@@ -760,6 +792,8 @@ export const DrawingCanvas = ({
     theme,
     toCanvasCoords,
     selectedDrawing,
+    orders,
+    // drawOpenOrders,
   ]);
 
   useEffect(() => {
@@ -806,40 +840,82 @@ export const DrawingCanvas = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [dispatch, selectedDrawing, chartState.symbol]);
 
+  // Add to handleClick or similar event handler
+  // const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  //   const rect = canvasRef.current?.getBoundingClientRect();
+  //   if (!rect) return;
+
+  //   const x = e.clientX - rect.left;
+  //   const y = e.clientY - rect.top;
+
+  //   handleClick(x, y);
+  // };
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={dimensions.width}
-      height={dimensions.height}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: `calc(100% - ${30}px)`,
-        pointerEvents: "auto",
-        cursor: draggingPoint
-          ? "default"
-          : hoveredPoint
-            ? "move"
-            : hoveredLine
-              ? isDraggingLine
-                ? "grabbing"
-                : "grab"
-              : selectedTool === "trendline" ||
-                  selectedTool === "fibonacci" ||
-                  selectedTool === "horizontalLine" ||
-                  selectedTool === "longPosition" ||
-                  selectedTool === "shortPosition"
-                ? "crosshair"
-                : "default",
-        zIndex: 2,
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    />
+    <>
+      {orders?.map((order) => {
+        const price = parseFloat(order.price);
+        const point = { x: viewState.startIndex, y: price };
+        const canvasPos = toCanvasCoords(point);
+
+        return (
+          <OrderLabel
+            key={order.orderId}
+            orderId={order.orderId}
+            price={order.price}
+            quantity={order.qty}
+            position={{
+              x: dimensions.width - dimensions.padding.right - 100,
+              y: canvasPos.y,
+            }}
+            theme={theme}
+            side={order.side}
+            onQuantityChange={handleQuantityChange}
+            onCancel={handleCancelOrder}
+            onDragStart={handleDragStart}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+            isDragging={draggingOrder === order.orderId}
+          />
+        );
+      })}
+      <canvas
+        ref={canvasRef}
+        width={dimensions.width}
+        height={dimensions.height}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: `calc(100% - ${30}px)`,
+          pointerEvents: "auto",
+          cursor: draggingOrder
+            ? "ns-resize"
+            : draggingPoint
+              ? "default"
+              : hoveredPoint
+                ? "move"
+                : hoveredLine
+                  ? isDraggingLine
+                    ? "grabbing"
+                    : "grab"
+                  : selectedTool === "trendline" ||
+                      selectedTool === "fibonacci" ||
+                      selectedTool === "horizontalLine" ||
+                      selectedTool === "longPosition" ||
+                      selectedTool === "shortPosition"
+                    ? "crosshair"
+                    : "default",
+          zIndex: 2,
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        // onClick={handleCanvasClick}
+      />
+    </>
   );
 };
 

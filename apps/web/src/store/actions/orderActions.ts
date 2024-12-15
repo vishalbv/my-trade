@@ -11,3 +11,7 @@ export const modifyOrder = (body: any) => {
 export const cancelOrder = (body: any) => {
   return postRequest(`cancelOrder`, body);
 };
+
+export const closeAll = (body: any) => {
+  return postRequest(`closeAll`, body);
+};
