@@ -172,6 +172,12 @@ class Shoonya extends State {
     }
   };
 
+  loginDetails = async () => {
+    const otp = await authenticator.generate(secret);
+    const password = shoonyaAuthParams.password;
+    return { data: { otp, password } };
+  };
+
   closeAll = async ({
     type = "positions",
   }: {
@@ -297,6 +303,8 @@ class Shoonya extends State {
       exchange?: string;
       price?: number;
       frzqty?: number;
+      trigger_price?: number;
+      order_type?: "SL-LMT" | "SL-MKT" | "LMT" | "MKT";
     },
     disableMoneyManage = false
   ) => {
@@ -310,6 +318,8 @@ class Shoonya extends State {
         exchange = "NSE",
         price,
         frzqty = qty,
+        trigger_price,
+        order_type,
       } = body;
 
       console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
@@ -324,9 +334,9 @@ class Shoonya extends State {
         exchange: exch || exchange,
         tradingsymbol: tsym || shoonyaSymbol,
         discloseqty: 0,
-        price_type: price ? "LMT" : "MKT",
-        price: price || 0,
-        trigger_price: "None",
+        price_type: order_type || "MKT",
+        price: order_type == "MKT" || order_type == "SL-MKT" ? 0 : price || 0,
+        trigger_price: trigger_price || "None",
         retention: "DAY",
         remarks: "ALGO_SHOONYA",
       };
@@ -356,11 +366,20 @@ class Shoonya extends State {
     }
   };
 
-  modifyOrder = async (norenordno: string, price: number) => {
+  modifyOrder = async (body: {
+    norenordno: string;
+    price: number;
+    qty: number;
+    trigger_price: number;
+  }) => {
+    const { norenordno, price, qty, trigger_price } = body;
+
     try {
       const response = await api.modifyOrder({
         norenordno,
         price: price.toString(),
+        qty: qty,
+        trigger_price: trigger_price.toString(),
       });
 
       if (response.data?.stat === "Ok") {

@@ -28,7 +28,7 @@ export const Positions: React.FC = () => {
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-2 h-8 text-xs font-medium text-muted-foreground border-b border-border bg-muted/50">
           <div className="min-w-[150px] flex-1">Instrument</div>
-          <div className="min-w-[80px] text-right">Qty.</div>
+          <div className="min-w-[40px] text-right">Qty.</div>
           <div className="min-w-[80px] text-right">LTP</div>
           <div className="w-40 ml-auto text-center">Actions</div>
           <div className="min-w-[100px] text-right">P&L</div>

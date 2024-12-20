@@ -18,7 +18,7 @@ import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
 import { useScalpingMode } from "../../hooks/useScalpingMode";
 import { toggleLeftNav } from "../../store/slices/webAppSlice";
-// import { useScalpingMode } from "../../hooks/useScalpingMode";
+import { getRandomQuote } from "../../utils/tradingQuotes";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -38,6 +38,17 @@ const Header: React.FC = () => {
   const dispatch = useDispatch();
   const { scalpingMode } = useSelector((state: RootState) => state.globalChart);
   useScalpingMode(scalpingMode);
+
+  const [currentQuote, setCurrentQuote] = useState(() => getRandomQuote());
+
+  useEffect(() => {
+    if (pathname === "/home") {
+      const interval = setInterval(() => {
+        setCurrentQuote(getRandomQuote());
+      }, 60000); // Change quote every minute
+      return () => clearInterval(interval);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);
@@ -124,20 +135,40 @@ const Header: React.FC = () => {
     <>
       <header className="bg-nav text-nav-foreground">
         <div className="flex justify-between items-center h-14 p-2">
-          <div className="flex items-center">
-            <PnL />
-            <div className="text-center">
-              <div className="text-xs text-foreground/60 mb-1">Margin left</div>
-              <div className="text-foreground/90 text-sm">
-                {fundInfo.marginAvailable}
+          {pathname !== "/home" ? (
+            <>
+              {" "}
+              <div className="flex items-center">
+                <PnL />
+                <div className="text-center">
+                  <div className="text-xs text-foreground/60 mb-1">
+                    Margin left
+                  </div>
+                  <div className="text-foreground/90 text-sm">
+                    {fundInfo.marginAvailable}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4 text-sm gap-2">
+                {indexToDisplay.map((index) => (
+                  <MarketIndex key={index} name={index} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center flex-1 ml-32">
+              <div className="text-center max-w-2xl">
+                <p>
+                  <span className="text-sm text-muted-foreground italic">
+                    "{currentQuote.quote}"
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1 ml-2">
+                    — {currentQuote.author}
+                  </span>
+                </p>
               </div>
             </div>
-          </div>
-          <div className="flex items-center space-x-4 text-sm gap-2">
-            {indexToDisplay.map((index) => (
-              <MarketIndex key={index} name={index} />
-            ))}
-          </div>
+          )}
 
           <div className="flex items-center space-x-2">
             <Button
@@ -146,7 +177,7 @@ const Header: React.FC = () => {
               className={cn(
                 "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground",
                 scalpingMode &&
-                  "dark:!text-yellow-500 !text-yellow-800 border-yellow-800/50 dark:border-yellow-500/50"
+                  "dark:!text-yellow-500 !text-yellow-800 border-yellow-00/50 dark:border-yellow-500/50"
               )}
             >
               <Zap className="h-5 w-5" />

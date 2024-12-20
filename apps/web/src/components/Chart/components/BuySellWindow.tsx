@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, memo, useRef } from "react";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
@@ -5,6 +7,8 @@ import { cn } from "@repo/utils/ui/helpers";
 import { round } from "../utils/drawingCoordinateUtils";
 import { X } from "lucide-react";
 import { placeOrder } from "../../../store/actions/orderActions";
+import { Label } from "@repo/ui/label";
+import { RadioGroup, RadioGroupItem } from "@repo/ui/radio-group";
 
 interface BuySellWindowProps {
   className?: string;
@@ -21,7 +25,7 @@ export const BuySellWindow = ({
 }: BuySellWindowProps) => {
   const [qty, setQty] = useState<string>("1");
   const [limitPrice, setLimitPrice] = useState<string>("");
-  const [slPrice, setSlPrice] = useState<string>("");
+  const [orderType, setOrderType] = useState<"MKT" | "SL-MKT">("MKT");
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [isNearby, setIsNearby] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,12 +49,9 @@ export const BuySellWindow = ({
       }
 
       setLimitPrice(formatPrice(currentPrice));
-      const slValue = currentPrice * 0.9995;
-      setSlPrice(formatPrice(slValue));
 
       const newTimer = setTimeout(() => {
         setLimitPrice("");
-        setSlPrice("");
         setTimer(null);
       }, 4000) as unknown as NodeJS.Timeout;
 
@@ -116,11 +117,10 @@ export const BuySellWindow = ({
       qty,
       side: side,
       type: 2,
-      //   $symbol: data.tsym,
-      //   $index: indexName,
-      //   exchange: data.exch,
-      price: limitPrice,
       fyersSymbol: chartState.symbolInfo,
+      price: 0,
+      order_type: orderType,
+      trigger_price: limitPrice,
     });
   };
 
@@ -137,14 +137,11 @@ export const BuySellWindow = ({
   const handleClearPrices = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLimitPrice("");
-    setSlPrice("");
     if (timer) {
       clearTimeout(timer);
       setTimer(null);
     }
   };
-
-  const showPriceInputs = limitPrice || slPrice;
 
   return (
     <div
@@ -154,13 +151,9 @@ export const BuySellWindow = ({
         timer || isNearby ? "opacity-100" : "opacity-25",
         className
       )}
-      // style={{
-      //   bottom: `calc(10% + ${rsiHeight > 0 ? `${rsiHeight}px` : "20px"})`,
-      // }}
-      onDoubleClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-1 w-[160px]">
-        {showPriceInputs && (
+        {limitPrice && (
           <div className="relative flex items-end">
             <div className="grid grid-cols-2 gap-1">
               <div className="flex flex-col gap-0.5">
@@ -176,14 +169,31 @@ export const BuySellWindow = ({
                 />
               </div>
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-muted-foreground">SL</label>
-                <Input
-                  type="text"
-                  value={slPrice}
-                  onChange={(e) => handlePriceChange(e, setSlPrice)}
-                  className="text-center h-6 text-xs px-1"
-                  placeholder="0.00"
-                />
+                <RadioGroup
+                  defaultValue="MKT"
+                  value={orderType}
+                  onValueChange={(value) =>
+                    setOrderType(value as "MKT" | "SL-MKT")
+                  }
+                  className="grid grid-cols-2 gap-1"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="MKT" id="mkt" className="h-3 w-3" />
+                    <Label htmlFor="mkt" className="text-[10px]">
+                      M
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem
+                      value="SL-MKT"
+                      id="slm"
+                      className="h-3 w-3"
+                    />
+                    <Label htmlFor="slm" className="text-[10px]">
+                      SL-M
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
             <button

@@ -23,17 +23,23 @@ export function HolidayStatus() {
     if (isHoliday) {
       return isHoliday[1];
     }
-    return "No";
+    return null;
   };
 
+  if (!getText()) return null;
+
   return (
-    <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-4">
-      <h2 className="text-foreground text-lg">
-        Market Holiday Today{" - "}
-        <span className="text-red-800 dark:text-red-200 text-xl">
-          {getText()}
-        </span>
-      </h2>
+    <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 rounded-xl p-3 inline-flex items-center gap-2 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+        <h2 className="text-orange-900 dark:text-orange-100 text-sm font-medium">
+          Market Holiday Today
+          <span className="mx-2">•</span>
+          <span className="text-orange-700 dark:text-orange-200 font-semibold">
+            {getText()}
+          </span>
+        </h2>
+      </div>
     </div>
   );
 }

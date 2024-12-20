@@ -60,7 +60,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({
         </div>
         <div
           className={cn(
-            "min-w-[80px] text-right tabular-nums",
+            "min-w-[40px] text-right tabular-nums",
             PRICECOLOR(netqty)
           )}
         >

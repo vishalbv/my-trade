@@ -141,4 +141,48 @@ export const declareMarketDataApis = () => ({
       };
     }
   },
+
+  "POST /api/quotes": async ({
+    body,
+  }: {
+    body: {
+      symbols: string[];
+      broker: "fyers" | "shoonya";
+    };
+  }) => {
+    try {
+      let quotes;
+
+      switch (body.broker) {
+        // case "shoonya": {
+        //   optionChainResults = await _shoonya.getOptionChain(
+        //     body.exchange,
+        //     body.symbol
+        //   );
+        //   break;
+        // }
+        case "fyers": {
+          quotes = await _fyers.getQuotes({
+            symbols: body.symbols,
+          });
+          break;
+        }
+        // Add other broker cases here
+        default:
+          throw new Error("Unsupported broker");
+      }
+
+      return {
+        status: 200,
+        message: quotes.message || "Quotes retrieved successfully",
+        data: quotes.data,
+      };
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Failed to fetch quotes",
+      };
+    }
+  },
 });

@@ -35,7 +35,7 @@ export const PnL = () => {
       }}
     >
       <div className="flex items-center">
-        <h3>P&L</h3>
+        <h3>{showInPerc ? "ROI" : "P&L"}</h3>
         <h2 className={`select-none ml-2.5 ${PRICECOLOR(shoonyaPLInPerc)}`}>
           {showInPerc ? shoonyaPLInPerc + "%" : shoonyaPLInRs}
         </h2>

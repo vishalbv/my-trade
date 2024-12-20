@@ -143,6 +143,23 @@ class Fyers extends State {
     }
   };
 
+  getQuotes = async ({ symbols }: { symbols: string[] }) => {
+    try {
+      const response = await fyers.getQuotes(symbols);
+
+      if (response.s === "ok") {
+        return {
+          message: response.message || "Historical data retrieved successfully",
+          data: response,
+        };
+      }
+      throw new Error(`Failed to fetch quotes:  ${JSON.stringify(response)}`);
+    } catch (error: any) {
+      console.log(error);
+      throw new Error(`Quotes error: ${error.message}`);
+    }
+  };
+
   getOptionChain = async ({
     symbol,
     strikecount = 4,

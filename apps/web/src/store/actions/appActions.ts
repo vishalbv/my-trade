@@ -41,3 +41,11 @@ export const generateReport = (body: any) => {
 export const getReports = (body: any) => {
   return postRequest(`getReports`, body);
 };
+
+export const getLoginDetails = (body: any) => {
+  return postRequest(`loginDetails`, body);
+};
+
+export const restartServer = (body: any) => {
+  return postRequest(`restartServer`, body);
+};

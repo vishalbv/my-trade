@@ -31,14 +31,22 @@ export const AccountLockStatus = () => {
   }
 
   return (
-    <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-4">
-      <h2 className="text-foreground text-lg">
-        Option Trading is Frozen{" - "}
-        <span className="text-red-800 dark:text-red-200 text-xl">
-          {getStatusText()}
-        </span>
-      </h2>
-      {status && <h3 className="text-foreground mt-2 opacity-90">{status}</h3>}
+    <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl p-3 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+        <h2 className="text-red-900 dark:text-white/80 text-md font-medium">
+          Option Trading is Frozen
+          <span className="mx-2">•</span>
+          <span className="text-red-700 dark:text-red-200 font-semibold">
+            {getStatusText()}
+          </span>
+        </h2>
+      </div>
+      {status && (
+        <p className="text-red-800 dark:text-red-200 text-sm mt-2 ml-5 opacity-90">
+          {status}
+        </p>
+      )}
     </div>
   );
 };

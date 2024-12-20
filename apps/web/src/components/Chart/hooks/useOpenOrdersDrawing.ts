@@ -1,6 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChartTheme, Point } from "../types";
 import { modifyOrder, cancelOrder } from "../../../store/actions/orderActions";
+import { RootState } from "../../../store/store";
+import { useSelector } from "react-redux";
 
 interface Order {
   orderId: string;
@@ -28,10 +30,29 @@ export const useOpenOrdersDrawing = ({
     { orderId: "default", price: "100", side: 1 },
     { orderId: "default-1", price: "150", side: -1 },
   ];
-  const [localOrders, setLocalOrders] = useState<Order[]>([
-    { orderId: "default", price: "100", side: 1 },
-    { orderId: "default-1", price: "150", side: -1 },
-  ]);
+
+  const orders = useSelector(
+    (state: RootState) => state.states.shoonya?.orderBook || []
+  );
+  const [localOrders, setLocalOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (JSON.stringify(orders) !== JSON.stringify(localOrders)) {
+      setLocalOrders(
+        orders.reduce((acc: Order[], o: any) => {
+          if (o.status === "OPEN") {
+            acc.push({
+              ...o,
+              price: o.price?.toString() || "0",
+              orderId: o.norenordno,
+              side: o.trantype === "B" ? 1 : -1,
+            });
+          }
+          return acc;
+        }, [])
+      );
+    }
+  }, [orders]);
 
   const [draggingOrder, setDraggingOrder] = useState<string | null>(null);
 

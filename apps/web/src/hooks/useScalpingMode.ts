@@ -80,9 +80,8 @@ export const useScalpingMode = (scalpingMode: boolean) => {
 
     const optionChainData = {
       symbol,
-      expiry: res.expiry || "",
+      expiry: res.expiryData || "",
       data: res.optionsChain || [],
-      atmStrike: res.atmStrike || 0,
     };
 
     // Store option chain data

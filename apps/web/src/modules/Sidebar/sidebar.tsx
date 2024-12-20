@@ -27,6 +27,7 @@ import {
 import { RootState } from "../../store/store";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleLeftNav } from "../../store/slices/webAppSlice";
+import { getLoginDetails, restartServer } from "../../store/actions/appActions";
 
 const leftbraItems = [
   {
@@ -66,17 +67,21 @@ const Sidebar: React.FC = () => {
   );
   const dispatch = useDispatch();
 
-  const handleCopy = (type: "PWD" | "TOTP") => {
+  const handleCopy = (type: "password" | "otp") => {
     // Add your copy logic here
     // navigator.clipboard.writeText(value)
 
-    if (type === "PWD") {
-      setShowPWDTooltip(true);
-      setTimeout(() => setShowPWDTooltip(false), 1000);
-    } else {
-      setShowTOTPTooltip(true);
-      setTimeout(() => setShowTOTPTooltip(false), 1000);
-    }
+    getLoginDetails({ broker: "shoonya" }).then((data: any) => {
+      console.log(data);
+      navigator.clipboard.writeText(data[type]);
+      if (type === "password") {
+        setShowPWDTooltip(true);
+        setTimeout(() => setShowPWDTooltip(false), 1000);
+      } else {
+        setShowTOTPTooltip(true);
+        setTimeout(() => setShowTOTPTooltip(false), 1000);
+      }
+    });
   };
 
   if (sidebarIgnorePaths.includes(pathname)) return null;
@@ -142,7 +147,7 @@ const Sidebar: React.FC = () => {
                     <Button
                       variant="link"
                       size="xs"
-                      onClick={() => handleCopy("PWD")}
+                      onClick={() => handleCopy("password")}
                     >
                       <Copy className="w-2 h-2" />
                       PWD
@@ -160,7 +165,7 @@ const Sidebar: React.FC = () => {
                     <Button
                       variant="link"
                       size="xs"
-                      onClick={() => handleCopy("TOTP")}
+                      onClick={() => handleCopy("otp")}
                     >
                       <Copy className="w-2 h-2" />
                       TOTP
@@ -188,6 +193,7 @@ const Sidebar: React.FC = () => {
               variant="primary-hover"
               size="icon"
               className="text-red-700 dark:text-orange-300 hover:!text-background"
+              onClick={() => restartServer({})}
             >
               <RefreshCw className="h-4 w-4" />
             </Button>

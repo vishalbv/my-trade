@@ -145,4 +145,36 @@ export const declareAppApis = () => ({
       };
     }
   },
+
+  "POST /api/restartServer": async ({ body }: { body: RequestBody }) => {
+    try {
+      const data = initializeApp();
+      return { status: 200, message: "Report fetched", data };
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Error in fetching report",
+      };
+    }
+  },
+
+  "POST /api/loginDetails": async ({ body }: { body: RequestBody }) => {
+    const { broker } = body;
+    try {
+      if (broker === "fyers") {
+        // const result = await _fyers.loginDetails();
+        // return { status: 200, message: "Login details fetched", data: result };
+      } else if (broker === "shoonya") {
+        const { data } = await _shoonya.loginDetails();
+        return { status: 200, message: "Login details fetched", data };
+      }
+    } catch (error) {
+      return {
+        status: 500,
+        message:
+          error instanceof Error ? error.message : "Error in fetching report",
+      };
+    }
+  },
 });

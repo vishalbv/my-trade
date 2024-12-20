@@ -86,25 +86,25 @@ export const checkMoneyManagementRules = () => {
     // Add other conditions as needed
   ];
 
-  for (const condition of accountLockConditions) {
-    if (condition.condition) {
-      notify.info(condition.status);
-      _shoonya.setState({
-        accountLockData: condition,
-        _db: true,
-      });
+  //   for (const condition of accountLockConditions) {
+  //     if (condition.condition) {
+  //       notify.info(condition.status);
+  //       _shoonya.setState({
+  //         accountLockData: condition,
+  //         _db: true,
+  //       });
 
-      if (condition.isClosingRequired) {
-        _shoonya.closeAll({ type: "positions" });
-      }
+  //       if (condition.isClosingRequired) {
+  //         _shoonya.closeAll({ type: "positions" });
+  //       }
 
-      if (condition.isClearIntervalRequired) {
-        _shoonya.clearIntervalAndUpdate("moneyManageInterval");
-      }
+  //       if (condition.isClearIntervalRequired) {
+  //         _shoonya.clearIntervalAndUpdate("moneyManageInterval");
+  //       }
 
-      break;
-    }
-  }
+  //       break;
+  //     }
+  //   }
 };
 
 export const startMoneyManagementInterval = () => {
