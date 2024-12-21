@@ -55,9 +55,11 @@ export const CloseAllDropdown: React.FC = () => {
             className="w-full flex items-center gap-2 border border-destructive hover:text-destructive"
             onClick={handleClick}
           >
-            <X size={16} />
-            Close All
-            <ChevronDown size={16} className="ml-auto" />
+            <span className="flex items-center gap-2 mr-2">
+              <X size={16} />
+              Close All
+            </span>
+            <ChevronDown size={16} className="absolute right-2" />
           </Button>
 
           {isOpen && (

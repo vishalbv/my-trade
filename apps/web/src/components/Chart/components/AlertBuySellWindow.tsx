@@ -44,6 +44,21 @@ const alertTypeOptions = [
   { value: "priceTouch", label: "Price Touch" },
 ] as const;
 
+const drawingTypeToAlertMapping = {
+  rect: [
+    {
+      type: "priceMoveOut",
+      label: "Price Move Out of Zone",
+    },
+  ],
+  fibonacci: [
+    {
+      type: "falseBreakout.0.618",
+      label: "0.618 false breakout",
+    },
+  ],
+};
+
 export const AlertBuySellWindow = ({
   symbol,
   drawingId,

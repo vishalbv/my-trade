@@ -28,8 +28,7 @@ export function MarketInformation() {
     if (!key || !upcomingExpiryDates[key]?.[0]) return null;
 
     const expiryDate = upcomingExpiryDates[key][0].date;
-    const daysToGo =
-      moment(expiryDate, "DD-MM-YYYY").diff(moment(), "days") + 1;
+    const daysToGo = moment(expiryDate, "DD-MM-YYYY").diff(moment(), "days");
     return { date: expiryDate, daysToGo };
   };
 

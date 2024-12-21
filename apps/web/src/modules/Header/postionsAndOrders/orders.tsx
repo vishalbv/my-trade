@@ -1,37 +1,34 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
-import { Card } from "@repo/ui/card";
+import { Button } from "@repo/ui/button";
 import { OrderCard } from "./OrderCard";
+
+const statuses = [
+  { value: "COMPLETE", label: "All" },
+  { value: "PENDING", label: "Pending" },
+  { value: "OPEN", label: "Open" },
+] as const;
+
+type Status = (typeof statuses)[number]["value"];
 
 export const Orders: React.FC = () => {
   const orderBook = useSelector(
     (state: RootState) => state.states.shoonya?.orderBook || []
   );
+  const [filter, setFilter] = useState<Status>("COMPLETE");
 
-  // Filter only open and pending orders
-  const openOrders = orderBook.filter(
-    (order) => order.status === "OPEN" || order.status === "PENDING"
-  );
-
-  if (!openOrders.length) {
-    return (
-      <Card className="p-4">
-        <h3 className="text-lg font-semibold mb-4">Open Orders</h3>
-        <p className="text-sm text-muted-foreground text-center py-8">
-          No open orders
-        </p>
-      </Card>
-    );
-  }
+  const filteredOrders =
+    filter === "COMPLETE"
+      ? orderBook
+      : orderBook.filter((order) => order.status === filter);
 
   return (
-    <Card className="p-4">
-      <h3 className="text-lg font-semibold mb-4">Open Orders</h3>
-      <div className="flex flex-col">
+    <div className="flex-1 max-h-[200px] overflow-auto">
+      <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-2 h-8 text-xs font-medium text-muted-foreground border-b border-border bg-muted/50">
           <div className="min-w-[150px] flex-1">Instrument</div>
-          <div className="w-[50px]">Side</div>
+          <div className="w-[50px]"></div>
           <div className="min-w-[50px]">Time</div>
           <div className="min-w-[80px] text-right">Qty.</div>
           <div className="min-w-[80px] text-right">Price</div>
@@ -39,11 +36,17 @@ export const Orders: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-auto">
-          {openOrders.map((order) => (
-            <OrderCard key={order.norenordno} order={order} />
-          ))}
+          {filteredOrders.length > 0 ? (
+            filteredOrders.map((order) => (
+              <OrderCard key={order.norenordno} order={order} />
+            ))
+          ) : (
+            <div className="text-[10px] text-muted-foreground text-center py-4">
+              No orders yet
+            </div>
+          )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };

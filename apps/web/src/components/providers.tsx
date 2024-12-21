@@ -9,6 +9,8 @@ import { Provider as StoreProvider, useSelector } from "react-redux";
 
 import AuthCheckComponent from "../services/authCheck";
 import { fyersDataSocketService } from "../services/fyersDataSocket";
+import { useRouter } from "next/navigation";
+
 export function Provider({ children, ...props }: any) {
   return (
     <div id="app">
@@ -34,6 +36,13 @@ function Initialize() {
   const { access_token, app_id } = useSelector(
     (state: RootState) => state.states.fyers
   );
+  const loggedIn = useSelector(({ states }: any) => states.app?.loggedIn);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loggedIn === false) router.push("/");
+  }, [loggedIn]);
+
   useEffect(() => {
     //for vaul drawer animation
     document.getElementById("app")?.setAttribute("vaul-drawer-wrapper", "");
