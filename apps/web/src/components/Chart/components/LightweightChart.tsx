@@ -67,6 +67,7 @@ interface LightweightChartProps {
   width?: number;
   height?: number;
   series: SeriesData[];
+  legendEnabled?: boolean;
 }
 
 export const LightweightChart: React.FC<LightweightChartProps> = ({
@@ -74,6 +75,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
   width = 800,
   height = 400,
   series,
+  legendEnabled = true,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [chart, setChart] = useState<IChartApi | null>(null);
@@ -86,23 +88,20 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
 
     const currentTheme = themes[theme as keyof typeof themes] || themes.light;
 
-    // Define chart options with theme colors
     const themedChartOptions: DeepPartial<ChartOptions> = {
       layout: {
-        background: { color: "transparent" },
+        background: { type: "solid", color: currentTheme.background },
         textColor: currentTheme.text,
         fontFamily: CHART_FONT_FAMILY,
+        fontSize: 11,
       },
       grid: {
         vertLines: { color: currentTheme.grid },
         horzLines: { color: currentTheme.grid },
       },
-      timeScale: {
-        borderColor: currentTheme.grid,
-        timeVisible: true,
-        secondsVisible: false,
-      },
+
       crosshair: {
+        mode: 0,
         vertLine: {
           color: currentTheme.crosshair,
           style: LineStyle.Dashed,
@@ -112,71 +111,72 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
           style: LineStyle.Dashed,
         },
       },
+
+      timeScale: {
+        borderColor: currentTheme.grid,
+        timeVisible: true,
+        secondsVisible: false,
+        borderVisible: true,
+        ticksVisible: true,
+      },
       rightPriceScale: {
-        borderColor: currentTheme.text,
-      },
-      handleScroll: {
-        mouseWheel: true,
-        pressedMouseMove: true,
-      },
-      handleScale: {
-        mouseWheel: true,
-        pinch: true,
+        visible: true,
+        borderVisible: true,
+        borderColor: currentTheme.grid,
+        textColor: currentTheme.text,
       },
     };
 
+    // Create new chart instance
     const chartInstance = createChart(chartContainerRef.current, {
       ...themedChartOptions,
       width,
       height,
     });
 
-    setChart(chartInstance);
-
-    // Create ResizeObserver for smooth resizing
+    // Set up resize observer
     const resizeObserver = new ResizeObserver((entries) => {
-      if (!chartInstance) return;
-
       const { width: newWidth, height: newHeight } = entries[0].contentRect;
-
-      try {
-        chartInstance.applyOptions({
-          width: newWidth,
-          height: newHeight,
-        });
-        chartInstance.timeScale().fitContent();
-      } catch (error) {
-        console.error("Error resizing chart:", error);
-      }
+      chartInstance.applyOptions({
+        width: newWidth,
+        height: newHeight,
+      });
+      chartInstance.timeScale().fitContent();
     });
 
-    // Start observing the container
     resizeObserver.observe(chartContainerRef.current);
+    setChart(chartInstance);
 
+    // Cleanup function
     return () => {
       resizeObserver.disconnect();
       chartInstance.remove();
+      setChart(null);
     };
-  }, [theme]); // Only recreate when theme changes
+  }, [theme]);
 
-  // Effect for handling series data
+  // Separate effect for handling series data
   useEffect(() => {
-    if (!chart) return;
+    if (!chart || !series.length) return;
 
     try {
-      // Clear existing series
-      seriesApiRef.current.forEach((existingSeries) => {
-        if (existingSeries && chart) {
+      // Clear existing series with proper checks
+      if (seriesApiRef.current.length > 0) {
+        seriesApiRef.current.forEach((existingSeries) => {
           try {
-            chart.removeSeries(existingSeries);
+            if (existingSeries && chart) {
+              chart.removeSeries(existingSeries);
+            }
           } catch (error) {
             console.warn("Error removing series:", error);
           }
-        }
-      });
+        });
+      }
+
+      // Reset series array
       seriesApiRef.current = [];
 
-      // Create series with individual scales
+      // Add new series with 1px line width
       series.forEach((s, index) => {
         if (!s?.data || !chart) return;
 
@@ -184,21 +184,21 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
           const lineSeries = chart.addLineSeries({
             color: s.color || "#2962FF",
             title: s.name || `Series ${index}`,
-            priceScaleId: s.priceScaleId || `scale_${index}`,
+            priceScaleId: "right",
             priceFormat: {
               type: "price",
               precision: 2,
               minMove: 0.01,
             },
+            lineWidth: 2,
+            lastValueVisible: true,
+            priceLineVisible: true,
+            baseLineVisible: false,
+            visible: true,
           });
 
           if (lineSeries) {
-            lineSeries.setData(
-              s.data.map((d) => ({
-                time: d.time as Time,
-                value: d.value,
-              }))
-            );
+            lineSeries.setData(s.data);
             seriesApiRef.current.push(lineSeries);
           }
         } catch (error) {
@@ -206,24 +206,25 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
         }
       });
 
-      // Fit content if we have any series
-      if (seriesApiRef.current.length > 0) {
+      // Fit content after adding all series
+      if (chart && seriesApiRef.current.length > 0) {
         chart.timeScale().fitContent();
       }
     } catch (error) {
-      console.error("Error updating series:", error);
+      console.error("Error updating chart series:", error);
     }
-  }, [chart, series]); // Only update when chart or series changes
+  }, [chart, series]);
 
   return (
     <div>
-      <Legend series={series} />
+      {legendEnabled && <Legend series={series} />}
       <div
         id={containerId}
         ref={chartContainerRef}
         style={{
-          width: width,
+          width: "100%", // Make container responsive
           height: height,
+          cursor: "crosshair",
         }}
       />
     </div>

@@ -1,3 +1,5 @@
+import { ChartTheme } from "../types";
+
 interface CandleData {
   close: number;
   time: number;
@@ -84,12 +86,14 @@ interface RelativeMovementOptions {
   ceData: CandleData[];
   peData: CandleData[];
   indexData: CandleData[];
+  currentTheme: ChartTheme;
 }
 
 export const transformRelativeMovement = ({
   ceData,
   peData,
   indexData,
+  currentTheme,
 }: RelativeMovementOptions): TransformedData[] | null => {
   if (!ceData?.length || !peData?.length || !indexData?.length) return null;
 
@@ -105,7 +109,7 @@ export const transformRelativeMovement = ({
   // Transform CE relative to index
   const ceRelative: TransformedData = {
     price: ceInitialPrice,
-    color: "#2962FF",
+    color: currentTheme.upColor,
     label: "CE vs Index",
     data: ceData.map((item) => ({
       time: formatChartTime(item.time),
@@ -116,7 +120,7 @@ export const transformRelativeMovement = ({
   // Transform PE relative to index (inversed)
   const peRelative: TransformedData = {
     price: peInitialPrice,
-    color: "#FF2962",
+    color: currentTheme.downColor,
     label: "PE vs Index",
     data: peData.map((item) => {
       const alignedPrice = item.close + peOffset;
@@ -133,7 +137,7 @@ export const transformRelativeMovement = ({
   // Transform index as reference
   const indexTransformed: TransformedData = {
     price: indexInitialPrice,
-    color: "#29FF62",
+    color: currentTheme.text,
     label: "Index",
     data: indexData.map((item) => ({
       time: formatChartTime(item.time),
@@ -148,10 +152,12 @@ export const transformPremiumIndexCorrelation = ({
   ceData,
   peData,
   indexData,
+  currentTheme,
 }: {
   ceData: CandleData[];
   peData: CandleData[];
   indexData: CandleData[];
+  currentTheme: ChartTheme;
 }) => {
   if (!ceData.length || !peData.length || !indexData.length) return null;
 
@@ -231,9 +237,9 @@ export const transformPremiumIndexCorrelation = ({
 
   // Remove the offset constants
   const ceCorrelationSeries = {
-    name: "CE Premium Correlation",
-    label: "CE Premium Correlation",
-    color: "#2962FF",
+    name: "CE",
+    label: "CE",
+    color: currentTheme.upColor,
     priceScaleId: "ce_scale",
     data: dataPoints.map((point) => ({
       // Format time here before sending to chart
@@ -243,9 +249,9 @@ export const transformPremiumIndexCorrelation = ({
   };
 
   const peCorrelationSeries = {
-    name: "PE Premium Correlation",
-    label: "PE Premium Correlation",
-    color: "#29FF62",
+    name: "PE",
+    label: "PE",
+    color: currentTheme.downColor,
     priceScaleId: "pe_scale",
     data: dataPoints.map((point) => ({
       // Format time here before sending to chart

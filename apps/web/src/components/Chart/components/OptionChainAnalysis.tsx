@@ -59,6 +59,11 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
     return Math.max(...data.map((item) => item?.oi || 0));
   }, [data]);
 
+  // Helper function to format numbers in lakhs
+  const formatInLakhs = (value: number): string => {
+    return `${(value / 100000).toFixed(2)}L`;
+  };
+
   if (!data || data.length === 0) {
     return <div>No data available</div>;
   }
@@ -66,10 +71,10 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
   return (
     <div className="flex flex-col w-full">
       {/* Headers */}
-      <div className="grid grid-cols-7 gap-2 px-4 py-2 text-xs font-medium">
-        <div className="col-span-3 text-right text-[#2962FF]">CE OI</div>
+      <div className="grid grid-cols-3 gap-2 px-4 py-2 text-xs font-medium">
+        <div className="text-right text-[#2962FF]">CE</div>
         <div className="text-center">Strike</div>
-        <div className="col-span-3 text-[#FF2962]">PE OI</div>
+        <div className="text-[#FF2962]">PE</div>
       </div>
 
       {/* Data rows */}
@@ -77,16 +82,16 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
         {processedData.map(({ strike, ce, pe }) => (
           <div
             key={strike}
-            className={`grid grid-cols-7 gap-2 px-4 py-1 text-xs ${
+            className={`grid grid-cols-3 gap-2 px-4 py-0 text-xs ${
               spotPrice && Math.abs(strike - spotPrice) < 100
                 ? "bg-background/10"
                 : ""
             }`}
           >
             {/* CE Side */}
-            <div className="col-span-3 flex justify-end items-center gap-2">
-              <div className="flex-1 relative h-5">
-                {ce && maxOI > 0 && (
+            <div className="relative h-5">
+              {ce && maxOI > 0 && (
+                <>
                   <div
                     className="absolute right-0 h-full bg-[#2962FF] transition-all"
                     style={{
@@ -94,11 +99,11 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
                       opacity: (ce.oich || 0) > 0 ? 1 : 0.5,
                     }}
                   />
-                )}
-              </div>
-              <span className="w-20 text-right">
-                {ce?.oi?.toLocaleString() || "-"}
-              </span>
+                  <span className="absolute right-1 text-white z-10 top-1/2 transform -translate-y-1/2">
+                    {formatInLakhs(ce.oi)}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Strike Price */}
@@ -113,10 +118,9 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
             </div>
 
             {/* PE Side */}
-            <div className="col-span-3 flex items-center gap-2">
-              <span className="w-20">{pe?.oi?.toLocaleString() || "-"}</span>
-              <div className="flex-1 relative h-5">
-                {pe && maxOI > 0 && (
+            <div className="relative h-5">
+              {pe && maxOI > 0 && (
+                <>
                   <div
                     className="absolute left-0 h-full bg-[#FF2962] transition-all"
                     style={{
@@ -124,8 +128,11 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
                       opacity: (pe.oich || 0) > 0 ? 1 : 0.5,
                     }}
                   />
-                )}
-              </div>
+                  <span className="absolute left-1 text-white z-10 top-1/2 transform -translate-y-1/2">
+                    {formatInLakhs(pe.oi)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         ))}

@@ -19,6 +19,45 @@ import {
 import { MultiSeriesChart } from "../../components/Chart/components/MultiSeriesChart";
 import { LightweightChart } from "../../components/Chart/components/LightweightChart";
 import { OptionChainAnalysis } from "../../components/Chart/components/OptionChainAnalysis";
+import { useTheme } from "next-themes";
+import { themes } from "../../components/Chart/constants/themes";
+import {
+  PercentIcon,
+  LineChartIcon,
+  ArrowUpDownIcon,
+  NetworkIcon,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@repo/ui/tooltip";
+import { cn } from "@repo/utils/ui/helpers";
+
+// Define transformations data
+const transformations = [
+  {
+    id: "correlation",
+    label: "Premium Correlation",
+    icon: NetworkIcon,
+  },
+  {
+    id: "percentage",
+    label: "Percentage Change",
+    icon: PercentIcon,
+  },
+  {
+    id: "price",
+    label: "Price",
+    icon: LineChartIcon,
+  },
+  {
+    id: "relative",
+    label: "Relative Movement",
+    icon: ArrowUpDownIcon,
+  },
+] as const;
 
 export const OptionsAnalyzerWindow: React.FC = () => {
   const { upcomingExpiryDates = {} } = useSelector(
@@ -54,7 +93,7 @@ export const OptionsAnalyzerWindow: React.FC = () => {
   console.log(symbols, "symbols");
 
   return (
-    <div className="flex-1 p-4 h-full w-full">
+    <div className="flex-1 h-full w-full p-1">
       {symbols[0]?.symbol && (
         <ChartWithData symbols={symbols} optionChainData={optionChainData} />
       )}
@@ -71,6 +110,8 @@ const ChartWithData = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const { theme } = useTheme();
+  const currentTheme = themes[theme as keyof typeof themes] || themes.light;
 
   useEffect(() => {
     const updateWidth = () => {
@@ -101,7 +142,7 @@ const ChartWithData = ({
 
   const [selectedTransformation, setSelectedTransformation] = useState<
     "percentage" | "price" | "relative" | "correlation"
-  >("percentage");
+  >("correlation");
 
   const { chartData: chartDataCE } = useRealtimeCandles({
     symbol: symbols[0]?.symbol,
@@ -121,27 +162,29 @@ const ChartWithData = ({
 
   // Get data for all transformations
   const percentageData = [
-    transformPercentageChangeData(chartDataCE, "#2962FF", "CE %"),
-    transformPercentageChangeData(chartDataMain, "#FF2962", "Index %"),
-    transformPercentageChangeData(chartDataPE, "#29FF62", "PE %"),
+    transformPercentageChangeData(chartDataCE, currentTheme.upColor, "CE %"),
+    transformPercentageChangeData(chartDataMain, currentTheme.text, "Index %"),
+    transformPercentageChangeData(chartDataPE, currentTheme.downColor, "PE %"),
   ].filter(Boolean);
 
   const priceData = [
-    transformPriceData(chartDataCE, "#2962FF", "CE"),
+    transformPriceData(chartDataCE, currentTheme.upColor, "CE"),
     // transformPriceData(chartDataMain, "#FF2962", "Index"),
-    transformPriceData(chartDataPE, "#29FF62", "PE"),
+    transformPriceData(chartDataPE, currentTheme.downColor, "PE"),
   ].filter(Boolean);
 
   const relativeMovementData = transformRelativeMovement({
     ceData: chartDataCE || [],
     peData: chartDataPE || [],
     indexData: chartDataMain || [],
+    currentTheme,
   });
 
   const correlationData = transformPremiumIndexCorrelation({
     ceData: chartDataCE || [],
     peData: chartDataPE || [],
     indexData: chartDataMain || [],
+    currentTheme,
   });
 
   console.log(correlationData, "correlationData");
@@ -160,68 +203,57 @@ const ChartWithData = ({
     }
   };
 
+  const series = getTransformedData() || [];
+
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col h-full overflow-y-auto">
       {/* Transformation selector chips */}
-      <div className="flex gap-2 p-2">
-        <button
-          onClick={() => setSelectedTransformation("percentage")}
-          className={`px-3 py-1 rounded-full text-sm ${
-            selectedTransformation === "percentage"
-              ? "bg-primary text-white"
-              : "bg-background/50 text-foreground/60"
-          }`}
-        >
-          Percentage Change
-        </button>
-        <button
-          onClick={() => setSelectedTransformation("price")}
-          className={`px-3 py-1 rounded-full text-sm ${
-            selectedTransformation === "price"
-              ? "bg-primary text-white"
-              : "bg-background/50 text-foreground/60"
-          }`}
-        >
-          Price
-        </button>
-        <button
-          onClick={() => setSelectedTransformation("relative")}
-          className={`px-3 py-1 rounded-full text-sm ${
-            selectedTransformation === "relative"
-              ? "bg-primary text-white"
-              : "bg-background/50 text-foreground/60"
-          }`}
-        >
-          Relative Movement
-        </button>
-        <button
-          onClick={() => setSelectedTransformation("correlation")}
-          className={`px-3 py-1 rounded-full text-sm ${
-            selectedTransformation === "correlation"
-              ? "bg-primary text-white"
-              : "bg-background/50 text-foreground/60"
-          }`}
-        >
-          Premium Correlation
-        </button>
+      <div className="flex p-2 pb-0 gap-2">
+        <TooltipProvider>
+          {transformations.map(({ id, label, icon: Icon }) => (
+            <Tooltip key={id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setSelectedTransformation(id)}
+                  className={cn(
+                    "p-2 rounded-full hover:bg-muted/70 transition-colors",
+                    selectedTransformation === id
+                      ? "!bg-primary text-black"
+                      : "bg-background/50 text-foreground/60"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{label}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </div>
 
       {/* <OptionsAnalyzerExample /> */}
 
       {/* Chart with selected transformation */}
       <div className="flex-1" style={{ height: "550px" }} ref={containerRef}>
-        <LightweightChart
-          width={containerWidth}
-          height={400}
-          series={getTransformedData()}
-        />
+        {series[0] && (
+          <LightweightChart
+            width={containerWidth}
+            height={400}
+            series={series}
+            legendEnabled={false}
+          />
+        )}
       </div>
 
-      {optionChainData && (
+      {optionChainData?.data && (
         <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">Option Chain Analysis</h3>
           <OptionChainAnalysis
-            data={optionChainData.data}
+            data={optionChainData?.data?.slice(
+              1,
+              optionChainData?.data?.length
+            )}
             spotPrice={chartDataMain?.[chartDataMain.length - 1]?.close}
           />
         </div>
