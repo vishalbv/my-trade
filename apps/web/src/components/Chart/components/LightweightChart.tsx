@@ -80,94 +80,86 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
   const seriesApiRef = useRef<ISeriesApi<"Line">[]>([]);
   const { theme } = useTheme();
 
+  // Effect for chart initialization and cleanup
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
     const currentTheme = themes[theme as keyof typeof themes] || themes.light;
 
-    const chartOptions: DeepPartial<ChartOptions> = {
+    // Define chart options with theme colors
+    const themedChartOptions: DeepPartial<ChartOptions> = {
       layout: {
+        background: { color: "transparent" },
         textColor: currentTheme.text,
-        background: {
-          type: "solid",
-          color: currentTheme.background,
-        },
         fontFamily: CHART_FONT_FAMILY,
       },
-      width,
-      height,
       grid: {
-        vertLines: {
-          visible: true,
-          color: currentTheme.grid,
-        },
-        horzLines: {
-          visible: true,
-          color: currentTheme.grid,
-        },
+        vertLines: { color: currentTheme.grid },
+        horzLines: { color: currentTheme.grid },
       },
       timeScale: {
+        borderColor: currentTheme.grid,
         timeVisible: true,
         secondsVisible: false,
-        borderColor: currentTheme.grid,
-        borderVisible: true,
-        visible: true,
-      },
-      rightPriceScale: {
-        borderColor: currentTheme.grid,
-        borderVisible: true,
-        visible: true,
-        textColor: currentTheme.text,
       },
       crosshair: {
-        mode: 1,
         vertLine: {
-          visible: true,
-          labelVisible: true,
           color: currentTheme.crosshair,
-          labelBackgroundColor: currentTheme.controlsBackground,
-          style: 2,
+          style: LineStyle.Dashed,
         },
         horzLine: {
-          visible: true,
-          labelVisible: true,
           color: currentTheme.crosshair,
-          labelBackgroundColor: currentTheme.controlsBackground,
-          style: 2,
+          style: LineStyle.Dashed,
         },
+      },
+      rightPriceScale: {
+        borderColor: currentTheme.text,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
       },
     };
 
-    const chartInstance = createChart(chartContainerRef.current, chartOptions);
-
-    // Only format price in crosshair
-    chartInstance.applyOptions({
-      crosshair: {
-        vertLine: {
-          visible: true,
-          labelVisible: true,
-          color: currentTheme.crosshair,
-          labelBackgroundColor: currentTheme.controlsBackground,
-          style: 2,
-        },
-        horzLine: {
-          visible: true,
-          labelVisible: true,
-          color: currentTheme.crosshair,
-          labelBackgroundColor: currentTheme.controlsBackground,
-          style: 2,
-          labelFormatter: (price: number) => price.toFixed(2),
-        },
-      },
+    const chartInstance = createChart(chartContainerRef.current, {
+      ...themedChartOptions,
+      width,
+      height,
     });
 
     setChart(chartInstance);
 
+    // Create ResizeObserver for smooth resizing
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!chartInstance) return;
+
+      const { width: newWidth, height: newHeight } = entries[0].contentRect;
+
+      try {
+        chartInstance.applyOptions({
+          width: newWidth,
+          height: newHeight,
+        });
+        chartInstance.timeScale().fitContent();
+      } catch (error) {
+        console.error("Error resizing chart:", error);
+      }
+    });
+
+    // Start observing the container
+    resizeObserver.observe(chartContainerRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       chartInstance.remove();
     };
-  }, [width, height, theme]);
+  }, [theme]); // Only recreate when theme changes
 
+  // Effect for handling series data
   useEffect(() => {
     if (!chart) return;
 
@@ -219,9 +211,9 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
         chart.timeScale().fitContent();
       }
     } catch (error) {
-      console.error("Error updating chart:", error);
+      console.error("Error updating series:", error);
     }
-  }, [chart, series]);
+  }, [chart, series]); // Only update when chart or series changes
 
   return (
     <div>
