@@ -5,8 +5,8 @@ import { CloseAllDropdown } from "./CloseAllDropdown";
 
 export const PositionsAndOrders: React.FC = () => {
   return (
-    <div className="w-full border-t border-border max-h-[400px] overflow-auto bg-background/30">
-      <div className="flex w-full">
+    <div className="w-full border-t border-border h-full overflow-auto bg-background/30">
+      <div className="flex h-full">
         <div className="flex-1 flex">
           <Positions />
           <Header title="POSITIONS" />

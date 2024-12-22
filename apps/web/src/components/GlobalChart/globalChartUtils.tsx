@@ -1,14 +1,3 @@
-"use client";
-
-import { useDispatch, useSelector } from "react-redux";
-import {
-  setSelectedLayout,
-  setIndicators,
-  setSelectedTool,
-  setShowDrawings,
-} from "../../src/store/slices/globalChartSlice";
-import { RootState } from "../../src/store/store";
-
 import {
   SingleChartIcon,
   HorizontalSplitIcon,
@@ -18,11 +7,7 @@ import {
   VerticalSplitRightIcon,
   VerticalStackIcon,
   HorizontalThreeIcon,
-} from "../../src/components/Chart/icons/layoutIcons";
-import { ChartLayout } from "../../src/components/Chart/components/ChartLayout";
-
-import { ChartTools } from "../../src/components/Chart/components/ChartTools";
-import { useScalpingMode } from "../../src/hooks/useScalpingMode";
+} from "../Chart/icons/layoutIcons";
 
 interface TimeframeConfig {
   resolution: string;
@@ -31,7 +16,7 @@ interface TimeframeConfig {
   tickFormat: (timestamp: number) => string;
 }
 
-const timeframeConfigs: { [key: string]: TimeframeConfig } = {
+export const timeframeConfigs: { [key: string]: TimeframeConfig } = {
   "1": {
     // 1 minute
     resolution: "1",
@@ -104,7 +89,7 @@ const timeframeConfigs: { [key: string]: TimeframeConfig } = {
 };
 
 // Layout types
-type LayoutType =
+export type LayoutType =
   | "single"
   | "horizontal"
   | "vertical"
@@ -120,7 +105,7 @@ interface LayoutOption {
   icon: React.ReactNode;
 }
 
-const layoutOptions: LayoutOption[] = [
+export const layoutOptions: LayoutOption[] = [
   {
     id: "single",
     label: "Single View",
@@ -162,46 +147,3 @@ const layoutOptions: LayoutOption[] = [
     icon: <HorizontalThreeIcon />,
   },
 ];
-
-export default function GlobalChart() {
-  const dispatch = useDispatch();
-
-  const {
-    selectedLayout,
-    indicators,
-    selectedTool,
-    showDrawings,
-    scalpingMode,
-  } = useSelector((state: RootState) => state.globalChart);
-
-  return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex h-full">
-        <div className="flex flex-col items-center py-2 border-r border-border">
-          <ChartTools
-            indicators={indicators}
-            setIndicators={(newIndicators) =>
-              dispatch(setIndicators(newIndicators))
-            }
-            selectedLayout={selectedLayout}
-            setSelectedLayout={(layout) => dispatch(setSelectedLayout(layout))}
-            layoutOptions={layoutOptions}
-            currentLayout={layoutOptions.find((l) => l.id === selectedLayout)}
-            selectedTool={selectedTool}
-            setSelectedTool={(tool) => dispatch(setSelectedTool(tool))}
-            showDrawings={showDrawings}
-            setShowDrawings={(show) => dispatch(setShowDrawings(show))}
-          />
-        </div>
-
-        <div className="flex-1 min-h-0 relative">
-          <ChartLayout
-            layout={selectedLayout}
-            timeframeConfigs={timeframeConfigs}
-            indicators={indicators}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}

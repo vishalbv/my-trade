@@ -21,12 +21,10 @@ import {
   setSelectedChartKey,
   setChartFullScreenId,
   setSelectedDrawing,
+  LayoutKeyType,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
-import {
-  indexNamesTofyersIndexMapping,
-  shoonyaToFyersSymbol,
-} from "@repo/utils/helpers";
+import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
 
 import { updateFyersToShoonyaMapping } from "../../../store/actions/symbolsActions";
 import { AlertBuySellWindow } from "./AlertBuySellWindow";
@@ -34,9 +32,7 @@ import {
   addDrawing,
   updateDrawing,
 } from "../../../store/actions/drawingActions";
-import { useOptimizedRenderer } from "../hooks/useOptimizedRenderer";
-import { debounce } from "lodash";
-import { useKeyPress } from "../hooks/useKeyPress";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui/popover";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 
@@ -46,13 +42,8 @@ interface Indicator {
   enabled: boolean;
 }
 
-interface ChartLayout {
-  symbol: string;
-  timeframe: string;
-  drawings: Drawing[];
-}
-
 interface ChartContainerProps {
+  layoutTypeKey: LayoutKeyType;
   timeframeConfigs: { [key: string]: TimeframeConfig };
   chartKey: string;
   indicators: Indicator[];
@@ -136,6 +127,7 @@ const SymbolScrollList = memo(
 
 export const ChartContainer = memo(
   ({
+    layoutTypeKey,
     timeframeConfigs,
     chartKey,
     indicators,
@@ -145,11 +137,11 @@ export const ChartContainer = memo(
     const { selectedTool, showDrawings, selectedChartKey, chartFullScreenId } =
       useSelector((state: RootState) => state.globalChart);
     const chartState = useSelector((state: RootState) => {
-      if (!state.globalChart.layouts[chartKey]) {
-        dispatch(initializeLayout({ chartKey }));
-        return state.globalChart.layouts[0] || DEFAULT_CHART_LAYOUT;
+      if (!state.globalChart[layoutTypeKey][chartKey]) {
+        dispatch(initializeLayout({ chartKey, layoutTypeKey }));
+        return state.globalChart[layoutTypeKey][0] || DEFAULT_CHART_LAYOUT;
       }
-      return state.globalChart.layouts[chartKey];
+      return state.globalChart[layoutTypeKey][chartKey];
     });
 
     const [isSymbolSearchOpen, setIsSymbolSearchOpen] = useState(false);
@@ -245,14 +237,14 @@ export const ChartContainer = memo(
     });
     const previousDimensions = useRef({ width: 0, height: 0 });
     const animationRef = useRef<number>();
-
+    console.log(containerDimensions, "containerDimensions");
     // Smooth dimension transition
     const updateDimensions = useCallback(
       (newWidth: number, newHeight: number) => {
         const startWidth = previousDimensions.current.width;
         const startHeight = previousDimensions.current.height;
         const startTime = performance.now();
-        const duration = 300; // Animation duration in ms
+        const duration = 100; // Animation duration in ms
 
         // Cancel any existing animation
         if (animationRef.current) {
@@ -344,12 +336,12 @@ export const ChartContainer = memo(
       if (!optionChainData?.data) return [];
 
       return optionChainData.data
-        .filter((item) =>
+        .filter((item: any) =>
           chartKey === "0"
             ? item.option_type === "CE"
             : item.option_type === "PE"
         )
-        .map((item) => ({
+        .map((item: any) => ({
           symbol: item.symbol,
           strike_price: item.strike_price,
           option_type: item.option_type,
@@ -360,7 +352,7 @@ export const ChartContainer = memo(
     const [selectedScrollIndex, setSelectedScrollIndex] = useState(() => {
       const options = getFilteredOptions();
       const currentIndex = options.findIndex(
-        (opt) => opt.symbol === chartState.symbol
+        (opt: SymbolOption) => opt.symbol === chartState.symbol
       );
       return currentIndex >= 0 ? currentIndex : 0;
     });
@@ -415,6 +407,7 @@ export const ChartContainer = memo(
             chartKey,
             symbol: option.symbol,
             symbolInfo: option,
+            layoutTypeKey,
           })
         );
       } else {
@@ -422,6 +415,7 @@ export const ChartContainer = memo(
           updateLayoutSymbol({
             chartKey,
             symbol: shoonyaToFyersSymbol(option, updateFyersToShoonyaMapping),
+            layoutTypeKey,
           })
         );
       }
@@ -431,7 +425,7 @@ export const ChartContainer = memo(
     useEffect(() => {
       const options = getFilteredOptions();
       const currentIndex = options.findIndex(
-        (opt) => opt.symbol === chartState.symbol
+        (opt: SymbolOption) => opt.symbol === chartState.symbol
       );
       setSelectedScrollIndex(currentIndex >= 0 ? currentIndex : 0);
     }, [chartState.symbol, getFilteredOptions]);
@@ -464,7 +458,7 @@ export const ChartContainer = memo(
             if (!isSymbolScrollOpen) {
               setIsSymbolScrollOpen(true);
             } else {
-              setSelectedScrollIndex((prev) => {
+              setSelectedScrollIndex((prev: number) => {
                 if (e.key === "ArrowUp") {
                   return prev <= 0 ? options.length - 1 : prev - 1;
                 } else {
@@ -521,6 +515,7 @@ export const ChartContainer = memo(
                           updateLayoutTimeframe({
                             chartKey,
                             timeframe: option.value,
+                            layoutTypeKey,
                           })
                         )
                       }
@@ -562,12 +557,14 @@ export const ChartContainer = memo(
                     chartKey,
                     symbol: symbol.symbol,
                     symbolInfo: symbol,
+                    layoutTypeKey,
                   })
                 );
               } else {
                 dispatch(
                   updateLayoutSymbol({
                     chartKey,
+                    layoutTypeKey,
                     symbol: shoonyaToFyersSymbol(
                       symbol,
                       updateFyersToShoonyaMapping
@@ -581,6 +578,7 @@ export const ChartContainer = memo(
         )}
         <div
           className="flex-1 min-h-0"
+          style={{ height: 300 }}
           onDoubleClick={handleDoubleClick}
           ref={containerRef}
         >

@@ -1,4 +1,5 @@
 import { fyersDataSocketService } from "../../../services/fyersDataSocket";
+import { LayoutKeyType } from "../../../store/slices/globalChartSlice";
 import { TimeframeConfig } from "../types";
 import { ChartContainer } from "./ChartContainer";
 import { memo, useEffect, useRef } from "react";
@@ -11,6 +12,7 @@ interface Indicator {
 }
 
 interface ChartLayoutProps {
+  layoutTypeKey: LayoutKeyType;
   layout: string;
   timeframeConfigs: { [key: string]: TimeframeConfig };
   indicators: Indicator[];
@@ -19,7 +21,12 @@ interface ChartLayoutProps {
 const MemoizedChartContainer = memo(ChartContainer);
 
 export const ChartLayout = memo(
-  ({ layout, timeframeConfigs, indicators }: ChartLayoutProps) => {
+  ({
+    layoutTypeKey,
+    layout,
+    timeframeConfigs,
+    indicators,
+  }: ChartLayoutProps) => {
     const isMarketActive = useSelector(
       (state: any) => state.states?.app?.marketStatus?.activeStatus
     );
@@ -220,18 +227,21 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="1"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="2"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );

@@ -16,7 +16,7 @@ import {
 import { usePathname } from "next/navigation";
 import { cn } from "../../../../../packages/ui/lib/utils";
 import AppLogo from "../../components/appLogo";
-import { sidebarIgnorePaths, STYLES } from "../../utils/constants";
+import { STYLES } from "../../utils/constants";
 import {
   Tooltip,
   TooltipContent,
@@ -83,8 +83,6 @@ const Sidebar: React.FC = () => {
       }
     });
   };
-
-  if (sidebarIgnorePaths.includes(pathname)) return null;
 
   return (
     <aside

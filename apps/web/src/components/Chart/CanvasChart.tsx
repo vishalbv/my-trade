@@ -102,10 +102,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const defaultTheme = themes.dark!; // Ensure dark theme exists
   const currentTheme = themes[theme as keyof typeof themes] || defaultTheme;
 
-  const selectedDrawing = useSelector(
-    (state: RootState) => state.globalChart.selectedDrawing
-  );
-
   const [viewState, setViewState] = useState<ViewState>({
     scaleX: 1,
     scaleY: 1,

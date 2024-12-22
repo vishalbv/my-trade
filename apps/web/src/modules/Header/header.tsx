@@ -4,7 +4,7 @@ import { Bell, Menu, LogOut, Zap } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { usePathname, useRouter } from "next/navigation";
-import { sidebarIgnorePaths } from "../../utils/constants";
+import { sidebarIgnorePaths, STYLES } from "../../utils/constants";
 import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
 import { logout } from "../../store/actions/appActions";
@@ -17,8 +17,13 @@ import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
 import { useScalpingMode } from "../../hooks/useScalpingMode";
-import { toggleLeftNav } from "../../store/slices/webAppSlice";
+import {
+  toggleLeftNav,
+  togglePositionsOrders,
+  toggleOptionsAnalyzer,
+} from "../../store/slices/webAppSlice";
 import { getRandomQuote } from "../../utils/tradingQuotes";
+import { OptionsAnalyzerWindow } from "./OptionsAnalyzerWindow";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -33,11 +38,12 @@ const Header: React.FC = () => {
   const { fundInfo = {}, moneyManage = {} } = useSelector(
     ({ states }: RootState) => states.shoonya || {}
   );
-  const [showPositionsOrders, setShowPositionsOrders] = useState(false);
+  const { showPositionsOrders, showOptionsAnalyzer } = useSelector(
+    (state: RootState) => state.webApp
+  );
 
   const dispatch = useDispatch();
   const { scalpingMode } = useSelector((state: RootState) => state.globalChart);
-  useScalpingMode(scalpingMode);
 
   const [currentQuote, setCurrentQuote] = useState(() => getRandomQuote());
 
@@ -52,18 +58,6 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.stopPropagation();
-        setShowPositionsOrders((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
 
   const checkTimerAndLogout = async () => {
@@ -103,17 +97,9 @@ const Header: React.FC = () => {
   };
 
   const handleScalpingMode = () => {
-    // dispatch(toggleLeftNav(!scalpingMode ? true : false));
     dispatch(setScalpingMode(!scalpingMode));
-
-    setTimeout(() => {
-      if (pathname !== "/global-chart") {
-        router.push("/global-chart");
-      }
-    }, 300);
+    router.push("/option-buy");
   };
-
-  if (sidebarIgnorePaths.includes(pathname)) return null;
 
   const overlayStyle = mounted
     ? {
@@ -134,7 +120,10 @@ const Header: React.FC = () => {
   return (
     <>
       <header className="bg-nav text-nav-foreground">
-        <div className="flex justify-between items-center h-14 p-2">
+        <div
+          className="flex justify-between items-center p-2"
+          style={{ height: STYLES.header.height }}
+        >
           {pathname !== "/home" ? (
             <>
               {" "}
@@ -193,15 +182,12 @@ const Header: React.FC = () => {
             </Button>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          {showPositionsOrders && <PositionsAndOrders />}
-        </div>
       </header>
 
       {/* Logout Overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-50",
+          "fixed inset-0 z-[998]",
           isLoggingOut
             ? "animate-diagonal-slide-out opacity-100"
             : "opacity-0 pointer-events-none"
@@ -211,7 +197,7 @@ const Header: React.FC = () => {
 
       {/* Cancel Button */}
       {isLoggingOut && (
-        <div className="fixed inset-0 z-[51] flex items-center justify-center">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center">
           <div className="text-center space-y-4 animate-fade-in">
             <div className="text-2xl font-bold">
               Logging out in {timer} seconds...

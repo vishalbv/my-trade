@@ -24,12 +24,17 @@ interface OptionChainData {
 }
 
 interface ChartLayoutUpdate {
-  [key: string]: {
-    symbol: string;
-    timeframe: string;
-    symbolInfo: any;
-  };
+  layoutTypeKey: LayoutKeyType;
+  [key: string]:
+    | {
+        symbol: string;
+        timeframe: string;
+        symbolInfo: any;
+      }
+    | LayoutKeyType;
 }
+
+export type LayoutKeyType = "globalChartLayouts" | "optionsChartLayouts";
 
 interface GlobalChartState {
   selectedLayout: LayoutType;
@@ -37,7 +42,10 @@ interface GlobalChartState {
   selectedTool: DrawingTool | null;
   showDrawings: boolean;
   selectedChartKey: string;
-  layouts: {
+  globalChartLayouts: {
+    [key: string]: ChartState;
+  };
+  optionsChartLayouts: {
     [key: string]: ChartState;
   };
   chartFullScreenId: string | null;
@@ -95,13 +103,18 @@ const initialState: GlobalChartState = {
   selectedTool: "cursor" as DrawingTool,
   showDrawings: true,
   selectedChartKey: "0",
-  layouts: {
+  globalChartLayouts: {
     "0": defaultLayout,
   },
   chartFullScreenId: null,
   selectedDrawing: null,
   scalpingMode: false,
   optionChainData: null,
+  optionsChartLayouts: {
+    "0": defaultLayout,
+    "1": defaultLayout,
+    "2": defaultLayout,
+  },
   ...getLocalStorageData(),
 };
 
@@ -128,27 +141,41 @@ const globalChartSlice = createSlice({
         chartKey: string;
         symbol: string;
         symbolInfo?: any;
+        layoutTypeKey: LayoutKeyType;
       }>
     ) => {
-      const { chartKey, symbol, symbolInfo } = action.payload;
-      if (state.layouts[chartKey]) {
-        state.layouts[chartKey].symbol = symbol;
-        state.layouts[chartKey].symbolInfo = symbolInfo;
+      const {
+        chartKey,
+        symbol,
+        symbolInfo,
+        layoutTypeKey = "globalChartLayouts",
+      } = action.payload;
+      if (state[layoutTypeKey][chartKey]) {
+        state[layoutTypeKey][chartKey].symbol = symbol;
+        state[layoutTypeKey][chartKey].symbolInfo = symbolInfo;
       }
     },
     updateLayoutTimeframe: (
       state,
-      action: PayloadAction<{ chartKey: string; timeframe: string }>
+      action: PayloadAction<{
+        chartKey: string;
+        timeframe: string;
+        layoutTypeKey: LayoutKeyType;
+      }>
     ) => {
-      const { chartKey, timeframe } = action.payload;
-      if (state.layouts[chartKey]) {
-        state.layouts[chartKey].timeframe = timeframe;
+      const { chartKey, timeframe, layoutTypeKey } = action.payload;
+      if (state[layoutTypeKey][chartKey]) {
+        state[layoutTypeKey][chartKey].timeframe = timeframe;
       }
     },
-    initializeLayout: (state, action: PayloadAction<{ chartKey: string }>) => {
-      const { chartKey } = action.payload;
-      if (!state.layouts[chartKey]) {
-        state.layouts[chartKey] = state.layouts[0] || defaultLayout;
+    initializeLayout: (
+      state,
+      action: PayloadAction<{ chartKey: string; layoutTypeKey: LayoutKeyType }>
+    ) => {
+      const { chartKey, layoutTypeKey } = action.payload;
+      if (!state[layoutTypeKey][chartKey]) {
+        state[layoutTypeKey][chartKey] =
+          state[layoutTypeKey][0] || defaultLayout;
       }
     },
     setSelectedChartKey: (state, action: PayloadAction<string>) => {
@@ -180,7 +207,10 @@ const globalChartSlice = createSlice({
       // }
     },
     updateChartLayout: (state, action: PayloadAction<ChartLayoutUpdate>) => {
-      state.layouts = action.payload;
+      const { layoutTypeKey, ...layouts } = action.payload;
+      Object.keys(layouts).forEach((key) => {
+        state[layoutTypeKey][key] = layouts[key] as ChartState;
+      });
     },
     setOptionChainData: (state, action: PayloadAction<OptionChainData>) => {
       state.optionChainData = action.payload;

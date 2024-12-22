@@ -9,7 +9,6 @@ import {
 import { cn } from "@repo/utils/ui/helpers";
 import { LayoutType } from "../types";
 import { DrawingTools, DrawingTool } from "./DrawingTools";
-import { useState } from "react";
 import { ExitFullScreenIcon, FullScreenIcon } from "../icons/layoutIcons";
 import { useDispatch, useSelector } from "react-redux";
 import { setChartFullScreenId } from "../../../store/slices/globalChartSlice";

@@ -1,4 +1,4 @@
-export const sidebarIgnorePaths = ["/login", "/"];
+export const layoutIgnorePaths = ["/login", "/"];
 export const allStates = [
   "app",
   "shoonya",
@@ -76,5 +76,8 @@ export const DEFAULT_CHART_LAYOUT = {
 export const STYLES = {
   footer: {
     height: "24px",
+  },
+  header: {
+    height: "56px",
   },
 };

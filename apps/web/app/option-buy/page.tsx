@@ -1,3 +1,14 @@
-export default function TradeManage() {
-  return <div>TradeManage</div>;
+"use client";
+
+import dynamic from "next/dynamic";
+
+const OptionGlobalChart = dynamic(
+  () => import("../../src/components/GlobalChart/optionGlobalChart"),
+  {
+    ssr: false,
+  }
+);
+
+export default function OptionBuyPage() {
+  return <OptionGlobalChart />;
 }
