@@ -23,13 +23,10 @@ interface TransformedData {
 
 // Move formatChartTime to the top
 const formatChartTime = (timestamp: number): number => {
-  const date = new Date(timestamp * 1000);
-  // Convert to UTC to avoid timezone issues
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  // Create a new UTC date with just hours and minutes
-  const formattedDate = new Date(Date.UTC(1970, 0, 1, hours, minutes));
-  return formattedDate.getTime() / 1000;
+  // Add 5 hours and 30 minutes (in seconds)
+  // 5 hours = 5 * 60 * 60 = 18000 seconds
+  // 30 minutes = 30 * 60 = 1800 seconds
+  return timestamp + 18000 + 1800;
 };
 
 export const transformPriceData = (
@@ -161,45 +158,25 @@ export const transformPremiumIndexCorrelation = ({
 }) => {
   if (!ceData.length || !peData.length || !indexData.length) return null;
 
-  // Find the latest common timestamp
-  const latestTimestamp = Math.min(
-    ceData[ceData.length - 1].time,
-    peData[peData.length - 1].time,
-    indexData[indexData.length - 1].time
-  );
-
   // Create timestamp-indexed maps for quick lookup
   const ceMap = new Map(ceData.map((candle) => [candle.time, candle]));
   const peMap = new Map(peData.map((candle) => [candle.time, candle]));
   const indexMap = new Map(indexData.map((candle) => [candle.time, candle]));
 
-  // Get all unique timestamps and sort them
+  // Get base values from -50 index
+  const baseIndexPrice = indexData.at(-50)?.close;
+  const baseCEPrice = ceData.at(-50)?.close;
+  const basePEPrice = peData.at(-50)?.close;
+
+  if (!baseIndexPrice || !baseCEPrice || !basePEPrice) return null;
+
+  // Get all unique timestamps
   const allTimestamps = [
     ...new Set([...ceMap.keys(), ...peMap.keys(), ...indexMap.keys()]),
-  ]
-    .filter((timestamp) => timestamp <= latestTimestamp)
-    .sort((a, b) => a - b);
-
-  // Find the first timestamp where we have data for all three
-  const firstValidTimestamp = allTimestamps.find(
-    (timestamp) =>
-      ceMap.has(timestamp) && peMap.has(timestamp) && indexMap.has(timestamp)
-  );
-
-  if (!firstValidTimestamp) return null;
-
-  // Get base values from first valid timestamp
-  const baseIndexPrice = indexMap.get(firstValidTimestamp)!.close;
-  const baseCEPrice = ceMap.get(firstValidTimestamp)!.close;
-  const basePEPrice = peMap.get(firstValidTimestamp)!.close;
-
-  // Calculate price ratios for scaling
-  const ceToIndexRatio = baseCEPrice / baseIndexPrice;
-  const peToIndexRatio = basePEPrice / baseIndexPrice;
+  ];
 
   // Create correlation data points
   const dataPoints = allTimestamps
-    .filter((timestamp) => timestamp >= firstValidTimestamp)
     .map((timestamp) => {
       const indexCandle = indexMap.get(timestamp);
       const ceCandle = ceMap.get(timestamp);
@@ -213,9 +190,13 @@ export const transformPremiumIndexCorrelation = ({
 
       // Normalize option changes using price ratios
       const normalizedCEChange =
-        ((ceCandle.close - baseCEPrice) / (baseCEPrice * ceToIndexRatio)) * 100;
+        ((ceCandle.close - baseCEPrice) /
+          (baseCEPrice * (baseIndexPrice / baseCEPrice))) *
+        100;
       const normalizedPEChange =
-        ((peCandle.close - basePEPrice) / (basePEPrice * peToIndexRatio)) * 100;
+        ((peCandle.close - basePEPrice) /
+          (basePEPrice * (baseIndexPrice / basePEPrice))) *
+        100;
 
       // For CE:
       // Positive when CE premium increases more than index increase (or decreases less than index decrease)

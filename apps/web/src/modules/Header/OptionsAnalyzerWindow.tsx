@@ -189,21 +189,33 @@ const ChartWithData = ({
 
   console.log(correlationData, "correlationData");
   const getTransformedData = () => {
-    switch (selectedTransformation) {
-      case "percentage":
-        return percentageData;
-      case "price":
-        return priceData;
-      case "relative":
-        return relativeMovementData;
-      case "correlation":
-        return correlationData;
-      default:
-        return percentageData;
-    }
+    const getData = () => {
+      switch (selectedTransformation) {
+        case "percentage":
+          return percentageData;
+        case "price":
+          return priceData;
+        case "relative":
+          return relativeMovementData;
+        case "correlation":
+          return correlationData;
+        default:
+          return percentageData;
+      }
+    };
+    const data = getData();
+    if (!data) return [];
+    console.log(data, "data");
+
+    const minLength = Math.min(...data.map((i) => i.data.length), 1100);
+    return data?.map((i) => ({
+      ...i,
+      data: i.data.slice(-1 * minLength),
+    }));
   };
 
   const series = getTransformedData() || [];
+  console.log(series, "series----");
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -236,13 +248,14 @@ const ChartWithData = ({
       {/* <OptionsAnalyzerExample /> */}
 
       {/* Chart with selected transformation */}
-      <div className="flex-1" style={{ height: "550px" }} ref={containerRef}>
+      <div className="flex-1" style={{ height: "360px" }} ref={containerRef}>
         {series[0] && (
           <LightweightChart
             width={containerWidth}
             height={400}
             series={series}
             legendEnabled={false}
+            selectedTransformation={selectedTransformation}
           />
         )}
       </div>
