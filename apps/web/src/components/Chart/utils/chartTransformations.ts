@@ -26,7 +26,7 @@ const formatChartTime = (timestamp: number): number => {
   // Add 5 hours and 30 minutes (in seconds)
   // 5 hours = 5 * 60 * 60 = 18000 seconds
   // 30 minutes = 30 * 60 = 1800 seconds
-  return timestamp + 18000 + 1800;
+  return timestamp / 1000 + 18000 + 1800;
 };
 
 export const transformPriceData = (
@@ -40,7 +40,7 @@ export const transformPriceData = (
     color,
     label,
     data: data.map((item) => ({
-      time: formatChartTime(item.time),
+      time: formatChartTime(item.timestamp),
       value: item.close,
     })),
   };
@@ -56,7 +56,7 @@ export const transformPercentageChangeData = (
   const percentageData = data.map((item, index) => {
     if (index === 0) {
       return {
-        time: formatChartTime(item.time),
+        time: formatChartTime(item.timestamp),
         value: 0,
       };
     }
@@ -66,7 +66,7 @@ export const transformPercentageChangeData = (
       ((item.close - previousClose) / previousClose) * 100;
 
     return {
-      time: formatChartTime(item.time),
+      time: formatChartTime(item.timestamp),
       value: Number(percentageChange.toFixed(2)),
     };
   });
@@ -109,7 +109,7 @@ export const transformRelativeMovement = ({
     color: currentTheme.upColor,
     label: "CE vs Index",
     data: ceData.map((item) => ({
-      time: formatChartTime(item.time),
+      time: formatChartTime(item.timestamp),
       value: item.close + ceOffset,
     })),
   };
@@ -125,7 +125,7 @@ export const transformRelativeMovement = ({
       const inversedValue =
         indexInitialPrice + (indexInitialPrice - alignedPrice);
       return {
-        time: formatChartTime(item.time),
+        time: formatChartTime(item.timestamp),
         value: inversedValue,
       };
     }),
@@ -137,7 +137,7 @@ export const transformRelativeMovement = ({
     color: currentTheme.text,
     label: "Index",
     data: indexData.map((item) => ({
-      time: formatChartTime(item.time),
+      time: formatChartTime(item.timestamp),
       value: item.close,
     })),
   };
@@ -159,9 +159,11 @@ export const transformPremiumIndexCorrelation = ({
   if (!ceData.length || !peData.length || !indexData.length) return null;
 
   // Create timestamp-indexed maps for quick lookup
-  const ceMap = new Map(ceData.map((candle) => [candle.time, candle]));
-  const peMap = new Map(peData.map((candle) => [candle.time, candle]));
-  const indexMap = new Map(indexData.map((candle) => [candle.time, candle]));
+  const ceMap = new Map(ceData.map((candle) => [candle.timestamp, candle]));
+  const peMap = new Map(peData.map((candle) => [candle.timestamp, candle]));
+  const indexMap = new Map(
+    indexData.map((candle) => [candle.timestamp, candle])
+  );
 
   // Get base values from -50 index
   const baseIndexPrice = indexData.at(-50)?.close;

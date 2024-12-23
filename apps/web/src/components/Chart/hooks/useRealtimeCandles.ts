@@ -426,6 +426,6 @@ export const useRealtimeCandles = ({
 
     fetchInitialData();
   }, [symbol, timeframe]); // Re-fetch when symbol or timeframe changes
-
+  // console.log(chartData, "chartData-----");
   return { chartData, setChartData };
 };

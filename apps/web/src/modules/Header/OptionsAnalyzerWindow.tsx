@@ -90,7 +90,7 @@ export const OptionsAnalyzerWindow: React.FC = () => {
     };
     getOptionDetails();
   }, [upcomingExpiryDates]);
-  console.log(symbols, "symbols");
+  //   console.log(symbols, "symbols");
 
   return (
     <div className="flex-1 h-full w-full p-1">
@@ -118,7 +118,7 @@ const ChartWithData = ({
       if (containerRef.current) {
         const newWidth = containerRef.current.clientWidth;
         setContainerWidth(newWidth);
-        console.log("Container width updated:", newWidth); // Debug log
+        // console.log("Container width updated:", newWidth); // Debug log
       }
     };
 
@@ -187,7 +187,11 @@ const ChartWithData = ({
     currentTheme,
   });
 
-  console.log(correlationData, "correlationData");
+  console.log(
+    correlationData?.[0]?.data?.at(-1),
+    chartDataCE.at(-1),
+    "correlationData"
+  );
   const getTransformedData = () => {
     const getData = () => {
       switch (selectedTransformation) {
@@ -215,7 +219,7 @@ const ChartWithData = ({
   };
 
   const series = getTransformedData() || [];
-  console.log(series, "series----");
+  //   console.log(series, "series----");
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">

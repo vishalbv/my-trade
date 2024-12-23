@@ -146,7 +146,8 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
           borderVisible: true,
           borderColor: currentTheme.grid,
           textColor: currentTheme.text,
-          mode: 2,
+          mode: 0,
+          invertScale: true,
         },
         width,
         height,
@@ -267,14 +268,14 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
       const startIndex = Math.max(0, lastIndex - 10);
 
       // Wait for next frame to ensure series are rendered
-      requestAnimationFrame(() => {
-        if (!chartRef.current) return;
+      //   requestAnimationFrame(() => {
+      //     if (!chartRef.current) return;
 
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: startIndex - 10,
-          to: lastIndex + 4,
-        });
-      });
+      //     chartRef.current.timeScale().setVisibleLogicalRange({
+      //       from: startIndex - 10,
+      //       to: lastIndex + 4,
+      //     });
+      //   });
     } catch (error) {
       console.error("Error updating series:", error);
     }
