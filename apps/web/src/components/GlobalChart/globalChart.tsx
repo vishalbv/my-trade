@@ -24,6 +24,7 @@ export default function GlobalChart() {
         <div className="flex flex-col items-center py-2 border-r border-border">
           <ChartTools
             indicators={indicators}
+            layoutTypeKey="globalChartLayouts"
             setIndicators={(newIndicators) =>
               dispatch(setIndicators(newIndicators))
             }

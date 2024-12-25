@@ -32,7 +32,7 @@ export const ChartLayout = memo(
     );
 
     const symbols = useSelector((state: any) =>
-      Object.values(state.globalChart.layouts).map((l: any) => l.symbol)
+      Object.values(state.globalChart[layoutTypeKey]).map((l: any) => l.symbol)
     );
     const previousSymbols = useRef<string[]>([]);
 
@@ -79,6 +79,7 @@ export const ChartLayout = memo(
               timeframeConfigs={timeframeConfigs}
               chartKey="0"
               indicators={indicators}
+              layoutTypeKey={layoutTypeKey}
             />
           );
 
@@ -89,12 +90,14 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="1"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );
@@ -106,12 +109,14 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="1"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );
@@ -124,12 +129,14 @@ export const ChartLayout = memo(
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
 
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
               </div>
 
@@ -137,6 +144,7 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="2"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );
@@ -148,6 +156,7 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <div className="grid grid-rows-2 gap-[1px] h-full">
@@ -155,12 +164,14 @@ export const ChartLayout = memo(
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
 
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="2"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
               </div>
             </div>
@@ -174,12 +185,14 @@ export const ChartLayout = memo(
                   timeframeConfigs={timeframeConfigs}
                   chartKey="0"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
 
                 <MemoizedChartContainer
                   timeframeConfigs={timeframeConfigs}
                   chartKey="1"
                   indicators={indicators}
+                  layoutTypeKey={layoutTypeKey}
                 />
               </div>
 
@@ -187,6 +200,7 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="2"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );
@@ -198,24 +212,28 @@ export const ChartLayout = memo(
                 timeframeConfigs={timeframeConfigs}
                 chartKey="0"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="1"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="2"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
 
               <MemoizedChartContainer
                 timeframeConfigs={timeframeConfigs}
                 chartKey="3"
                 indicators={indicators}
+                layoutTypeKey={layoutTypeKey}
               />
             </div>
           );

@@ -31,6 +31,7 @@ interface DrawingToolsProps {
   showDrawings: boolean;
   setShowDrawings: (show: boolean) => void;
   onClearDrawings: () => void;
+  layoutTypeKey: string;
 }
 
 export function DrawingTools({
@@ -39,11 +40,12 @@ export function DrawingTools({
   showDrawings,
   setShowDrawings,
   onClearDrawings,
+  layoutTypeKey,
 }: DrawingToolsProps) {
   const dispatch = useDispatch();
   const currentSymbol = useSelector((state: RootState) => {
     const selectedKey = state.globalChart.selectedChartKey;
-    return state.globalChart.layouts[selectedKey]?.symbol;
+    return state.globalChart[layoutTypeKey][selectedKey]?.symbol;
   });
   const selectedDrawing = useSelector(
     (state: RootState) => state.globalChart.selectedDrawing

@@ -319,7 +319,8 @@ export const ChartContainer = memo(
     }, []);
 
     const [isSymbolScrollOpen, setIsSymbolScrollOpen] = useState(false);
-    const { scalpingMode, optionChainData } = useSelector(
+    const scalpingMode = layoutTypeKey === "optionsChartLayouts";
+    const { optionChainData } = useSelector(
       (state: RootState) => state.globalChart
     );
     const getFilteredOptions = useCallback(() => {

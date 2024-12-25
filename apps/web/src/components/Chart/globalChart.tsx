@@ -166,13 +166,8 @@ const layoutOptions: LayoutOption[] = [
 export default function GlobalChart() {
   const dispatch = useDispatch();
 
-  const {
-    selectedLayout,
-    indicators,
-    selectedTool,
-    showDrawings,
-    scalpingMode,
-  } = useSelector((state: RootState) => state.globalChart);
+  const { selectedLayout, indicators, selectedTool, showDrawings } =
+    useSelector((state: RootState) => state.globalChart);
 
   const pathname = usePathname();
   return (

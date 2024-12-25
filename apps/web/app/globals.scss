@@ -123,3 +123,9 @@ canvas {
       "calt" 1;
   }
 }
+
+.animate-click:active {
+  position: relative;
+  top: 1px;
+  transition: top 0.1s ease-in-out;
+}

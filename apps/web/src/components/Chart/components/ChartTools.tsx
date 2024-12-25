@@ -37,6 +37,8 @@ interface ChartToolsProps {
   setSelectedTool: (tool: DrawingTool | null) => void;
   showDrawings: boolean;
   setShowDrawings: (show: boolean) => void;
+  layoutTypeKey: string;
+  isLayoutSelectionDisabled: boolean;
 }
 
 export function ChartTools({
@@ -50,6 +52,8 @@ export function ChartTools({
   setSelectedTool,
   showDrawings,
   setShowDrawings,
+  layoutTypeKey,
+  isLayoutSelectionDisabled = false,
 }: ChartToolsProps) {
   const dispatch = useDispatch();
   const { selectedChartKey, chartFullScreenId } = useSelector(
@@ -113,7 +117,7 @@ export function ChartTools({
 
       {/* Layout Selector Dropdown */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild disabled={isLayoutSelectionDisabled}>
           <Button variant="light" size="icon" className="h-8 w-8">
             {currentLayout?.icon}
           </Button>
@@ -146,6 +150,7 @@ export function ChartTools({
         showDrawings={showDrawings}
         setShowDrawings={setShowDrawings}
         onClearDrawings={handleClearDrawings}
+        layoutTypeKey={layoutTypeKey}
       />
 
       {/* Full Screen Button */}

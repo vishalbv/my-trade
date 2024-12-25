@@ -53,7 +53,7 @@ interface GlobalChartState {
     symbol: string;
     drawing: Drawing;
   } | null;
-  scalpingMode: boolean;
+  refreshScalpingMode: number | null;
   optionChainData: OptionChainData | null;
 }
 
@@ -73,7 +73,8 @@ const keysToSaveInLocalStorage = [
   "selectedLayout",
   "indicators",
   "showDrawings",
-  "layouts",
+  "optionsChartLayouts",
+  "globalChartLayouts",
 ];
 
 export const globalChartLocalStorageMiddleware: Middleware =
@@ -108,7 +109,7 @@ const initialState: GlobalChartState = {
   },
   chartFullScreenId: null,
   selectedDrawing: null,
-  scalpingMode: false,
+  refreshScalpingMode: null,
   optionChainData: null,
   optionsChartLayouts: {
     "0": defaultLayout,
@@ -194,8 +195,8 @@ const globalChartSlice = createSlice({
     deleteSelectedDrawing: (state) => {
       state.selectedDrawing = null;
     },
-    setScalpingMode: (state, action: PayloadAction<boolean>) => {
-      state.scalpingMode = action.payload;
+    refreshScalpingMode: (state) => {
+      state.refreshScalpingMode = new Date().getTime();
 
       // If turning off scalping mode, revert to single layout
       // if (!action.payload) {
@@ -230,9 +231,9 @@ export const {
   setChartFullScreenId,
   setSelectedDrawing,
   deleteSelectedDrawing,
-  setScalpingMode,
   updateChartLayout,
   setOptionChainData,
+  refreshScalpingMode,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

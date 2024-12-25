@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import {
   updateChartLayout,
   setOptionChainData,
   setSelectedLayout,
-  setScalpingMode,
 } from "../store/slices/globalChartSlice";
 import { findNearbyExpiries } from "../utils/helpers";
 import { indexNamesTofyersIndexMapping } from "@repo/utils/helpers";
@@ -15,33 +14,37 @@ import { usePathname } from "next/navigation";
 import { toggleLeftNav } from "../store/slices/webAppSlice";
 import { fetchOptionDetails } from "../store/actions/helperActions";
 
-export const useScalpingMode = (scalpingMode: boolean) => {
+export const useScalpingMode = () => {
   const dispatch = useDispatch();
   const pathname = usePathname();
   const { upcomingExpiryDates = {} } = useSelector(
     (state: RootState) => state.states.app
   );
-  const { optionsChartLayouts } = useSelector(
+  const { optionsChartLayouts, refreshScalpingMode } = useSelector(
     (state: RootState) => state.globalChart
   );
   const mainLayout = optionsChartLayouts["1"] || {};
-  const [initialsetup, setInitialsetup] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Handle navigation changes
-  useEffect(() => {
-    if (pathname !== "/option-buy") {
-      dispatch(setScalpingMode(false));
-    }
-  }, [pathname]);
+  // // Handle navigation changes
+  // useEffect(() => {
+  //   if (pathname !== "/option-buy") {
+  //     dispatch(setScalpingMode(false));
+  //   }
+  // }, [pathname]);
+
+  console.log("scalpingMode", isInitializing);
 
   useEffect(() => {
-    if (scalpingMode) {
-      dispatch(toggleLeftNav(true));
-    } else {
-      dispatch(toggleLeftNav(false));
-      setInitialsetup(false);
-    }
-  }, [scalpingMode]);
+    dispatch(toggleLeftNav(true));
+
+    return () => {
+      setIsInitializing(false);
+      setTimeout(() => {
+        dispatch(toggleLeftNav(false));
+      }, 500);
+    };
+  }, []);
 
   //   useEffect(() => {
   //     if (initialsetup) {
@@ -51,27 +54,25 @@ export const useScalpingMode = (scalpingMode: boolean) => {
   //     }
   //   }, [initialsetup]);
 
+  const lastRefreshTime = useRef(null);
+
   useEffect(() => {
-    if (scalpingMode) {
-      const setLayout = async () => {
-        const nearbyExpiries = findNearbyExpiries(upcomingExpiryDates);
+    const setLayout = async () => {
+      const nearbyExpiries = findNearbyExpiries(upcomingExpiryDates);
 
-        if (nearbyExpiries?.[0]) {
-          const [date, symbol] = nearbyExpiries[0];
-          await _fetchOptionDetails(
-            indexNamesTofyersIndexMapping(symbol),
-            date
-          );
+      if (nearbyExpiries?.[0]) {
+        const [date, symbol] = nearbyExpiries[0];
+        await _fetchOptionDetails(indexNamesTofyersIndexMapping(symbol), date);
 
-          dispatch(setSelectedLayout("horizontalThree"));
-          setInitialsetup(true);
-        }
-      };
-      setLayout();
-    } else {
-      setInitialsetup(false);
-    }
-  }, [scalpingMode, upcomingExpiryDates]);
+        // dispatch(setSelectedLayout("horizontalThree"));
+        setTimeout(() => {
+          setIsInitializing(false);
+          lastRefreshTime.current = refreshScalpingMode;
+        }, 200);
+      }
+    };
+    setLayout();
+  }, [JSON.stringify(upcomingExpiryDates), refreshScalpingMode]);
 
   const _fetchOptionDetails = async (symbol: string, expiryDate: string) => {
     if (!symbol) return;
@@ -102,15 +103,25 @@ export const useScalpingMode = (scalpingMode: boolean) => {
         })
       );
     }
+    return null;
   };
 
   useEffect(() => {
-    if (scalpingMode && mainLayout.symbol && initialsetup) {
+    if (
+      mainLayout.symbol &&
+      !isInitializing &&
+      lastRefreshTime.current == refreshScalpingMode
+    ) {
       const symbol = indexNamesTofyersIndexMapping(mainLayout.symbol, true);
       const expiryDate = mainLayout.symbol.endsWith("EQ")
         ? ""
         : upcomingExpiryDates[symbol][0].date;
       _fetchOptionDetails(mainLayout.symbol, expiryDate);
     }
-  }, [scalpingMode, mainLayout.symbol, initialsetup]);
+  }, [mainLayout.symbol, isInitializing]);
+
+  return {
+    mainLayout,
+    isInitializing: isInitializing,
+  };
 };

@@ -16,29 +16,30 @@ import { useScalpingMode } from "../../hooks/useScalpingMode";
 export default function OptionGlobalChart() {
   const dispatch = useDispatch();
 
-  const {
-    selectedLayout,
-    indicators,
-    selectedTool,
-    showDrawings,
-    scalpingMode,
-  } = useSelector((state: RootState) => state.globalChart);
+  const { selectedLayout, indicators, selectedTool, showDrawings } =
+    useSelector((state: RootState) => state.globalChart);
 
-  useScalpingMode(scalpingMode);
+  const { isInitializing } = useScalpingMode();
+
+  if (isInitializing) return null;
 
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex h-full">
         <div className="flex flex-col items-center py-2 border-r border-border">
           <ChartTools
+            layoutTypeKey="optionsChartLayouts"
             indicators={indicators}
             setIndicators={(newIndicators) =>
               dispatch(setIndicators(newIndicators))
             }
-            selectedLayout={selectedLayout}
+            selectedLayout={"horizontalThree"}
             setSelectedLayout={(layout) => dispatch(setSelectedLayout(layout))}
             layoutOptions={layoutOptions}
-            currentLayout={layoutOptions.find((l) => l.id === selectedLayout)}
+            currentLayout={layoutOptions.find(
+              (l) => l.id === "horizontalThree"
+            )}
+            isLayoutSelectionDisabled={true}
             selectedTool={selectedTool}
             setSelectedTool={(tool) => dispatch(setSelectedTool(tool))}
             showDrawings={showDrawings}
@@ -49,7 +50,7 @@ export default function OptionGlobalChart() {
         <div className="flex-1 min-h-0 relative">
           <ChartLayout
             layoutTypeKey="optionsChartLayouts"
-            layout={selectedLayout}
+            layout={"horizontalThree"}
             timeframeConfigs={timeframeConfigs}
             indicators={indicators}
           />

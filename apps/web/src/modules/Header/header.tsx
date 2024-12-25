@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Bell, Menu, LogOut, Zap } from "lucide-react";
+import { Bell, Menu, LogOut, Zap, RefreshCcw } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,14 +9,14 @@ import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
 import { logout } from "../../store/actions/appActions";
 import { useDispatch, useSelector } from "react-redux";
-import { setScalpingMode } from "../../store/slices/globalChartSlice";
+import { refreshScalpingMode } from "../../store/slices/globalChartSlice";
 
 import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
 import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
-import { useScalpingMode } from "../../hooks/useScalpingMode";
+
 import {
   toggleLeftNav,
   togglePositionsOrders,
@@ -43,7 +43,6 @@ const Header: React.FC = () => {
   );
 
   const dispatch = useDispatch();
-  const { scalpingMode } = useSelector((state: RootState) => state.globalChart);
 
   const [currentQuote, setCurrentQuote] = useState(() => getRandomQuote());
 
@@ -95,10 +94,14 @@ const Header: React.FC = () => {
     setTimer(logoutTimerDuration);
     if (timeoutId) clearTimeout(timeoutId);
   };
+  const scalpingMode = pathname === "/option-buy";
 
   const handleScalpingMode = () => {
-    dispatch(setScalpingMode(!scalpingMode));
-    router.push("/option-buy");
+    if (!scalpingMode) {
+      router.push("/option-buy");
+    } else {
+      dispatch(refreshScalpingMode());
+    }
   };
 
   const overlayStyle = mounted
@@ -164,13 +167,16 @@ const Header: React.FC = () => {
               variant="outline"
               onClick={handleScalpingMode}
               className={cn(
-                "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground",
+                "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground animate-click",
                 scalpingMode &&
                   "dark:!text-yellow-500 !text-yellow-800 border-yellow-00/50 dark:border-yellow-500/50"
               )}
             >
               <Zap className="h-5 w-5" />
-              <span className="mb-1">scalper</span>
+              <span className="mb-1">
+                {scalpingMode ? "Refresh" : "scalper"}
+              </span>
+              {scalpingMode && <RefreshCcw className="h-5 w-5" />}
             </Button>
             <ThemeSwitcher />
 
