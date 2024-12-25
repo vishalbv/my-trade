@@ -1,12 +1,12 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   OptionsAnalyzer,
   OptionsAnalyzerExample,
 } from "../../components/Chart/components/OptionsAnalyzer";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
-import { findNearbyExpiries } from "../../utils/helpers";
+import { findNearbyExpiries, PRICECOLOR } from "../../utils/helpers";
 import { fetchOptionDetails } from "../../store/actions/helperActions";
 import { indexNamesTofyersIndexMapping } from "@repo/utils/helpers";
 import { useRealtimeCandles } from "../../components/Chart/hooks/useRealtimeCandles";
@@ -38,76 +38,37 @@ import { cn } from "@repo/utils/ui/helpers";
 // Define transformations data
 const transformations = [
   {
+    id: "relative",
+    label: "Relative Movement",
+    icon: ArrowUpDownIcon,
+  },
+  {
     id: "correlation",
     label: "Premium Correlation",
     icon: NetworkIcon,
   },
-  {
-    id: "percentage",
-    label: "Percentage Change",
-    icon: PercentIcon,
-  },
+  // {
+  //   id: "percentage",
+  //   label: "Percentage Change",
+  //   icon: PercentIcon,
+  // },
   {
     id: "price",
     label: "Price",
     icon: LineChartIcon,
   },
-  {
-    id: "relative",
-    label: "Relative Movement",
-    icon: ArrowUpDownIcon,
-  },
 ] as const;
 
-export const OptionsAnalyzerWindow: React.FC = () => {
-  const { upcomingExpiryDates = {} } = useSelector(
-    (state: RootState) => state.states.app
-  );
+export const OptionsAnalyzerWindow = ({}) => {
+  const {
+    optionsChartLayouts: {
+      [0]: selectedCE,
+      [1]: selectedMainSymbol,
+      [2]: selectedPE,
+    },
+    optionChainData,
+  } = useSelector((state: RootState) => state.globalChart);
 
-  const [symbols, setSymbols] = useState<{ symbol: string }[]>([]);
-  const [optionChainData, setOptionChainData] = useState<
-    OptionChainData[] | null
-  >(null);
-
-  useEffect(() => {
-    const getOptionDetails = async () => {
-      const nearbyExpiries = findNearbyExpiries(upcomingExpiryDates);
-
-      if (nearbyExpiries?.[0]) {
-        const [date, symbol] = nearbyExpiries[0];
-        const { middleCE, middlePE, optionChainData } =
-          (await fetchOptionDetails(
-            indexNamesTofyersIndexMapping(symbol),
-            date
-          )) || {};
-        setOptionChainData(optionChainData);
-        setSymbols([
-          { symbol: middleCE.symbol },
-          { symbol: indexNamesTofyersIndexMapping(symbol) },
-          { symbol: middlePE.symbol },
-        ]);
-      }
-    };
-    getOptionDetails();
-  }, [upcomingExpiryDates]);
-  //   console.log(symbols, "symbols");
-
-  return (
-    <div className="flex-1 h-full w-full p-1">
-      {symbols[0]?.symbol && (
-        <ChartWithData symbols={symbols} optionChainData={optionChainData} />
-      )}
-    </div>
-  );
-};
-
-const ChartWithData = ({
-  symbols,
-  optionChainData,
-}: {
-  symbols: { symbol: string }[];
-  optionChainData: OptionChainData[] | null;
-}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const { theme } = useTheme();
@@ -142,20 +103,20 @@ const ChartWithData = ({
 
   const [selectedTransformation, setSelectedTransformation] = useState<
     "percentage" | "price" | "relative" | "correlation"
-  >("correlation");
+  >("relative");
 
   const { chartData: chartDataCE } = useRealtimeCandles({
-    symbol: symbols[0]?.symbol,
+    symbol: selectedCE?.symbol,
     timeframe: "1",
     requestTicksSubscription: true,
   });
   const { chartData: chartDataMain } = useRealtimeCandles({
-    symbol: symbols[1]?.symbol,
+    symbol: selectedMainSymbol?.symbol,
     timeframe: "1",
     requestTicksSubscription: true,
   });
   const { chartData: chartDataPE } = useRealtimeCandles({
-    symbol: symbols[2]?.symbol,
+    symbol: selectedPE?.symbol,
     timeframe: "1",
     requestTicksSubscription: true,
   });
@@ -252,11 +213,11 @@ const ChartWithData = ({
       {/* <OptionsAnalyzerExample /> */}
 
       {/* Chart with selected transformation */}
-      <div className="flex-1" style={{ height: "360px" }} ref={containerRef}>
+      <div style={{ height: "360px" }} ref={containerRef}>
         {series[0] && (
           <LightweightChart
             width={containerWidth}
-            height={400}
+            height={360}
             series={series}
             legendEnabled={false}
             selectedTransformation={selectedTransformation}
@@ -264,17 +225,77 @@ const ChartWithData = ({
         )}
       </div>
 
-      {optionChainData?.data && (
-        <div className="mt-4">
-          <OptionChainAnalysis
+      <div className="flex-1 flex gap-1 mt-4">
+        {optionChainData?.data && (
+          <div className="w-2/3">
+            <OptionChainAnalysis
+              data={optionChainData?.data?.slice(
+                1,
+                optionChainData?.data?.length
+              )}
+            />
+          </div>
+        )}
+        <div className="flex-1">
+          <PCRatio
             data={optionChainData?.data?.slice(
               1,
               optionChainData?.data?.length
             )}
-            spotPrice={chartDataMain?.[chartDataMain.length - 1]?.close}
           />
         </div>
-      )}
+      </div>
     </div>
   );
+};
+
+const PCRatio = ({ data = [] }) => {
+  const putCallRatio = useMemo(() => {
+    if (!data || data.length === 0) return 0;
+
+    let totalCallOI = 0;
+    let totalPutOI = 0;
+
+    data.forEach((item) => {
+      if (item.option_type === "CE") {
+        totalCallOI += item.oi;
+      } else {
+        totalPutOI += item.oi;
+      }
+    });
+
+    return totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : 0;
+  }, [data]);
+
+  return (
+    <div className="px-4 py-2 text-xs font-medium">
+      <div className="text-lg">
+        P/C Ratio: <span className={"text-primary"}>{putCallRatio}</span>
+      </div>
+      <div>
+        <div className={cn(PRICECOLOR(-1))}>
+          Total Put OI:{" "}
+          {formatInLakhs(
+            data.reduce(
+              (sum, item) => (item.option_type === "PE" ? sum + item.oi : sum),
+              0
+            )
+          )}
+        </div>
+        <div className={cn(PRICECOLOR(1))}>
+          Total Call OI:{" "}
+          {formatInLakhs(
+            data.reduce(
+              (sum, item) => (item.option_type === "CE" ? sum + item.oi : sum),
+              0
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const formatInLakhs = (value: number): string => {
+  return `${(value / 100000).toFixed(2)}L`;
 };

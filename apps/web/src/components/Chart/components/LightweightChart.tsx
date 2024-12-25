@@ -27,6 +27,7 @@ interface SeriesData {
     maxValue?: number;
   };
   priceScaleId?: string;
+  scalePosition?: "left" | "right";
 }
 
 const Legend: React.FC<{ series: SeriesData[] }> = ({ series }) => {
@@ -75,7 +76,7 @@ interface LightweightChartProps {
 export const LightweightChart: React.FC<LightweightChartProps> = ({
   containerId = "lightweight-chart",
   width = 800,
-  height = 400,
+  height = 360,
   series,
   legendEnabled = true,
   selectedTransformation,
@@ -142,13 +143,30 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
           shiftVisibleRangeOnNewBar: true,
         },
         rightPriceScale: {
-          visible: true,
+          visible: false,
           borderVisible: true,
           borderColor: currentTheme.grid,
           textColor: currentTheme.text,
-          mode: 0,
-          invertScale: true,
+          mode: 2,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
         },
+
+        leftPriceScale: {
+          visible: false,
+          borderVisible: true,
+          borderColor: currentTheme.grid,
+          textColor: currentTheme.text,
+          mode: 2,
+          invertScale: true,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+        },
+
         width,
         height,
       });
@@ -243,15 +261,15 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
           const lineSeries = chartRef.current.addLineSeries({
             color: s.color || "#2962FF",
             title: s.name || `Series ${index}`,
-            priceScaleId: "right",
+            priceScaleId: s.scalePosition === "left" ? "left" : "right",
             priceFormat: {
-              type: "price",
+              type: "percent",
               precision: 2,
               minMove: 0.01,
             },
-            lineWidth: 2,
+            lineWidth: s.lineWidth || 2,
             lastValueVisible: true,
-            priceLineVisible: true,
+            priceLineVisible: s.priceLineVisible ?? true,
             baseLineVisible: false,
             visible: true,
           });

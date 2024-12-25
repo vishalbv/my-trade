@@ -1,5 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import { cn } from "@repo/utils/ui/helpers";
+import { updateChartLayout } from "../../../store/slices/globalChartSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
+import { PRICECOLOR } from "../../../utils/helpers";
 
 interface OptionChainData {
   ask: number;
@@ -20,13 +25,23 @@ interface OptionChainData {
 
 interface OptionChainAnalysisProps {
   data: OptionChainData[];
-  spotPrice?: number;
 }
 
 export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
   data,
-  spotPrice,
 }) => {
+  const [hoveredStrikeIndexes, setHoveredStrikeIndexes] = useState<number[]>(
+    []
+  );
+
+  const {
+    [0]: selectedCE,
+    [1]: selectedMainSymbol,
+    [2]: selectedPE,
+  } = useSelector((state: RootState) => state.globalChart.optionsChartLayouts);
+
+  const dispatch = useDispatch();
+
   // Process and group data by strike price
   const processedData = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -53,6 +68,34 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
       .map(([strike, data]) => ({ strike, ...data }));
   }, [data]);
 
+  const onStrikeClick = (indexes: number[]) => {
+    const [peIndex, ceIndex] = [...indexes].sort((a, b) => a - b);
+    const middleCE = processedData[ceIndex]?.ce;
+    const middlePE = processedData[peIndex]?.pe;
+
+    dispatch(
+      updateChartLayout({
+        layoutTypeKey: "optionsChartLayouts",
+        "0": {
+          symbol: middleCE.symbol,
+          timeframe: "1",
+          symbolInfo: {
+            ...middleCE,
+            expiryDate: selectedMainSymbol.symbolInfo.expiryDate,
+          },
+        },
+        "2": {
+          symbol: middlePE.symbol,
+          timeframe: "1",
+          symbolInfo: {
+            ...middlePE,
+            expiryDate: selectedMainSymbol.symbolInfo.expiryDate,
+          },
+        },
+      })
+    );
+  };
+
   // Calculate max OI for scaling
   const maxOI = useMemo(() => {
     if (!data || data.length === 0) return 0;
@@ -71,35 +114,35 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
   return (
     <div className="flex flex-col w-full">
       {/* Headers */}
-      <div className="grid grid-cols-3 gap-2 px-4 py-2 text-xs font-medium">
-        <div className="text-right text-[#2962FF]">CE</div>
-        <div className="text-center">Strike</div>
-        <div className="text-[#FF2962]">PE</div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-4 py-2 text-md font-medium">
+        <div className={cn("text-right", PRICECOLOR(1))}>CE</div>
+        <div className="text-center px-2">Strike</div>
+        <div className={cn("text-[#FF2962]", PRICECOLOR(-1))}>PE</div>
       </div>
 
       {/* Data rows */}
       <div className="flex flex-col gap-1">
-        {processedData.map(({ strike, ce, pe }) => (
+        {processedData.map(({ strike, ce, pe }, index) => (
           <div
             key={strike}
-            className={`grid grid-cols-3 gap-2 px-4 py-0 text-xs ${
-              spotPrice && Math.abs(strike - spotPrice) < 100
-                ? "bg-background/10"
-                : ""
-            }`}
+            className={`grid grid-cols-[1fr_auto_1fr] gap-0 px-4 py-0 text-xs`}
           >
             {/* CE Side */}
             <div className="relative h-5">
               {ce && maxOI > 0 && (
                 <>
                   <div
-                    className="absolute right-0 h-full bg-[#2962FF] transition-all"
+                    className={cn(
+                      "absolute right-0 h-full transition-all",
+                      "bg-green-500 dark:bg-green-400"
+                    )}
                     style={{
                       width: `${((ce.oi || 0) / maxOI) * 100}%`,
                       opacity: (ce.oich || 0) > 0 ? 1 : 0.5,
                     }}
                   />
-                  <span className="absolute right-1 text-white z-10 top-1/2 transform -translate-y-1/2">
+                  <span className="absolute right-1 z-10 top-1/2 transform -translate-y-1/2">
                     {formatInLakhs(ce.oi)}
                   </span>
                 </>
@@ -108,11 +151,26 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
 
             {/* Strike Price */}
             <div
-              className={`text-center font-medium ${
-                spotPrice && Math.abs(strike - spotPrice) < 100
-                  ? "text-primary"
+              className={cn(
+                "text-center font-medium px-4 cursor-pointer",
+                ce?.symbol === selectedCE?.symbol ||
+                  pe?.symbol === selectedPE?.symbol
+                  ? "bg-primary text-black"
+                  : "",
+                hoveredStrikeIndexes.includes(index)
+                  ? "bg-primary/80 text-black"
                   : ""
-              }`}
+              )}
+              onMouseEnter={() =>
+                setHoveredStrikeIndexes([
+                  index,
+                  processedData.length - 1 - index,
+                ])
+              }
+              onMouseLeave={() => setHoveredStrikeIndexes([])}
+              onClick={() =>
+                onStrikeClick([index, processedData.length - 1 - index])
+              }
             >
               {strike}
             </div>
@@ -122,13 +180,16 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
               {pe && maxOI > 0 && (
                 <>
                   <div
-                    className="absolute left-0 h-full bg-[#FF2962] transition-all"
+                    className={cn(
+                      "absolute left-0 h-full transition-all",
+                      "bg-destructive dark:bg-red-400"
+                    )}
                     style={{
                       width: `${((pe.oi || 0) / maxOI) * 100}%`,
                       opacity: (pe.oich || 0) > 0 ? 1 : 0.5,
                     }}
                   />
-                  <span className="absolute left-1 text-white z-10 top-1/2 transform -translate-y-1/2">
+                  <span className="absolute left-1 z-10 top-1/2 transform -translate-y-1/2">
                     {formatInLakhs(pe.oi)}
                   </span>
                 </>

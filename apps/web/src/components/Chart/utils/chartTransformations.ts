@@ -107,7 +107,7 @@ export const transformRelativeMovement = ({
   const ceRelative: TransformedData = {
     price: ceInitialPrice,
     color: currentTheme.upColor,
-    label: "CE vs Index",
+    label: "CE",
     data: ceData.map((item) => ({
       time: formatChartTime(item.timestamp),
       value: item.close + ceOffset,
@@ -118,15 +118,15 @@ export const transformRelativeMovement = ({
   const peRelative: TransformedData = {
     price: peInitialPrice,
     color: currentTheme.downColor,
-    label: "PE vs Index",
+    label: "PE",
     data: peData.map((item) => {
       const alignedPrice = item.close + peOffset;
       // Inverse the movement relative to the index
-      const inversedValue =
-        indexInitialPrice + (indexInitialPrice - alignedPrice);
+      // const inversedValue =
+      //   indexInitialPrice + (indexInitialPrice - alignedPrice);
       return {
         time: formatChartTime(item.timestamp),
-        value: inversedValue,
+        value: alignedPrice,
       };
     }),
   };
@@ -135,7 +135,7 @@ export const transformRelativeMovement = ({
   const indexTransformed: TransformedData = {
     price: indexInitialPrice,
     color: currentTheme.text,
-    label: "Index",
+    label: "INDEX",
     data: indexData.map((item) => ({
       time: formatChartTime(item.timestamp),
       value: item.close,
@@ -165,83 +165,55 @@ export const transformPremiumIndexCorrelation = ({
     indexData.map((candle) => [candle.timestamp, candle])
   );
 
-  // Get base values from -50 index
-  const baseIndexPrice = indexData.at(-50)?.close;
-  const baseCEPrice = ceData.at(-50)?.close;
-  const basePEPrice = peData.at(-50)?.close;
-
-  if (!baseIndexPrice || !baseCEPrice || !basePEPrice) return null;
-
   // Get all unique timestamps
   const allTimestamps = [
     ...new Set([...ceMap.keys(), ...peMap.keys(), ...indexMap.keys()]),
   ];
 
-  // Create correlation data points
+  // Create data points showing premium to index price ratio
   const dataPoints = allTimestamps
     .map((timestamp) => {
-      const indexCandle = indexMap.get(timestamp);
-      const ceCandle = ceMap.get(timestamp);
-      const peCandle = peMap.get(timestamp);
+      const currentCE = ceMap.get(timestamp);
+      const currentPE = peMap.get(timestamp);
+      const currentIndex = indexMap.get(timestamp);
 
-      if (!indexCandle || !ceCandle || !peCandle) return null;
+      if (!currentCE || !currentPE || !currentIndex) return null;
 
-      // Calculate normalized changes relative to index
-      const indexChange =
-        ((indexCandle.close - baseIndexPrice) / baseIndexPrice) * 100;
-
-      // Normalize option changes using price ratios
-      const normalizedCEChange =
-        ((ceCandle.close - baseCEPrice) /
-          (baseCEPrice * (baseIndexPrice / baseCEPrice))) *
-        100;
-      const normalizedPEChange =
-        ((peCandle.close - basePEPrice) /
-          (basePEPrice * (baseIndexPrice / basePEPrice))) *
-        100;
-
-      // For CE:
-      // Positive when CE premium increases more than index increase (or decreases less than index decrease)
-      // Negative when CE premium decreases more than index decrease (or increases less than index increase)
-      const ceCorrelation = normalizedCEChange - Math.abs(indexChange);
-
-      // For PE:
-      // Positive when PE premium increases while index decreases (or decreases while index increases)
-      // Negative when PE premium moves in same direction as index
-      const peCorrelation = normalizedPEChange - -indexChange;
+      // Calculate simple ratios of premium prices to index price
+      const ceRatio = (currentCE.close / currentIndex.close) * 100;
+      const peRatio = (currentPE.close / currentIndex.close) * 100;
 
       return {
         timestamp,
-        ceCorrelation,
-        peCorrelation,
+        ceRatio,
+        peRatio,
       };
     })
     .filter(Boolean);
 
-  // Remove the offset constants
-  const ceCorrelationSeries = {
-    name: "CE",
-    label: "CE",
+  const cePremiumSeries = {
+    name: "CE Premium Ratio",
+    label: "CE Premium Ratio",
     color: currentTheme.upColor,
     priceScaleId: "ce_scale",
+    scalePosition: "right",
     data: dataPoints.map((point) => ({
-      // Format time here before sending to chart
       time: formatChartTime(point!.timestamp),
-      value: point!.ceCorrelation,
+      value: point!.ceRatio,
     })),
   };
 
-  const peCorrelationSeries = {
-    name: "PE",
-    label: "PE",
+  const pePremiumSeries = {
+    name: "PE Premium Ratio",
+    label: "PE Premium Ratio",
     color: currentTheme.downColor,
     priceScaleId: "pe_scale",
+    scalePosition: "right",
     data: dataPoints.map((point) => ({
-      // Format time here before sending to chart
       time: formatChartTime(point!.timestamp),
-      value: point!.peCorrelation,
+      value: point!.peRatio,
     })),
   };
 
-  return [ceCorrelationSeries, peCorrelationSeries];
+  return [cePremiumSeries, pePremiumSeries];
 };
