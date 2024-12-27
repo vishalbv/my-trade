@@ -15,15 +15,8 @@ import { PnL } from "../../components/p&l";
 import { PRICECOLOR } from "../../utils/helpers";
 import { RootState } from "../../store/store";
 import { INDEX_DETAILS } from "@repo/utils/constants";
-import { PositionsAndOrders } from "./postionsAndOrders/postionsAndOrders";
 
-import {
-  toggleLeftNav,
-  togglePositionsOrders,
-  toggleOptionsAnalyzer,
-} from "../../store/slices/webAppSlice";
 import { getRandomQuote } from "../../utils/tradingQuotes";
-import { OptionsAnalyzerWindow } from "./OptionsAnalyzerWindow";
 
 const logoutTimerDuration = 4;
 const Header: React.FC = () => {
@@ -37,9 +30,6 @@ const Header: React.FC = () => {
   const { theme } = useTheme();
   const { fundInfo = {}, moneyManage = {} } = useSelector(
     ({ states }: RootState) => states.shoonya || {}
-  );
-  const { showPositionsOrders, showOptionsAnalyzer } = useSelector(
-    (state: RootState) => state.webApp
   );
 
   const dispatch = useDispatch();
@@ -167,7 +157,7 @@ const Header: React.FC = () => {
               variant="outline"
               onClick={handleScalpingMode}
               className={cn(
-                "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground animate-click",
+                "rounded-full bg-nav px-2 pr-3 py-0 h-8 flex items-center gap-2 hover:bg-pimary/80 hover:text-foreground/80 text-muted-foreground animate-click scale-95 hover:scale-100 transition-all duration-100",
                 scalpingMode &&
                   "dark:!text-yellow-500 !text-yellow-800 border-yellow-00/50 dark:border-yellow-500/50"
               )}

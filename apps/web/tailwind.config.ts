@@ -13,6 +13,7 @@ const config: Config = {
     extend: {
       fontSize: {
         "2xs": "0.625rem", // 10px
+        "3xs": "0.5rem", // 8px
       },
       height: {
         fill: "-webkit-fill-available",

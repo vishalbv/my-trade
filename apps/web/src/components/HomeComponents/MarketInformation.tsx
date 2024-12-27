@@ -28,7 +28,12 @@ export function MarketInformation() {
     if (!key || !upcomingExpiryDates[key]?.[0]) return null;
 
     const expiryDate = upcomingExpiryDates[key][0].date;
-    const daysToGo = moment(expiryDate, "DD-MM-YYYY").diff(moment(), "days");
+    // Only consider the date part, ignore time
+    const expiryMoment = moment(expiryDate, "DD-MM-YYYY").startOf("day");
+    const now = moment().startOf("day");
+
+    // Calculate difference in days directly
+    const daysToGo = expiryMoment.diff(now, "days");
     return { date: expiryDate, daysToGo };
   };
 
@@ -72,11 +77,15 @@ export function MarketInformation() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
                   <span>{expiryInfo.date}</span>
                   <span className="tabular-nums">
-                    {expiryInfo.daysToGo === 0
-                      ? "Today"
-                      : expiryInfo.daysToGo === 1
-                        ? "Tomorrow"
-                        : `${expiryInfo.daysToGo} days`}
+                    {expiryInfo.daysToGo === 0 ? (
+                      <span className="text-primary text-sm text-yellow-500">
+                        Today Expiry
+                      </span>
+                    ) : expiryInfo.daysToGo === 1 ? (
+                      <span className="text-primary text-sm">Tomorrow</span>
+                    ) : (
+                      <span className="">{expiryInfo.daysToGo} days left</span>
+                    )}
                   </span>
                 </div>
               )}

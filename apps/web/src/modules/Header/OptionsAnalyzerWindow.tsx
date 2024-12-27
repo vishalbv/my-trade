@@ -26,6 +26,9 @@ import {
   LineChartIcon,
   ArrowUpDownIcon,
   NetworkIcon,
+  Icon,
+  Infinity,
+  AudioWaveform,
 } from "lucide-react";
 import {
   Tooltip,
@@ -34,17 +37,18 @@ import {
   TooltipTrigger,
 } from "@repo/ui/tooltip";
 import { cn } from "@repo/utils/ui/helpers";
+import { Button } from "@repo/ui/button";
 
 // Define transformations data
 const transformations = [
   {
     id: "relative",
-    label: "Relative Movement",
+    label: "Relative",
     icon: ArrowUpDownIcon,
   },
   {
     id: "correlation",
-    label: "Premium Correlation",
+    label: "% to Index",
     icon: NetworkIcon,
   },
   // {
@@ -52,12 +56,27 @@ const transformations = [
   //   label: "Percentage Change",
   //   icon: PercentIcon,
   // },
-  {
-    id: "price",
-    label: "Price",
-    icon: LineChartIcon,
-  },
+  // {
+  //   id: "price",
+  //   label: "Price",
+  //   icon: LineChartIcon,
+  // },
 ] as const;
+
+const calculateSMA = (data: any[], period: number = 5) => {
+  return data.map((point, index) => {
+    if (index < period - 1) return point;
+
+    const sum = data
+      .slice(index - period + 1, index + 1)
+      .reduce((acc, curr) => acc + curr.value, 0);
+
+    return {
+      time: point.time,
+      value: sum / period,
+    };
+  });
+};
 
 export const OptionsAnalyzerWindow = ({}) => {
   const {
@@ -105,21 +124,29 @@ export const OptionsAnalyzerWindow = ({}) => {
     "percentage" | "price" | "relative" | "correlation"
   >("relative");
 
-  const { chartData: chartDataCE } = useRealtimeCandles({
-    symbol: selectedCE?.symbol,
-    timeframe: "1",
-    requestTicksSubscription: true,
-  });
-  const { chartData: chartDataMain } = useRealtimeCandles({
-    symbol: selectedMainSymbol?.symbol,
-    timeframe: "1",
-    requestTicksSubscription: true,
-  });
-  const { chartData: chartDataPE } = useRealtimeCandles({
-    symbol: selectedPE?.symbol,
-    timeframe: "1",
-    requestTicksSubscription: true,
-  });
+  // const { chartData: chartDataCE } = useRealtimeCandles({
+  //   symbol: selectedCE?.symbol,
+  //   timeframe: "1",
+  //   requestTicksSubscription: true,
+  // });
+  // const { chartData: chartDataMain } = useRealtimeCandles({
+  //   symbol: selectedMainSymbol?.symbol,
+  //   timeframe: "1",
+  //   requestTicksSubscription: true,
+  // });
+  // const { chartData: chartDataPE } = useRealtimeCandles({
+  //   symbol: selectedPE?.symbol,
+  //   timeframe: "1",
+  //   requestTicksSubscription: true,
+  // });
+
+  const {
+    [0]: chartDataCE = [],
+    [1]: chartDataMain = [],
+    [2]: chartDataPE = [],
+  } = useSelector(
+    (state: RootState) => state.globalChart.chartHistoryForOptions
+  );
 
   // Get data for all transformations
   const percentageData = [
@@ -182,43 +209,84 @@ export const OptionsAnalyzerWindow = ({}) => {
   const series = getTransformedData() || [];
   //   console.log(series, "series----");
 
+  const [isSmoothed, setIsSmoothed] = useState(false);
+
+  // Process series data with SMA when smoothing is enabled
+  const processedSeries = series.map((s) => ({
+    ...s,
+    data: isSmoothed ? calculateSMA(s.data) : s.data,
+  }));
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Transformation selector chips */}
-      <div className="flex p-2 pb-0 gap-2">
-        <TooltipProvider>
-          {transformations.map(({ id, label, icon: Icon }) => (
-            <Tooltip key={id}>
+      <div className="flex justify-between items-center px-4 py-2 border-b border-border/40">
+        {/* Left side - Transformation buttons */}
+        <div className="flex items-center gap-1.5">
+          <TooltipProvider delayDuration={100}>
+            <div className="flex rounded-lg gap-1">
+              {transformations.map(({ id, label, icon: Icon }) => (
+                <Tooltip key={id} open={false}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setSelectedTransformation(id)}
+                      className={cn(
+                        "h-7 px-2.5 rounded-md transition-all hover:text-foreground",
+                        selectedTransformation === id
+                          ? "border-primary shadow-sm hover:bg-muted/50"
+                          : "bg-transparent text-muted-foreground hover:bg-muted/50"
+                      )}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{label}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {label}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
+        </div>
+
+        {/* Right side - Chart controls */}
+        <div className="flex items-center gap-2">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  onClick={() => setSelectedTransformation(id)}
+                <Button
+                  onClick={() => setIsSmoothed(!isSmoothed)}
+                  variant="outline"
+                  size="sm"
                   className={cn(
-                    "p-2 rounded-full hover:bg-muted/70 transition-colors",
-                    selectedTransformation === id
-                      ? "!bg-primary text-black"
-                      : "bg-background/50 text-foreground/60"
+                    "h-7 w-7 p-0 rounded-md hover:bg-muted/50 hover:text-foreground",
+                    isSmoothed && "border-primary shadow-sm"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                </button>
+                  <AudioWaveform className="w-4 h-4" />
+                </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{label}</p>
+              <TooltipContent side="bottom">
+                {isSmoothed ? "Show Original" : "Smooth Graph"}
               </TooltipContent>
             </Tooltip>
-          ))}
-        </TooltipProvider>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* <OptionsAnalyzerExample /> */}
 
       {/* Chart with selected transformation */}
+
       <div style={{ height: "360px" }} ref={containerRef}>
         {series[0] && (
           <LightweightChart
             width={containerWidth}
             height={360}
-            series={series}
+            series={processedSeries}
             legendEnabled={false}
             selectedTransformation={selectedTransformation}
           />

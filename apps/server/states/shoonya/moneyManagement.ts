@@ -110,8 +110,14 @@ export const checkMoneyManagementRules = () => {
 export const startMoneyManagementInterval = () => {
   _shoonya.clearIntervalAndUpdate("moneyManageInterval");
   const interval = setInterval(() => {
-    if (_shoonya.getState().access_token) {
-      checkMoneyManagementRules();
+    if (
+      moment().isBefore(moment().set({ hours: 15, minutes: 30, seconds: 0 }))
+    ) {
+      if (_shoonya.getState().access_token) {
+        checkMoneyManagementRules();
+      }
+    } else {
+      _shoonya.clearIntervalAndUpdate("moneyManageInterval");
     }
   }, 3000);
   _shoonya.setIntervalAndUpdate("moneyManageInterval", interval);

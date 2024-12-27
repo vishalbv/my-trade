@@ -55,6 +55,9 @@ interface GlobalChartState {
   } | null;
   refreshScalpingMode: number | null;
   optionChainData: OptionChainData | null;
+  chartHistoryForOptions: {
+    [key: string]: any;
+  };
 }
 
 const defaultLayout: ChartState = {
@@ -116,6 +119,7 @@ const initialState: GlobalChartState = {
     "1": defaultLayout,
     "2": defaultLayout,
   },
+  chartHistoryForOptions: {},
   ...getLocalStorageData(),
 };
 
@@ -216,6 +220,10 @@ const globalChartSlice = createSlice({
     setOptionChainData: (state, action: PayloadAction<OptionChainData>) => {
       state.optionChainData = action.payload;
     },
+    setChartHistoryForOptions: (state, action: any) => {
+      state.chartHistoryForOptions[action.payload.chartKey] =
+        action.payload.chartData;
+    },
   },
 });
 
@@ -234,6 +242,7 @@ export const {
   updateChartLayout,
   setOptionChainData,
   refreshScalpingMode,
+  setChartHistoryForOptions,
 } = globalChartSlice.actions;
 
 export default globalChartSlice.reducer;

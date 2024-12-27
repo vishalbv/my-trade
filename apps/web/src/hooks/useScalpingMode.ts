@@ -11,7 +11,7 @@ import {
 import { findNearbyExpiries } from "../utils/helpers";
 import { indexNamesTofyersIndexMapping } from "@repo/utils/helpers";
 import { usePathname } from "next/navigation";
-import { toggleLeftNav } from "../store/slices/webAppSlice";
+import { setRightWindowSize, toggleLeftNav } from "../store/slices/webAppSlice";
 import { fetchOptionDetails } from "../store/actions/helperActions";
 
 export const useScalpingMode = () => {
@@ -37,11 +37,13 @@ export const useScalpingMode = () => {
 
   useEffect(() => {
     dispatch(toggleLeftNav(true));
+    dispatch(setRightWindowSize(30));
 
     return () => {
       setIsInitializing(false);
       setTimeout(() => {
         dispatch(toggleLeftNav(false));
+        dispatch(setRightWindowSize(0));
       }, 500);
     };
   }, []);
@@ -59,9 +61,10 @@ export const useScalpingMode = () => {
   useEffect(() => {
     const setLayout = async () => {
       const nearbyExpiries = findNearbyExpiries(upcomingExpiryDates);
-
+      console.log("nearbyExpiries-----", nearbyExpiries);
       if (nearbyExpiries?.[0]) {
         const [date, symbol] = nearbyExpiries[0];
+
         await _fetchOptionDetails(indexNamesTofyersIndexMapping(symbol), date);
 
         // dispatch(setSelectedLayout("horizontalThree"));

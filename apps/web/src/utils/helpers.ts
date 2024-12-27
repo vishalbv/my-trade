@@ -1,3 +1,5 @@
+import moment from "moment";
+
 export const _setInterval = (
   fn: () => void,
   interval: number,
@@ -27,25 +29,22 @@ interface UpcomingExpiryDates {
 export const findNearbyExpiries = (
   upcomingExpiryDates: UpcomingExpiryDates
 ) => {
-  const now = Date.now();
   const allExpiries: [string, string][] = []; // [date, symbol]
 
   Object.entries(upcomingExpiryDates).forEach(([symbol, expiries]) => {
-    expiries.forEach(({ date, expiry }) => {
-      const expiryTimestamp = parseInt(expiry) * 1000;
-      if (expiryTimestamp > now) {
-        allExpiries.push([date, symbol]);
-      }
-    });
+    const { date, expiry } = expiries[0];
+    if (moment(date, "DD-MM-YYYY").isSameOrAfter(moment().startOf("day"))) {
+      allExpiries.push([date, symbol]);
+    }
   });
 
   // Sort by expiry date
   allExpiries.sort((a, b) => {
-    const dateA = new Date(a[0].split("-").reverse().join("-"));
-    const dateB = new Date(b[0].split("-").reverse().join("-"));
-    return dateA.getTime() - dateB.getTime();
+    const dateA = moment(a[0], "DD-MM-YYYY");
+    const dateB = moment(b[0], "DD-MM-YYYY");
+    return dateA.diff(dateB, "days");
   });
 
   // Return next 5 expiries
-  return allExpiries.slice(0, 5);
+  return allExpiries;
 };

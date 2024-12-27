@@ -118,7 +118,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-4 py-2 text-md font-medium">
         <div className={cn("text-right", PRICECOLOR(1))}>CE</div>
         <div className="text-center px-2">Strike</div>
-        <div className={cn("text-[#FF2962]", PRICECOLOR(-1))}>PE</div>
+        <div className={cn(PRICECOLOR(-1))}>PE</div>
       </div>
 
       {/* Data rows */}
@@ -135,7 +135,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
                   <div
                     className={cn(
                       "absolute right-0 h-full transition-all",
-                      "bg-green-500 dark:bg-green-400"
+                      "bg-green-500 dark:bg-green-800"
                     )}
                     style={{
                       width: `${((ce.oi || 0) / maxOI) * 100}%`,
@@ -182,7 +182,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
                   <div
                     className={cn(
                       "absolute left-0 h-full transition-all",
-                      "bg-destructive dark:bg-red-400"
+                      "bg-destructive dark:bg-red-600"
                     )}
                     style={{
                       width: `${((pe.oi || 0) / maxOI) * 100}%`,
@@ -200,7 +200,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="flex justify-between px-4 mt-4 text-xs">
+      {/* <div className="flex justify-between px-4 mt-4 text-xs">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-[#2962FF] opacity-100" />
@@ -221,7 +221,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
             <span>OI Unwinding</span>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

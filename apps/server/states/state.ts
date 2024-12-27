@@ -88,8 +88,7 @@ class State {
   ): void => {
     const clearFunc = timerType === "interval" ? clearInterval : clearTimeout;
     if (this.refs[param]) clearFunc(this.refs[param]);
-    this.refs[param] = false;
-    this.state[param] = false;
+    this.setState({ [param]: false });
   };
 
   private setAndUpdateTimer = (
@@ -99,14 +98,17 @@ class State {
   ): void => {
     this.clearAndUpdateTimer(param, timerType);
     this.refs[param] = val;
-    this.state[param] = !!val;
+    this.setState({ [param]: !!val });
   };
 
   clearIntervalAndUpdate = (param: string): void =>
     this.clearAndUpdateTimer(param, "interval");
   setIntervalAndUpdate = (param: string, val: any): void => {
     if (this.refs[param]) {
-      notify.error("something wrong in setIntervalAndUpdate");
+      console.error(
+        "something wrong in setIntervalAndUpdate " + param,
+        "If u restart the app, U can iognore this error"
+      );
     }
     this.setAndUpdateTimer(param, val, "interval");
   };

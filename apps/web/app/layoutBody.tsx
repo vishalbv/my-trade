@@ -102,10 +102,12 @@ export default function LayoutBody({
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
         e.stopPropagation();
         handleDoubleClickTopHandle();
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "Enter") {
+        e.preventDefault();
         e.stopPropagation();
         handleDoubleClickRightHandle();
       }

@@ -22,6 +22,7 @@ import {
   setChartFullScreenId,
   setSelectedDrawing,
   LayoutKeyType,
+  setChartHistoryForOptions,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
@@ -160,6 +161,16 @@ export const ChartContainer = memo(
     const { chartData, setChartData } = useRealtimeCandles(
       realtimeCandlesConfig
     );
+    useEffect(() => {
+      if (layoutTypeKey === "optionsChartLayouts") {
+        dispatch(
+          setChartHistoryForOptions({
+            chartKey: chartKey,
+            chartData,
+          } as any)
+        );
+      }
+    }, [chartData, layoutTypeKey]);
 
     const currentTimeframe = timeframeOptions.find(
       (t) => t.value === chartState.timeframe
@@ -439,7 +450,7 @@ export const ChartContainer = memo(
             ? "border-blue-500 border dark:border-0.5"
             : "border-transparent border dark:border-0.5",
           chartFullScreenId === chartKey
-            ? "absolute inset-0 z-50"
+            ? "absolute inset-0 z-[151]"
             : chartFullScreenId
               ? "w-0"
               : "",
@@ -511,15 +522,39 @@ export const ChartContainer = memo(
                   {timeframeOptions.map((option) => (
                     <DropdownMenuItem
                       key={option.value}
-                      onClick={() =>
-                        dispatch(
-                          updateLayoutTimeframe({
-                            chartKey,
-                            timeframe: option.value,
-                            layoutTypeKey,
-                          })
-                        )
-                      }
+                      onClick={() => {
+                        if (layoutTypeKey === "optionsChartLayouts") {
+                          dispatch(
+                            updateLayoutTimeframe({
+                              chartKey: "0",
+                              timeframe: option.value,
+                              layoutTypeKey,
+                            })
+                          );
+                          dispatch(
+                            updateLayoutTimeframe({
+                              chartKey: "1",
+                              timeframe: option.value,
+                              layoutTypeKey,
+                            })
+                          );
+                          dispatch(
+                            updateLayoutTimeframe({
+                              chartKey: "2",
+                              timeframe: option.value,
+                              layoutTypeKey,
+                            })
+                          );
+                        } else {
+                          dispatch(
+                            updateLayoutTimeframe({
+                              chartKey,
+                              timeframe: option.value,
+                              layoutTypeKey,
+                            })
+                          );
+                        }
+                      }}
                       className={cn(
                         chartState.timeframe === option.value
                           ? "bg-muted"

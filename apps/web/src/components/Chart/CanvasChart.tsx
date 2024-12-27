@@ -414,12 +414,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   useEffect(() => {
     if (!dimensions.width || !data.length) return;
 
-    if (
-      (timeframeConfig.resolution !== prevTimeframe.current ||
-        chartState.symbol !== prevSymbol.current) &&
-      data[0] &&
-      data[0] !== prevData0.current
-    ) {
+    // if (
+    //   (timeframeConfig.resolution !== prevTimeframe.current ||
+    //     chartState.symbol !== prevSymbol.current) &&
+    //   data[0] &&
+    //   data[0] !== prevData0.current
+    // ) {
+    if (true) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
@@ -2834,7 +2835,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
               position: "absolute",
               top: 0,
               right: 0,
-              zIndex: 3,
+              zIndex: 150,
               //   imageRendering: "pixelated",
 
               backgroundColor: currentTheme?.background, // Add this to match chart background
@@ -2901,7 +2902,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
                 position: "absolute",
                 top: 0,
                 left: 0,
-                zIndex: 4,
+                zIndex: 153,
                 pointerEvents: "none",
               }}
             />
