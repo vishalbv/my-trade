@@ -628,6 +628,7 @@ export const ChartContainer = memo(
             onDrawingComplete={handleDrawingComplete}
             onDrawingUpdate={handleDrawingUpdate}
             chartState={chartState}
+            chartKey={chartKey}
             dimensions={{
               ...containerDimensions,
               width: containerDimensions.width,

@@ -5,6 +5,8 @@ import {
   addItemToKeyOfId,
   clearItemsInKeyOfId,
   deleteItemInKeyOfId,
+  setStatesByID,
+  setStatesByIDAndKey,
   updateItemInKeyOfId,
 } from "../slices/stateSlice";
 
@@ -41,6 +43,11 @@ export const deleteDrawing =
 export const clearDrawings = (symbol: string) => (dispatch: AppDispatch) => {
   dispatch(clearItemsInKeyOfId({ id: "drawings", key: symbol }));
 };
+export const updateDrawings =
+  ({ symbol, drawings }: { symbol: string; drawings: Drawing[] }) =>
+  (dispatch: AppDispatch) => {
+    dispatch(setStatesByID({ id: "drawings", data: { [symbol]: drawings } }));
+  };
 
 export const deleteSelectedDrawing =
   (selectedDrawing: SelectedDrawing) => (dispatch: any) => {

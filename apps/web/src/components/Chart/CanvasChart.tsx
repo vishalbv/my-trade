@@ -41,6 +41,7 @@ interface CanvasChartProps {
     height: number;
     padding: { top: number; right: number; bottom: number; left: number };
   };
+  chartKey: string;
 }
 
 interface MousePosition {
@@ -84,6 +85,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   onDrawingUpdate,
   chartState,
   dimensions,
+  chartKey,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -2741,6 +2743,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         selectedDrawing={selectedDrawing}
         disableHandleInteraction={!!dragState?.mode}
         setHideCrosshair={setHideCrosshair}
+        chartKey={chartKey}
       />
     );
   };

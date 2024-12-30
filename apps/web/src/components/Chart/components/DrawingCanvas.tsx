@@ -26,6 +26,7 @@ import { setSelectedDrawing } from "../../../store/slices/globalChartSlice";
 import { deleteSelectedDrawing } from "../../../store/actions/drawingActions";
 import { useOpenOrdersDrawing } from "../hooks/useOpenOrdersDrawing";
 import { OrderLabel } from "./OrderLabel";
+import { undo, redo } from "../../../utils/DrawingHistory";
 
 interface DrawingCanvasProps {
   priceRangeData: {
@@ -60,6 +61,7 @@ interface DrawingCanvasProps {
     symbol: string;
     drawing: Drawing;
   } | null;
+  chartKey: string;
 }
 
 export const DrawingCanvas = ({
@@ -77,10 +79,13 @@ export const DrawingCanvas = ({
   chartState,
   selectedDrawing,
   disableHandleInteraction,
+  chartKey,
 }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
-  const { selectedTool } = useSelector((state: RootState) => state.globalChart);
+  const { selectedTool, selectedChartKey } = useSelector(
+    (state: RootState) => state.globalChart
+  );
   const [localDrawings, setLocalDrawings] = useState<Drawing[]>(drawings);
   const [drawingInProgress, setDrawingInProgress] = useState<{
     type: DrawingTool;
@@ -103,6 +108,11 @@ export const DrawingCanvas = ({
   );
   const POINT_RADIUS = 6;
   const POINT_BORDER_WIDTH = 2;
+
+  // Add selector for drawing history
+  const drawingHistory = useSelector(
+    (state: RootState) => state.drawingHistory.history[chartState.symbol]
+  );
 
   // Update local drawings when props change
   useEffect(() => {
@@ -824,9 +834,10 @@ export const DrawingCanvas = ({
     dimensions,
   ]);
 
-  // Add keyboard event handler
+  // Update keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle delete/backspace
       if (
         (e.key === "Delete" || e.key === "Backspace") &&
         selectedDrawing?.symbol === chartState.symbol &&
@@ -834,11 +845,38 @@ export const DrawingCanvas = ({
       ) {
         dispatch(deleteSelectedDrawing(selectedDrawing) as any);
       }
+
+      // Handle undo/redo
+      if (chartKey === selectedChartKey) {
+        if (e.metaKey || e.ctrlKey) {
+          if (e.key === "z") {
+            e.preventDefault();
+            if (e.shiftKey) {
+              // Redo
+              dispatch(redo(chartState.symbol));
+            } else {
+              // Undo
+              dispatch(undo(chartState.symbol));
+            }
+          } else if (e.key === "y") {
+            // Redo
+            e.preventDefault();
+            dispatch(redo(chartState.symbol));
+          }
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch, selectedDrawing, chartState.symbol]);
+  }, [
+    dispatch,
+    selectedDrawing,
+    chartState.symbol,
+    chartKey,
+    selectedChartKey,
+    onDrawingUpdate,
+  ]);
 
   // Add to handleClick or similar event handler
   // const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
