@@ -848,6 +848,7 @@ export const DrawingCanvas = ({
 
       // Handle undo/redo
       if (chartKey === selectedChartKey) {
+        console.log("chartKey", e.key);
         if (e.metaKey || e.ctrlKey) {
           if (e.key === "z") {
             e.preventDefault();
@@ -864,6 +865,19 @@ export const DrawingCanvas = ({
             dispatch(redo(chartState.symbol));
           }
         }
+
+        // Add horizontal line shortcut (option/alt + h)
+        if (e.altKey && (e.key === "h" || e.key == "Dead") && mousePosition) {
+          e.preventDefault();
+          const chartCoords = toChartCoords(mousePosition.x, mousePosition.y);
+          const newDrawing: Drawing = {
+            id: Date.now().toString(),
+            type: "horizontalLine",
+            points: [chartCoords],
+            visible: true,
+          };
+          handleDrawingComplete(newDrawing);
+        }
       }
     };
 
@@ -876,6 +890,8 @@ export const DrawingCanvas = ({
     chartKey,
     selectedChartKey,
     onDrawingUpdate,
+    mousePosition,
+    toChartCoords,
   ]);
 
   // Add to handleClick or similar event handler

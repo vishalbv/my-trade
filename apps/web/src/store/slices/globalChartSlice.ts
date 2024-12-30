@@ -147,6 +147,7 @@ const globalChartSlice = createSlice({
         symbol: string;
         symbolInfo?: any;
         layoutTypeKey: LayoutKeyType;
+        mainSymbol?: any;
       }>
     ) => {
       const {
@@ -154,10 +155,12 @@ const globalChartSlice = createSlice({
         symbol,
         symbolInfo,
         layoutTypeKey = "globalChartLayouts",
+        mainSymbol,
       } = action.payload;
       if (state[layoutTypeKey][chartKey]) {
         state[layoutTypeKey][chartKey].symbol = symbol;
         state[layoutTypeKey][chartKey].symbolInfo = symbolInfo;
+        state[layoutTypeKey][chartKey].mainSymbol = mainSymbol;
       }
     },
     updateLayoutTimeframe: (
@@ -213,8 +216,8 @@ const globalChartSlice = createSlice({
     },
     updateChartLayout: (state, action: PayloadAction<ChartLayoutUpdate>) => {
       const { layoutTypeKey, ...layouts } = action.payload;
-      Object.keys(layouts).forEach((key) => {
-        state[layoutTypeKey][key] = layouts[key] as ChartState;
+      Object.keys(layouts).forEach((chartKey) => {
+        state[layoutTypeKey][chartKey] = layouts[chartKey] as ChartState;
       });
     },
     setOptionChainData: (state, action: PayloadAction<OptionChainData>) => {

@@ -17,6 +17,7 @@ import {
 } from "../../../store/actions/alertActions";
 import type { RootState } from "../../../store/store";
 import type { AppDispatch } from "../../../store/store";
+import { Alert, Drawing } from "../types";
 
 export type AlertType =
   | "priceBelow"
@@ -26,7 +27,7 @@ export type AlertType =
 
 interface AlertBuySellWindowProps {
   symbol: string;
-  drawingId: string;
+  selectedDrawing: { drawing: Drawing; symbol: string };
   onClose: () => void;
 }
 
@@ -47,52 +48,90 @@ const alertTypeOptions = [
 const drawingTypeToAlertMapping = {
   rect: [
     {
-      type: "priceMoveOut",
+      value: "priceMoveOut",
       label: "Price Move Out of Zone",
     },
   ],
   fibonacci: [
     {
-      type: "falseBreakout.0.618",
+      value: "falseBreakout.0.618",
       label: "0.618 false breakout",
+    },
+    {
+      value: "priceMoveOut",
+      label: "Price Move Out of Zone",
+    },
+  ],
+  horizontalLine: [
+    {
+      value: "priceTouch",
+      label: "Price Touch",
+    },
+    {
+      value: "priceAbove",
+      label: "Price Above",
+    },
+    {
+      value: "priceBelow",
+      label: "Price Below",
     },
   ],
 };
 
 export const AlertBuySellWindow = ({
-  symbol,
-  drawingId,
+  selectedDrawing,
   onClose,
 }: AlertBuySellWindowProps) => {
   const dispatch = useDispatch<any>();
+  const { drawing, symbol } = selectedDrawing;
+
   const alerts = useSelector(
-    (state: RootState) => state.states.alerts?.[drawingId] || []
+    (state: RootState) => state.states.alerts?.[drawing.id] || []
   );
+
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
+  const [newAlert, setNewAlert] = useState<Alert>({
+    id: "-1",
+    drawingId: drawing.id,
+    timeframe: "1",
+    isEnabled: true,
+    type: "",
+    muted: false,
+  });
 
   const handleAddAlert = () => {
     dispatch(
       addAlert({
-        drawingId,
-        alert: {
-          id: Date.now().toString(),
-          drawingId,
-          timeframe: "1",
-          isEnabled: true,
-          type: "priceAbove",
-          muted: false,
-        },
+        drawingId: drawing.id,
+        alert: { ...newAlert, id: new Date().getTime().toString() },
       })
     );
+    setNewAlert({
+      id: "-1",
+      drawingId: drawing.id,
+      timeframe: "1",
+      isEnabled: true,
+      type: "",
+      muted: false,
+    });
   };
 
   const handleDeleteAlert = (alertId: string) => {
-    dispatch(deleteAlert({ drawingId, alertId }));
+    dispatch(deleteAlert({ drawingId: drawing.id, alertId }));
   };
+
   const handleAlertUpdate = (alertId: string, updates: Record<string, any>) => {
+    if (alertId === "-1") {
+      setNewAlert({
+        ...newAlert,
+        ...updates,
+      });
+      return;
+    }
+
     dispatch(
       updateAlert({
-        drawingId,
+        drawingId: drawing.id,
         alert: {
           id: alertId,
           ...updates,
@@ -101,8 +140,10 @@ export const AlertBuySellWindow = ({
     );
   };
 
+  const alertTypeOptions = drawingTypeToAlertMapping[drawing.type];
+
   return (
-    <Popover>
+    <Popover className="z-[999]">
       <PopoverTrigger asChild>
         <Button
           variant="primary-hover"
@@ -112,7 +153,7 @@ export const AlertBuySellWindow = ({
           Alert <BellIcon className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-2" align="end">
+      <PopoverContent className="min-w-[350px] p-2" align="end">
         <div className="flex flex-col space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium ml-2">Alert Settings</span>
@@ -127,7 +168,7 @@ export const AlertBuySellWindow = ({
           </div>
 
           <div className="space-y-1">
-            {alerts.map((alert: any) => (
+            {[...alerts, newAlert].map((alert: any) => (
               <div
                 key={alert.id}
                 className="flex items-center gap-2 p-1 rounded hover:bg-muted cursor-pointer"
@@ -136,7 +177,11 @@ export const AlertBuySellWindow = ({
                 <div className="flex items-center gap-2 flex-1">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-6 px-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 min-w-12"
+                      >
                         {
                           alertTypeOptions.find(
                             (opt) => opt.value === alert.type
@@ -144,7 +189,7 @@ export const AlertBuySellWindow = ({
                         }
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="start">
                       {alertTypeOptions.map((option) => (
                         <DropdownMenuItem
                           key={option.value}
@@ -164,7 +209,11 @@ export const AlertBuySellWindow = ({
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-6 px-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 min-w-12"
+                      >
                         {
                           timeframeOptions.find(
                             (opt) => opt.value === alert.timeframe
@@ -210,29 +259,31 @@ export const AlertBuySellWindow = ({
                   </Button>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteAlert(alert.id);
-                  }}
-                  className="text-destructive hover:text-destructive h-6 w-6 hover:bg-destructive/10 ml-auto"
-                >
-                  <Trash2Icon className="h-3 w-3" />
-                </Button>
+                {alert.id === "-1" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddAlert}
+                    className="h-6 mx-auto py-2"
+                  >
+                    Add
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAlert(alert.id);
+                    }}
+                    className="text-destructive hover:text-destructive h-6 w-6 hover:bg-destructive/10 ml-auto"
+                  >
+                    <Trash2Icon className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddAlert}
-            className="w-1/2 h-6 mt-4 mx-auto py-4"
-          >
-            Add Alert
-          </Button>
         </div>
       </PopoverContent>
     </Popover>

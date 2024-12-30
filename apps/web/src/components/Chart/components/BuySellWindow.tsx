@@ -30,6 +30,14 @@ export const BuySellWindow = ({
   const [isNearby, setIsNearby] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { lotSize } = chartState.symbolInfo;
+
+  useEffect(() => {
+    if (lotSize) {
+      setQty(lotSize.toString());
+    }
+  }, [lotSize]);
+
   const formatPrice = (price: number): string => {
     const roundedPrice = round(price, 0.05);
     const priceStr = roundedPrice.toString();
@@ -213,11 +221,14 @@ export const BuySellWindow = ({
             Buy
           </Button>
           <Input
-            type="text"
+            type="number"
             value={qty}
             onChange={handleQtyChange}
             className="text-center w-12 h-6 text-xs px-1"
             placeholder="Qty"
+            step={lotSize}
+            hideArrows
+            min={lotSize}
           />
           <Button
             onDoubleClick={handleSell}

@@ -288,7 +288,8 @@ class Shoonya extends State {
 
   scripinfo = async (exchange: string, token: string) => {
     const data = await api.scripinfo(exchange, token);
-    console.log("data", data);
+    //its not providing data of lot size
+    console.log("data-------", data);
     return data;
   };
 

@@ -114,7 +114,8 @@ export type AlertType =
   | "priceBelow"
   | "priceAbove"
   | "priceBetween"
-  | "priceTouch";
+  | "priceTouch"
+  | "";
 
 export interface Alert {
   id?: string;

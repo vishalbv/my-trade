@@ -428,6 +428,7 @@ export const ChartContainer = memo(
             chartKey,
             symbol: shoonyaToFyersSymbol(option, updateFyersToShoonyaMapping),
             layoutTypeKey,
+            mainSymbol: option.symbol,
           })
         );
       }
@@ -458,6 +459,15 @@ export const ChartContainer = memo(
         )}
         onMouseDown={handleChartClick}
         onKeyDown={(e) => {
+          // Check if any input element is focused
+          const activeElement = document.activeElement;
+          const isInputFocused =
+            activeElement instanceof HTMLInputElement ||
+            activeElement instanceof HTMLTextAreaElement ||
+            activeElement instanceof HTMLSelectElement;
+
+          if (isInputFocused) return;
+
           if (
             scalpingMode &&
             selectedChartKey === chartKey &&
@@ -571,8 +581,7 @@ export const ChartContainer = memo(
             {/* Alert Button */}
             {selectedDrawing?.symbol === chartState.symbol && (
               <AlertBuySellWindow
-                symbol={chartState.symbol}
-                drawingId={selectedDrawing?.drawing?.id}
+                selectedDrawing={selectedDrawing}
                 onClose={() => dispatch(setSelectedDrawing(null))}
               />
             )}
