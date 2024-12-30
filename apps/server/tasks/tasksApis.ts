@@ -27,7 +27,7 @@ export const declareTaskApis = () => ({
   "POST /api/tasks": async ({ body }: { body: RequestBody }) => {
     try {
       const task: Task = {
-        id: Date.now().toString(),
+        id: "task-" + Date.now().toString(),
         title: body.title || "",
         description: body.description || "",
         completed: false,

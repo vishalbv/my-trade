@@ -18,6 +18,7 @@ import {
 import type { RootState } from "../../../store/store";
 import type { AppDispatch } from "../../../store/store";
 import { Alert, Drawing } from "../types";
+import { fyersDataSocketService } from "../../../services/fyersDataSocket";
 
 export type AlertType =
   | "priceBelow"
@@ -32,6 +33,7 @@ interface AlertBuySellWindowProps {
 }
 
 const timeframeOptions = [
+  { value: "", label: "Real Time" },
   { value: "1", label: "1 Minute" },
   { value: "5", label: "5 Minutes" },
   { value: "15", label: "15 Minutes" },
@@ -89,11 +91,13 @@ export const AlertBuySellWindow = ({
     (state: RootState) => state.states.alerts?.[drawing.id] || []
   );
 
+  const tickData = useSelector((state: any) => state.ticks?.fyers_web[symbol]);
+
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [newAlert, setNewAlert] = useState<Alert>({
     id: "-1",
     drawingId: drawing.id,
-    timeframe: "1",
+    timeframe: "",
     isEnabled: true,
     type: "",
     muted: false,
@@ -103,13 +107,18 @@ export const AlertBuySellWindow = ({
     dispatch(
       addAlert({
         drawingId: drawing.id,
-        alert: { ...newAlert, id: new Date().getTime().toString() },
+        alert: {
+          ...newAlert,
+          id: "alert-" + Date.now().toString(),
+          tickDataAtCreation: tickData,
+          symbol,
+        },
       })
     );
     setNewAlert({
       id: "-1",
       drawingId: drawing.id,
-      timeframe: "1",
+      timeframe: "",
       isEnabled: true,
       type: "",
       muted: false,
@@ -135,6 +144,7 @@ export const AlertBuySellWindow = ({
         alert: {
           id: alertId,
           ...updates,
+          tickDataAtCreation: tickData,
         },
       })
     );

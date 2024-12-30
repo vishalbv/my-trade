@@ -15,7 +15,7 @@ export const declareNoteApis = () => ({
   "POST /api/notes": async ({ body }: { body: Note }) => {
     try {
       const note: Note = {
-        id: Date.now().toString(),
+        id: "note-" + Date.now().toString(),
         title: body.title,
         description: body.description || "",
         createdAt: moment().valueOf(),

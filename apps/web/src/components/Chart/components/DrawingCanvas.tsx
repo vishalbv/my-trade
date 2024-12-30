@@ -622,7 +622,7 @@ export const DrawingCanvas = ({
         });
       } else if (drawingInProgress.points[0]) {
         const newDrawing: Drawing = {
-          id: Date.now().toString(),
+          id: "drawing-" + Date.now().toString(),
           type: selectedTool,
           points: createDrawingPoints(
             selectedTool,
@@ -636,7 +636,7 @@ export const DrawingCanvas = ({
     } else if (selectedTool === "horizontalLine") {
       // For horizontal line, we complete the drawing immediately with a single click
       const newDrawing: Drawing = {
-        id: Date.now().toString(),
+        id: "drawing-" + Date.now().toString(),
         type: "horizontalLine",
         points: [chartCoords],
         visible: true,
@@ -653,7 +653,7 @@ export const DrawingCanvas = ({
         priceRange
       );
       const newDrawing: Drawing = {
-        id: Date.now().toString(),
+        id: "drawing-" + Date.now().toString(),
         type: selectedTool,
         points: initialPoints,
         visible: true,
@@ -666,12 +666,12 @@ export const DrawingCanvas = ({
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (draggingOrder) {
       const rect = canvasRef.current?.getBoundingClientRect();
-      if (rect && onOrderUpdate) {
-        const y = e.clientY - rect.top;
-        const chartCoords = toChartCoords(dimensions.padding.left, y);
-        const newPrice = chartCoords.y.toFixed(2);
-        onOrderUpdate(draggingOrder, newPrice);
-      }
+      // if (rect && onOrderUpdate) {
+      //   const y = e.clientY - rect.top;
+      //   const chartCoords = toChartCoords(dimensions.padding.left, y);
+      //   const newPrice = chartCoords.y.toFixed(2);
+      //   onOrderUpdate(draggingOrder, newPrice);
+      // }
       handleDragEnd();
     } else if (draggingPoint) {
       // Find the modified drawing
@@ -871,7 +871,7 @@ export const DrawingCanvas = ({
           e.preventDefault();
           const chartCoords = toChartCoords(mousePosition.x, mousePosition.y);
           const newDrawing: Drawing = {
-            id: Date.now().toString(),
+            id: "drawing-" + Date.now().toString(),
             type: "horizontalLine",
             points: [chartCoords],
             visible: true,

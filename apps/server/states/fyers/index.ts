@@ -11,6 +11,8 @@ import { validateRefreshToken } from "./functions";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import moment from "moment";
 import statesDbService from "../../services/statesDb";
+import { startFyersSocket } from "./socket";
+import notify from "../../services/notification";
 
 const fyers = new fyersModel();
 fyers.setAppId(fyersAuthParams.app_id);
@@ -46,7 +48,19 @@ class Fyers extends State {
     this.setState({ access_token });
 
     checkAllLoginStatus();
-    // _ticksFyersService.setAccessToken(access_token);
+
+    if (access_token) {
+      this.initializeFyers(access_token);
+    }
+  };
+
+  initializeFyers = (accessToken: string) => {
+    try {
+      startFyersSocket(accessToken);
+    } catch (error) {
+      logger.error("Failed to initialize Fyers:", error);
+      notify.error("Failed to initialize Fyers connection");
+    }
   };
 
   getAccessToken = () => this.getState().access_token;

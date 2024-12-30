@@ -42,5 +42,27 @@ export const serverStateUpdateMiddleware: Middleware =
       }
     }
 
+    if (action.type.startsWith("states/") && action.payload.id === "alerts") {
+      const prevAlerts = prevState.states.alerts;
+      const currentAlerts = currentState.states.alerts;
+
+      const hasAlertsChangedDrawingId = Object.keys(currentAlerts).find(
+        (drawingId) => prevAlerts[drawingId] !== currentAlerts[drawingId]
+      );
+
+      if (
+        hasAlertsChangedDrawingId &&
+        hasAlertsChangedDrawingId !== "id" &&
+        JSON.stringify(currentAlerts[hasAlertsChangedDrawingId]) !==
+          JSON.stringify(prevAlerts[hasAlertsChangedDrawingId])
+      ) {
+        sendMessage("alerts", {
+          fromUiState: true,
+          _db: true,
+          [hasAlertsChangedDrawingId]: currentAlerts[hasAlertsChangedDrawingId],
+        });
+      }
+    }
+
     return result;
   };
