@@ -14,6 +14,7 @@ import { MarketInformation } from "../../src/components/HomeComponents/MarketInf
 
 import { getOptionChain } from "../../src/store/actions/appActions";
 import { useEffect } from "react";
+import { MarketHolidays } from "../../src/components/HomeComponents/MarketHolidays";
 
 export default function Home() {
   return (
@@ -37,6 +38,7 @@ export default function Home() {
         <TradingJournal />
         {/* <MarketInfo /> */}
         <TopMovers />
+        <MarketHolidays />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <PositionHeatMap />

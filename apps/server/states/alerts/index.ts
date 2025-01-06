@@ -1,5 +1,6 @@
+import { cloneDeep } from "lodash";
 import State from "../state";
-import { checkAlerts } from "./functions";
+import { checkAlerts, filterCommonKeys } from "./functions";
 
 const initialState = { id: "alerts" };
 
@@ -16,6 +17,17 @@ class Alerts extends State {
 
   startingFunctionsAtInitialize = () => {
     checkAlerts();
+  };
+
+  updateAlert = (drawingId: any, alertId: any, data: any) => {
+    const alertsOfDrawing = cloneDeep(this.getState()[drawingId]);
+
+    this.setState({
+      [drawingId]: alertsOfDrawing.map((alert: any) =>
+        alert.id === alertId ? { ...alert, ...data } : alert
+      ),
+      _db: true,
+    });
   };
 }
 

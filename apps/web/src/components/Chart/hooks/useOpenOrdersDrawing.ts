@@ -3,6 +3,7 @@ import { ChartTheme, Point } from "../types";
 import { modifyOrder, cancelOrder } from "../../../store/actions/orderActions";
 import { RootState } from "../../../store/store";
 import { useSelector } from "react-redux";
+import { sendMessage } from "../../../services/webSocket";
 
 interface Order {
   orderId: string;
@@ -18,41 +19,66 @@ interface UseOpenOrdersDrawingProps {
     height: number;
     padding: { top: number; right: number; bottom: number; left: number };
   };
-
+  symbol: string;
   toChartCoords: (x: number, y: number) => { x: number; y: number };
 }
 
 export const useOpenOrdersDrawing = ({
   dimensions,
   toChartCoords,
+  symbol,
 }: UseOpenOrdersDrawingProps) => {
   let initialOrders = [
     { orderId: "default", price: "100", side: 1 },
     { orderId: "default-1", price: "150", side: -1 },
   ];
 
-  const orders = useSelector(
-    (state: RootState) => state.states.shoonya?.orderBook || []
-  );
-  const [localOrders, setLocalOrders] = useState<Order[]>([]);
+  // const orders = useSelector(
+  //   (state: RootState) => state.states.shoonya?.orderBook || []
+  // );
 
-  useEffect(() => {
-    if (JSON.stringify(orders) !== JSON.stringify(localOrders)) {
-      setLocalOrders(
-        orders.reduce((acc: Order[], o: any) => {
-          if (o.status === "OPEN") {
-            acc.push({
-              ...o,
-              price: o.price?.toString() || "0",
-              orderId: o.norenordno,
-              side: o.trantype === "B" ? 1 : -1,
-            });
-          }
-          return acc;
-        }, [])
-      );
-    }
-  }, [orders]);
+  const stateOrders = useSelector(
+    (state: RootState) => state.states.app?.orders || []
+  ).filter((o) => o.status === "OPEN" && o.symbol === symbol);
+  console.log(stateOrders, symbol);
+  const handleUpdateOrder = (order: Order) => {
+    sendMessage("app", {
+      orders: stateOrders.map((i) => (i.orderId === order.orderId ? order : i)),
+    });
+  };
+
+  // const [localOrders, setLocalOrders] = useState<Order[]>([]);
+
+  // useEffect(() => {
+  //   if (JSON.stringify(stateOrders) !== JSON.stringify(localOrders)) {
+  //     setLocalOrders(
+  //       stateOrders.reduce((acc: Order[], o: any) => {
+  //         if (o.status === "OPEN") {
+  //           acc.push(o);
+  //         }
+  //         return acc;
+  //       }, [])
+  //     );
+  //   }
+  // }, [stateOrders]);
+
+  // useEffect(() => {
+  //   if (JSON.stringify(orders) !== JSON.stringify(localOrders)) {
+  //     setLocalOrders(
+  //       orders.reduce((acc: Order[], o: any) => {
+  //         if (o.status === "OPEN") {
+  //           acc.push({
+  //             ...o,
+  //             price: o.price?.toString() || "0",
+  //             orderId: o.norenordno,
+  //             side: o.trantype === "B" ? 1 : -1,
+  //           });
+  //         }
+  //         return acc;
+  //       }, [])
+  //     );
+  //   }
+  // }, [orders]);
 
   const [draggingOrder, setDraggingOrder] = useState<string | null>(null);
 
@@ -67,20 +93,17 @@ export const useOpenOrdersDrawing = ({
       const chartCoords = toChartCoords(dimensions.padding.left, y);
       const newPrice = chartCoords.y.toFixed(2);
 
-      setLocalOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.orderId === draggingOrder
-            ? { ...order, price: newPrice }
-            : order
-        )
-      );
+      const updatedOrder = stateOrders.find((o) => o.orderId === draggingOrder);
+      if (updatedOrder) {
+        handleUpdateOrder({ ...updatedOrder, price: newPrice });
+      }
     },
-    [draggingOrder, toChartCoords, dimensions.padding.left]
+    [draggingOrder, toChartCoords, dimensions.padding.left, stateOrders]
   );
 
   const handleDragEnd = useCallback(async () => {
     if (draggingOrder) {
-      const order = localOrders.find((o) => o.orderId === draggingOrder);
+      const order = stateOrders.find((o) => o.orderId === draggingOrder);
       if (order) {
         const originalOrder = initialOrders?.find(
           (o) => o.orderId === draggingOrder
@@ -94,84 +117,59 @@ export const useOpenOrdersDrawing = ({
           );
 
           if (priceChangePercent > 0.2) {
-            try {
-              await modifyOrder({
-                orderid: order.orderId,
-                price: order.price,
-                tradingsymbol: order.tradingsymbol,
-                broker: "shoonya",
-              });
-            } catch (error) {
-              console.error("Failed to modify order:", error);
-              setLocalOrders((prevOrders) =>
-                prevOrders.map((o) =>
-                  o.orderId === draggingOrder
-                    ? { ...o, price: originalOrder.price }
-                    : o
-                )
-              );
-            }
-          } else {
-            setLocalOrders((prevOrders) =>
-              prevOrders.map((o) =>
-                o.orderId === draggingOrder
-                  ? { ...o, price: originalOrder.price }
-                  : o
-              )
-            );
+            handleUpdateOrder({ ...order, price: originalOrder.price });
           }
         }
       }
     }
     setDraggingOrder(null);
-  }, [draggingOrder, localOrders]);
+  }, [draggingOrder, stateOrders]);
 
   const handleQuantityChange = useCallback(
     async (orderId: string, qty: string) => {
-      const order = localOrders.find((o) => o.orderId === orderId);
+      const order = stateOrders.find((o) => o.orderId === orderId);
       if (order) {
         try {
-          await modifyOrder({
-            orderid: order.orderId,
-            qty,
-            tradingsymbol: order.tradingsymbol,
-            broker: "shoonya",
-          });
+          // await modifyOrder({
+          //   orderid: order.orderId,
+          //   qty,
+          //   tradingsymbol: order.tradingsymbol,
+          //   broker: "shoonya",
+          // });
 
-          setLocalOrders((prevOrders) =>
-            prevOrders.map((o) => (o.orderId === orderId ? { ...o, qty } : o))
-          );
+          handleUpdateOrder({ ...order, qty });
         } catch (error) {
           console.error("Failed to modify order quantity:", error);
         }
       }
     },
-    [localOrders]
+    [stateOrders]
   );
 
   const handleCancelOrder = useCallback(
     async (orderId: string) => {
-      const order = localOrders.find((o) => o.orderId === orderId);
+      const order = stateOrders.find((o) => o.orderId === orderId);
       if (order) {
         try {
-          await cancelOrder({
-            orderid: order.orderId,
-            tradingsymbol: order.tradingsymbol,
-          });
+          // await cancelOrder({
+          //   orderid: order.orderId,
+          //   tradingsymbol: order.tradingsymbol,
+          // });
 
-          setLocalOrders((prevOrders) =>
-            prevOrders.filter((o) => o.orderId !== orderId)
-          );
+          handleUpdateOrder({
+            ...order,
+            status: "CANCELLED",
+          });
         } catch (error) {
           console.error("Failed to cancel order:", error);
         }
       }
     },
-    [localOrders]
+    [stateOrders]
   );
 
   return {
-    orders: localOrders,
+    orders: stateOrders,
     handleDragStart,
     handleDrag,
     handleDragEnd,

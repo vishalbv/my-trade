@@ -2,14 +2,11 @@ import logger from "../../services/logger";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { sendMessage } from "../../services/webSocket";
 import _fyers from "./index";
-import {
-  fyersDataSocket as FyersDataSocket,
-  fyersOrderSocket as FyersOrderSocket,
-} from "fyers-api-v3";
+import { fyersDataSocket, fyersOrderSocket } from "fyers-api-v3";
 import notify from "../../services/notification";
 
 interface FyersSocketState {
-  // _subscribed: string[];
+  _subscribed: string[];
   _socketReady: boolean;
   [key: string]: any; // For dynamic tick values
 }
@@ -28,6 +25,7 @@ export const setState = (newState: Partial<FyersSocketState>) => {
 };
 
 function onMessage(message: any) {
+  // console.log(message, "message");
   try {
     // Format and process the message
     const formattedData = {
@@ -49,7 +47,7 @@ function onMessage(message: any) {
 function onConnect() {
   logger.info("Fyers socket connected");
   setState({ _socketReady: true });
-
+  setMode("lite");
   // Subscribe to indices
   try {
     subscribeTicks(["NSE:TCS-EQ"]);
@@ -68,8 +66,8 @@ function onError(error: any) {
   notify.error("Fyers connection error");
 }
 
-function onClose() {
-  logger.info("Fyers socket closed");
+function onClose(e: any) {
+  logger.info("Fyers socket closed", e);
   setState({ _socketReady: false });
 }
 
@@ -79,7 +77,7 @@ export const startFyersSocket = (accessToken: string) => {
       fyersdata.close();
     }
 
-    fyersdata = new FyersDataSocket(accessToken);
+    fyersdata = fyersDataSocket.getInstance(accessToken);
 
     // Set up event handlers
     fyersdata.on("message", onMessage);
@@ -93,7 +91,7 @@ export const startFyersSocket = (accessToken: string) => {
     // Connect to socket
     fyersdata.connect();
 
-    fyersOrders = new FyersOrderSocket(accessToken);
+    fyersOrders = fyersOrderSocket.getInstance(accessToken);
 
     // Set up event handlers
     fyersOrders.on("orders", onOrders);
@@ -108,10 +106,10 @@ export const startFyersSocket = (accessToken: string) => {
     fyersOrders.on("close", onClose);
 
     // Enable auto-reconnect
-    fyersOrders.autoreconnect(5); // 5 reconnection attempts
+    // fyersOrders.autoreconnect(5); // 5 reconnection attempts
 
-    // Connect to socket
-    fyersOrders.connect();
+    // // Connect to socket
+    // fyersOrders.connect();
   } catch (error) {
     logger.error("Error starting Fyers socket:", error);
     notify.error("Failed to start Fyers connection");
@@ -119,19 +117,26 @@ export const startFyersSocket = (accessToken: string) => {
 };
 
 export const subscribeTicks = async (symbols: string[]) => {
-  if (!fyersdata || !getState()._socketReady) {
-    logger.error("Fyers socket not ready");
-    return;
-  }
+  // if (!fyersdata || !getState()._socketReady) {
+  //   logger.error("Fyers socket not ready");
+  //   return;
+  // }
 
-  try {
-    fyersdata.subscribe([...symbols]);
-    setState({
-      _subscribed: [...getState()._subscribed, ...symbols],
-    });
-    logger.info("Subscribed to Fyers symbols:", symbols);
-  } catch (error) {
-    logger.error("Error subscribing to Fyers ticks:", error);
+  const toSubscribe = symbols.filter(
+    (symbol) => !getState()._subscribed.includes(symbol)
+  );
+
+  console.log(fyersdata, "fyersdata");
+  if (toSubscribe.length > 0) {
+    try {
+      fyersdata.subscribe([...toSubscribe]);
+      setState({
+        _subscribed: [...getState()._subscribed, ...toSubscribe],
+      });
+      logger.info("Subscribed to Fyers symbols:", symbols);
+    } catch (error) {
+      logger.error("Error subscribing to Fyers ticks:", error);
+    }
   }
 };
 

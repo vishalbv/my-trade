@@ -260,7 +260,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
         try {
           const lineSeries = chartRef.current.addLineSeries({
             color: s.color || "#2962FF",
-            title: s.name || `Series ${index}`,
+            // title: s.name || `Series ${index}`,
             priceScaleId: s.scalePosition === "left" ? "left" : "right",
             priceFormat: {
               type: "percent",
@@ -269,7 +269,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
             },
             lineWidth: s.lineWidth || 2,
             lastValueVisible: true,
-            priceLineVisible: s.priceLineVisible ?? true,
+            priceLineVisible: s.priceLineVisible ?? false,
             baseLineVisible: false,
             visible: true,
           });
@@ -321,7 +321,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
         variant={"light"}
         size={"iconSm"}
         onClick={handleMoveToRealTime}
-        className="absolute bottom-1 right-8 z-10
+        className="absolute bottom-6 right-8 z-10
                    text-foreground p-2 shadow-md transition-colors"
         title="Move to latest data"
       >

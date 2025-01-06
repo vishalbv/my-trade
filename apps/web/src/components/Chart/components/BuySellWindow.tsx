@@ -5,16 +5,25 @@ import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { cn } from "@repo/utils/ui/helpers";
 import { round } from "../utils/drawingCoordinateUtils";
-import { X } from "lucide-react";
 import { placeOrder } from "../../../store/actions/orderActions";
-import { Label } from "@repo/ui/label";
-import { RadioGroup, RadioGroupItem } from "@repo/ui/radio-group";
+import { INDEX_DETAILS } from "@repo/utils/constants";
+import { getIndexNameFromOptionSymbol } from "@repo/utils/helpers";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
+import { sendMessage } from "../../../services/webSocket";
 
 interface BuySellWindowProps {
   className?: string;
   chartState: { symbol: string; timeframe: string; symbolInfo: any };
   currentPrice?: number;
   rsiHeight: number;
+  chartKey: string;
+}
+
+interface OrderState {
+  side: 1 | -1;
+  priceType: "LIMIT" | "MARKET";
+  price: string;
 }
 
 export const BuySellWindow = ({
@@ -22,222 +31,199 @@ export const BuySellWindow = ({
   chartState,
   currentPrice,
   rsiHeight,
+  chartKey,
 }: BuySellWindowProps) => {
-  const [qty, setQty] = useState<string>("1");
-  const [limitPrice, setLimitPrice] = useState<string>("");
-  const [orderType, setOrderType] = useState<"MKT" | "SL-MKT">("MKT");
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-  const [isNearby, setIsNearby] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { selectedChartKey, chartFullScreenId } = useSelector(
+    (state: RootState) => state.globalChart
+  );
+  const tickData = useSelector(
+    (state: any) => state.ticks?.fyers_web[chartState.symbolInfo.symbol]
+  );
 
+  const orders = useSelector(
+    (state: RootState) => state.states.app?.orders || []
+  );
+
+  const [isVisible, setIsVisible] = useState(false);
+
+  const [orderState, setOrderState] = useState<OrderState>({
+    side: 1,
+    priceType: "MARKET",
+    price: "",
+    qty: "1",
+    symbol: chartState.symbol,
+  });
+  const qtyInputRef = useRef<HTMLInputElement>(null);
   const { lotSize } = chartState.symbolInfo;
+
+  const defaultOrderState: OrderState = {
+    side: 1,
+    priceType: "MARKET",
+    price: "",
+    symbol: chartState.symbol,
+  };
+
+  const closeWindow = () => {
+    setIsVisible(false);
+    setOrderState(defaultOrderState);
+  };
 
   useEffect(() => {
     if (lotSize) {
-      setQty(lotSize.toString());
+      setOrderState((prev) => ({ ...prev, qty: lotSize.toString() }));
     }
   }, [lotSize]);
 
-  const formatPrice = (price: number): string => {
-    const roundedPrice = round(price, 0.05);
-    const priceStr = roundedPrice.toString();
-    const [intPart = "0"] = priceStr.split(".");
-
-    if (intPart.length >= 5) {
-      return intPart.slice(0, 5);
-    }
-
-    return roundedPrice.toFixed(2);
-  };
-
   useEffect(() => {
-    if (currentPrice) {
-      if (timer) {
-        clearTimeout(timer);
-      }
+    if (chartKey !== selectedChartKey) return;
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLInputElement &&
+        e.key !== "Enter" &&
+        e.key !== "Escape"
+      )
+        return;
 
-      setLimitPrice(formatPrice(currentPrice));
-
-      const newTimer = setTimeout(() => {
-        setLimitPrice("");
-        setTimer(null);
-      }, 4000) as unknown as NodeJS.Timeout;
-
-      setTimer(newTimer);
-    }
-  }, [currentPrice]);
-
-  useEffect(() => {
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
+      if (e.key.toLowerCase() === "b") {
+        setOrderState((prev) => ({ ...prev, side: 1 }));
+        setIsVisible(true);
+        setTimeout(() => qtyInputRef.current?.focus(), 0);
+      } else if (e.key.toLowerCase() === "s") {
+        setOrderState((prev) => ({ ...prev, side: -1 }));
+        setIsVisible(true);
+        setTimeout(() => qtyInputRef.current?.focus(), 0);
+      } else if (e.key === "Escape") {
+        closeWindow();
+      } else if (e.key === "Enter" && isVisible) {
+        handleOrder();
       }
     };
-  }, [timer]);
 
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [chartKey, isVisible, orderState.priceType, selectedChartKey]);
+
+  const prevIsVisible = useRef(false);
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-      const proximity = 40; // 40px proximity threshold
-
-      // Calculate if mouse is within proximity of the container
-      const isClose =
-        e.clientX >= rect.left - proximity &&
-        e.clientX <= rect.right + proximity &&
-        e.clientY >= rect.top - proximity &&
-        e.clientY <= rect.bottom + proximity;
-
-      setIsNearby(isClose);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+    if (currentPrice && isVisible) {
+      if (prevIsVisible.current) {
+        setOrderState((prev) => ({
+          ...prev,
+          price: currentPrice.toFixed(2),
+          priceType: "LIMIT",
+        }));
+      }
+      prevIsVisible.current = true;
+    } else {
+      prevIsVisible.current = false;
+    }
+  }, [currentPrice, isVisible]);
 
   const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, "");
-    setQty(value);
+    setOrderState((prev) => ({ ...prev, qty: value }));
   };
 
-  const handlePriceChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (value: string) => void
-  ) => {
-    const value = e.target.value.replace(/[^0-9.]/g, "");
-    const parts = value.split(".");
-    if (parts.length > 2) return;
-
-    if (value) {
-      const numValue = parseFloat(value);
-      if (!isNaN(numValue)) {
-        setter(formatPrice(numValue));
-        return;
-      }
-    }
-    setter(value);
+  const toggleSide = () => {
+    setOrderState((prev) => ({
+      ...prev,
+      side: prev.side === 1 ? -1 : 1,
+    }));
   };
 
-  const _placeOrder = (side = 1) => {
+  const _placeOrder = () => {
     placeOrder({
       broker: "shoonya",
-      qty,
-      side: side,
+      qty: orderState.qty,
+      side: orderState.side,
       type: 2,
       fyersSymbol: chartState.symbolInfo,
       price: 0,
-      order_type: orderType,
-      trigger_price: limitPrice,
+      order_type: "MKT",
+      trigger_price: orderState.price,
+      frzqty:
+        INDEX_DETAILS[
+          getIndexNameFromOptionSymbol({
+            symbol: chartState.symbolInfo.symbol,
+          })
+        ].freezeQty,
+    });
+    setIsVisible(false);
+  };
+
+  const handleAddOrder = () => {
+    sendMessage("app", {
+      orders: [
+        ...orders,
+        {
+          ...orderState,
+          status: "OPEN",
+          orderId: "order-" + Date.now().toString(),
+        },
+      ],
     });
   };
 
-  const handleBuy = (e: React.MouseEvent<HTMLButtonElement>) => {
-    _placeOrder(1);
-    e.stopPropagation();
-  };
-
-  const handleSell = (e: React.MouseEvent<HTMLButtonElement>) => {
-    _placeOrder(-1);
-    e.stopPropagation();
-  };
-
-  const handleClearPrices = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLimitPrice("");
-    if (timer) {
-      clearTimeout(timer);
-      setTimer(null);
+  const handleOrder = () => {
+    if (orderState.priceType === "MARKET") {
+      _placeOrder();
+    } else {
+      // Store the order in pending orders array
+      handleAddOrder();
     }
+    closeWindow();
   };
+
+  useEffect(() => {
+    if (isVisible && qtyInputRef.current) {
+      qtyInputRef.current.select();
+    }
+  }, [isVisible]);
+
+  if (!isVisible) return null;
 
   return (
     <div
-      ref={containerRef}
       className={cn(
-        "absolute left-16 top-16 bg-background/25 backdrop-blur-sm rounded-md p-1 transition-opacity duration-200 border border-border z-40",
-        timer || isNearby ? "opacity-100" : "opacity-25",
+        "absolute left-16 top-16 bg-background/90 backdrop-blur-sm rounded-md p-2 border border-border z-40 flex items-center gap-2",
         className
       )}
     >
-      <div className="flex flex-col gap-1 w-[160px]">
-        {limitPrice && (
-          <div className="relative flex items-end">
-            <div className="grid grid-cols-2 gap-1">
-              <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-muted-foreground">
-                  Limit
-                </label>
-                <Input
-                  type="text"
-                  value={limitPrice}
-                  onChange={(e) => handlePriceChange(e, setLimitPrice)}
-                  className="text-center h-6 text-xs px-1"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <RadioGroup
-                  defaultValue="MKT"
-                  value={orderType}
-                  onValueChange={(value) =>
-                    setOrderType(value as "MKT" | "SL-MKT")
-                  }
-                  className="grid grid-cols-2 gap-1"
-                >
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="MKT" id="mkt" className="h-3 w-3" />
-                    <Label htmlFor="mkt" className="text-[10px]">
-                      M
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem
-                      value="SL-MKT"
-                      id="slm"
-                      className="h-3 w-3"
-                    />
-                    <Label htmlFor="slm" className="text-[10px]">
-                      SL-M
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-            <button
-              onClick={handleClearPrices}
-              className="p-0.5 hover:bg-muted rounded-sm opacity-60 hover:opacity-100 mb-1 ml-1"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+      <button
+        onClick={toggleSide}
+        className={cn(
+          "text-sm font-medium",
+          orderState.side === 1 ? "text-green-500" : "text-red-500"
         )}
-
-        <div className="flex gap-1">
-          <Button
-            onDoubleClick={handleBuy}
-            className="flex-1 bg-green-500/80 hover:bg-green-500 text-white h-6 text-xs px-2"
-          >
-            Buy
-          </Button>
-          <Input
-            type="number"
-            value={qty}
-            onChange={handleQtyChange}
-            className="text-center w-12 h-6 text-xs px-1"
-            placeholder="Qty"
-            step={lotSize}
-            hideArrows
-            min={lotSize}
-          />
-          <Button
-            onDoubleClick={handleSell}
-            className="flex-1 bg-red-500/80 hover:bg-red-500 text-white h-6 text-xs px-2"
-          >
-            Sell
-          </Button>
-        </div>
-      </div>
+      >
+        {orderState.side === 1 ? "Buying" : "Selling"}
+      </button>
+      <Input
+        ref={qtyInputRef}
+        type="number"
+        value={orderState.qty}
+        onChange={handleQtyChange}
+        className="w-20 h-7 text-sm"
+        placeholder="Qty"
+        step={lotSize}
+        hideArrows
+        min={lotSize}
+      />
+      <span className="text-sm">
+        at {orderState.price || tickData?.ltp || "MARKET"}
+      </span>
+      <Button
+        onClick={handleOrder}
+        className={cn(
+          "h-7 px-3 text-sm text-white",
+          orderState.side === 1
+            ? "bg-green-500/80 hover:bg-green-500"
+            : "bg-red-500/80 hover:bg-red-500"
+        )}
+      >
+        Place
+      </Button>
     </div>
   );
 };

@@ -14,4 +14,12 @@ declare module "fyers-api-v3" {
     getQuotes(params: any): Promise<any>;
     getOptionChain(params: any): Promise<any>;
   }
+
+  export class fyersDataSocket {
+    getInstance(accessToken: string, logPath?: string): any;
+  }
+
+  export class fyersOrderSocket {
+    getInstance(accessToken: string, logPath?: string): any;
+  }
 }

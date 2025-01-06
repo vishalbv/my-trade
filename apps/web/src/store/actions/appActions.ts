@@ -49,3 +49,11 @@ export const getLoginDetails = (body: any) => {
 export const restartServer = (body: any) => {
   return postRequest(`restartServer`, body);
 };
+
+export const storeOptionHistory = (body: any) => {
+  return postRequest(`storeHistory`, body);
+};
+
+export const getStoredHistory = (body: any) => {
+  return postRequest(`getStoredHistory`, body);
+};

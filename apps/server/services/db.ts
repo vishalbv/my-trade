@@ -7,6 +7,7 @@ interface DBCollections {
   reports: Collection;
   tasks: Collection;
   notes: Collection;
+  history: Collection;
 }
 
 class DatabaseService {
@@ -27,6 +28,7 @@ class DatabaseService {
         reports: this.db.collection("reports"),
         tasks: this.db.collection("tasks"),
         notes: this.db.collection("notes"),
+        history: this.db.collection("history"),
       };
       logger.info("DB connected");
     } catch (error) {

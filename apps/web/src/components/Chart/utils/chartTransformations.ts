@@ -180,8 +180,8 @@ export const transformPremiumIndexCorrelation = ({
       if (!currentCE || !currentPE || !currentIndex) return null;
 
       // Calculate simple ratios of premium prices to index price
-      const ceRatio = (currentCE.close / currentIndex.close) * 100;
-      const peRatio = (currentPE.close / currentIndex.close) * 100;
+      const ceRatio = (currentCE.close / (currentIndex.close - 23400)) * 100;
+      const peRatio = (currentPE.close / (currentIndex.close - 23400)) * 100;
 
       return {
         timestamp,
@@ -208,7 +208,7 @@ export const transformPremiumIndexCorrelation = ({
     label: "PE Premium Ratio",
     color: currentTheme.downColor,
     priceScaleId: "pe_scale",
-    scalePosition: "right",
+    scalePosition: "left",
     data: dataPoints.map((point) => ({
       time: formatChartTime(point!.timestamp),
       value: point!.peRatio,

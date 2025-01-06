@@ -28,6 +28,7 @@ import { RootState } from "../../store/store";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleLeftNav } from "../../store/slices/webAppSlice";
 import { getLoginDetails, restartServer } from "../../store/actions/appActions";
+import { sendMessage } from "../../services/webSocket";
 
 const leftbraItems = [
   {
@@ -62,6 +63,7 @@ const Sidebar: React.FC = () => {
   const active = pathname?.split("/")[1] || "";
   const [showPWDTooltip, setShowPWDTooltip] = useState(false);
   const [showTOTPTooltip, setShowTOTPTooltip] = useState(false);
+  const { testMode } = useSelector((state: RootState) => state.states.app);
   const isLeftNavCollapsed = useSelector(
     (state: RootState) => state.webApp.isLeftNavCollapsed
   );
@@ -82,6 +84,11 @@ const Sidebar: React.FC = () => {
         setTimeout(() => setShowTOTPTooltip(false), 1000);
       }
     });
+  };
+
+  const setAppState = (data: any) => {
+    console.log("data", data);
+    sendMessage("app", data);
   };
 
   return (
@@ -183,7 +190,14 @@ const Sidebar: React.FC = () => {
           </div>
           <div className="flex items-center justify-between">
             <span>TEST MODE</span>
-            <Switch className="scale-90" />
+            <Switch
+              className="scale-90"
+              onCheckedChange={(value) => {
+                console.log("testMode", value);
+                setAppState({ testMode: value });
+              }}
+              checked={testMode}
+            />
           </div>
           <div className="flex items-center justify-between">
             <span>REFRESH BACKEND</span>

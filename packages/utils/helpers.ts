@@ -106,3 +106,17 @@ export const isHoliday = (date: Date, holidays: string[]): boolean => {
     holidays.map(([date]) => date).includes(formattedDate) || isWeekend(date)
   );
 };
+
+export const getIndexNameFromOptionSymbol = ({
+  symbol,
+}: {
+  symbol: string;
+}) => {
+  return symbol.includes("SENSEX")
+    ? "SENSEX"
+    : symbol.includes("BANKNIFTY")
+      ? "NIFTY-BANK"
+      : symbol.includes("NIFTY")
+        ? "NIFTY-50"
+        : "";
+};

@@ -150,7 +150,7 @@ export const AlertBuySellWindow = ({
     );
   };
 
-  const alertTypeOptions = drawingTypeToAlertMapping[drawing.type];
+  const alertTypeOptions = drawingTypeToAlertMapping[drawing.type] || [];
 
   return (
     <Popover className="z-[999]">

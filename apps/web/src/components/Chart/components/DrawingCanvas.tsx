@@ -260,6 +260,7 @@ export const DrawingCanvas = ({
   } = useOpenOrdersDrawing({
     dimensions,
     toChartCoords,
+    symbol: chartState.symbol,
   });
 
   const handleInteraction = (x: number, y: number) => {

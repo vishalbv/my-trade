@@ -36,7 +36,7 @@ export const INDEX_DETAILS = {
 
   SENSEX: {
     name: "SENSEX",
-    freezeQty: 500,
+    freezeQty: 1000,
     lotSize: 10,
     strikeOffset: 100,
     expiryDay: 5,

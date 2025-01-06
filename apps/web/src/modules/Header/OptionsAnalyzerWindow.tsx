@@ -175,11 +175,6 @@ export const OptionsAnalyzerWindow = ({}) => {
     currentTheme,
   });
 
-  console.log(
-    correlationData?.[0]?.data?.at(-1),
-    chartDataCE.at(-1),
-    "correlationData"
-  );
   const getTransformedData = () => {
     const getData = () => {
       switch (selectedTransformation) {
@@ -197,7 +192,6 @@ export const OptionsAnalyzerWindow = ({}) => {
     };
     const data = getData();
     if (!data) return [];
-    console.log(data, "data");
 
     const minLength = Math.min(...data.map((i) => i.data.length), 1100);
     return data?.map((i) => ({
@@ -214,7 +208,7 @@ export const OptionsAnalyzerWindow = ({}) => {
   // Process series data with SMA when smoothing is enabled
   const processedSeries = series.map((s) => ({
     ...s,
-    data: isSmoothed ? calculateSMA(s.data) : s.data,
+    data: isSmoothed ? calculateSMA(s.data, 10) : s.data,
   }));
 
   return (

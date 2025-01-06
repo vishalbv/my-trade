@@ -248,7 +248,7 @@ export const ChartContainer = memo(
     });
     const previousDimensions = useRef({ width: 0, height: 0 });
     const animationRef = useRef<number>();
-    console.log(containerDimensions, "containerDimensions");
+
     // Smooth dimension transition
     const updateDimensions = useCallback(
       (newWidth: number, newHeight: number) => {

@@ -14,6 +14,7 @@ import { _shoonyaSocket, startShoonyaSocket } from "./socket";
 import { fetchShoonyaNameByFyersSymbol, positionsFormatter } from "./functions";
 import _symbols from "../symbols/index";
 import { startMoneyManagementInterval } from "./moneyManagement";
+import _app from "../app/index";
 
 let api = new NorenRestApi();
 const secret = "5GY64JV73GK3A676S6GC63463L33I535";
@@ -324,6 +325,16 @@ class Shoonya extends State {
       } = body;
 
       console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
+      const { testMode } = _app.getState();
+      if (testMode) {
+        return {
+          data: {
+            status: "Ok",
+            norenordno: "1234567890",
+            testmode: true,
+          },
+        };
+      }
 
       const { exch, tsym } = fyersSymbol
         ? fetchShoonyaNameByFyersSymbol(fyersSymbol as any) || {}

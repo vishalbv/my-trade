@@ -6,6 +6,11 @@ import { OHLCData } from "../types";
 import { fyersDataSocketService } from "../../../services/fyersDataSocket";
 import { throttle, debounce } from "lodash";
 import { isHoliday } from "@repo/utils/helpers";
+import {
+  calculateFromTimestamp,
+  MARKET_END_TIME,
+  MARKET_START_TIME,
+} from "../../../utils/helpers";
 
 interface UseRealtimeCandlesProps {
   symbol: string;
@@ -17,17 +22,14 @@ interface HistoryResponse {
   candles?: [number, number, number, number, number, number][];
 }
 
-const MARKET_START_HOUR = 9; // 9:15 AM
-const MARKET_START_MINUTE = 15;
-const MARKET_END_HOUR = 15; // 3:30 PM
-const MARKET_END_MINUTE = 30;
-
-const CANDLES_PER_DAY = {
-  "1": 375, // (6 hours 15 mins = 375 minutes)
-  "5": 75, // (375 / 5 = 75 5-minute candles)
-  "15": 25, // (375 / 15 = 25 15-minute candles)
-  D: 1, // 1 candle per day
-};
+const [MARKET_START_HOUR, MARKET_START_MINUTE] = MARKET_START_TIME as [
+  number,
+  number,
+];
+const [MARKET_END_HOUR, MARKET_END_MINUTE] = MARKET_END_TIME as [
+  number,
+  number,
+];
 
 const isWithinMarketHours = (date: Date): boolean => {
   const hours = date.getHours();
@@ -81,40 +83,6 @@ const getTimeIntervalForTimeframe = (
   return baseInterval;
 };
 
-const calculateFromTimestamp = (timeframe: string): number => {
-  const now = new Date();
-
-  // Set fixed day ranges based on timeframe
-  let daysToGoBack = 0;
-
-  switch (timeframe) {
-    case "D":
-      daysToGoBack = 365; // For daily, go back 365 days
-      break;
-    case "15":
-      daysToGoBack = 99; // For 15min, go back 99 days
-      break;
-    case "5":
-      daysToGoBack = 30; // For 5min, also 99 days
-      break;
-    case "1":
-      daysToGoBack = 6; // For 1min, also 99 days
-      break;
-    default:
-      daysToGoBack = 99;
-  }
-
-  let currentDate = new Date(now);
-  currentDate.setDate(currentDate.getDate() - daysToGoBack);
-
-  // For intraday timeframes, set to market opening time
-  if (timeframe !== "D") {
-    currentDate.setHours(MARKET_START_HOUR, MARKET_START_MINUTE, 0, 0);
-  }
-
-  return Math.floor(currentDate.getTime() / 1000);
-};
-
 const getNextCandleTime = (timeframe: string): number => {
   const now = new Date();
   const interval = getTimeIntervalForTimeframe(timeframe, now);
@@ -138,7 +106,7 @@ export const useRealtimeCandles = ({
   requestTicksSubscription = true,
 }: UseRealtimeCandlesProps) => {
   const [chartData, setChartData] = useState<OHLCData[]>([]);
-  const tickData = useSelector((state: any) => state.ticks?.fyers_web);
+  const tickData = useSelector((state: any) => state.ticks?.fyers_web[symbol]);
   const isMarketActive = useSelector(
     (state: any) => state.states?.app?.marketStatus?.activeStatus
   );
@@ -221,15 +189,9 @@ export const useRealtimeCandles = ({
 
   // Update real-time data immediately
   useEffect(() => {
-    if (
-      !isMarketActive ||
-      !tickData ||
-      !tickData[symbol] ||
-      chartData.length === 0
-    )
-      return;
+    if (!isMarketActive || !tickData || chartData.length === 0) return;
 
-    const currentPrice = parseFloat(tickData[symbol].ltp);
+    const currentPrice = parseFloat(tickData.ltp);
 
     // Only update if price actually changed
     if (currentPrice !== latestPriceRef.current) {
@@ -347,13 +309,12 @@ export const useRealtimeCandles = ({
     if (
       !isMarketActive ||
       !tickData ||
-      !tickData[symbol] ||
       chartData.length === 0 ||
       isUpdatingRef.current
     )
       return;
 
-    const currentPrice = parseFloat(tickData[symbol].ltp);
+    const currentPrice = parseFloat(tickData.ltp);
     if (currentPrice !== latestPriceRef.current) {
       isUpdatingRef.current = true;
       try {

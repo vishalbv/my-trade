@@ -21,14 +21,13 @@ export const checkLoginSession = async (callback: () => void) => {
     if (appState) {
       const { lastLoginDate, refreshTokenExpiry } = appState;
       if (refreshTokenExpiry) {
-        if (moment(refreshTokenExpiry, "DD-MM-YYYY").isAfter(moment())) {
+        if (moment(refreshTokenExpiry, "DD-MM-YYYY").isBefore(moment())) {
           statesDbService.upsertState("app", {
             refreshTokenExpiry: null,
           });
           logoutAll();
         }
       }
-
       if (lastLoginDate && moment().diff(moment(lastLoginDate), "hours") <= 8) {
         callback();
       } else {

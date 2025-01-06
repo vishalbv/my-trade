@@ -21,7 +21,9 @@ export const declareAppApis = () => ({
     const { broker } = body;
     try {
       if (broker === "fyers") {
-        if (_fyers.getState().refresh_token) {
+        const fyersState = await statesDbService.getStateById("fyers");
+        if (fyersState?.refresh_token) {
+          _fyers.setState(fyersState);
           return {
             status: 200,
             message: "Already logging in",

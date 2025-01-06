@@ -2973,6 +2973,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           chartState={chartState}
           currentPrice={currentClickPrice}
           rsiHeight={isRSIEnabled ? rsiHeight : 0}
+          chartKey={chartKey}
         />
       )}
     </div>

@@ -36,8 +36,6 @@ export const useScalpingMode = () => {
   //   }
   // }, [pathname]);
 
-  console.log("scalpingMode", isInitializing);
-
   useEffect(() => {
     dispatch(toggleLeftNav(true));
     dispatch(setRightWindowSize(30));
@@ -64,7 +62,7 @@ export const useScalpingMode = () => {
   useEffect(() => {
     const setLayout = async () => {
       const nearbyExpiries = findNearbyExpiries(upcomingExpiryDates);
-      console.log("nearbyExpiries-----", nearbyExpiries);
+
       if (nearbyExpiries?.[0]) {
         const [date, symbol] = nearbyExpiries[0];
 
