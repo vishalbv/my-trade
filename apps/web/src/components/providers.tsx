@@ -52,7 +52,9 @@ function Initialize() {
 
   useEffect(() => {
     if (access_token) {
-      fyersDataSocketService.connect(app_id + ":" + access_token);
+      setTimeout(() => {
+        fyersDataSocketService.connect(app_id + ":" + access_token);
+      }, 2000);
     }
   }, [access_token, app_id]);
 

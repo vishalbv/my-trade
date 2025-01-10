@@ -21,7 +21,10 @@ class App extends State {
   isInTestMode = () => this.getState().testMode;
 
   startingFunctionsAtInitialize = () => {
-    updateMarketStatus((data: any) => this.setState({ marketStatus: data }));
+    updateMarketStatus({
+      holidays: this.getState().holidays,
+      setState: (data: any) => this.setState({ marketStatus: data }),
+    });
     // _ticksFyersService
     //   .getQuotes(Object.keys(INDEX_DETAILS))
     //   .then((data) => this.setState({ indexPrices: data }))

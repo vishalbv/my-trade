@@ -28,63 +28,37 @@ export const useOpenOrdersDrawing = ({
   toChartCoords,
   symbol,
 }: UseOpenOrdersDrawingProps) => {
-  let initialOrders = [
-    { orderId: "default", price: "100", side: 1 },
-    { orderId: "default-1", price: "150", side: -1 },
-  ];
-
-  // const orders = useSelector(
-  //   (state: RootState) => state.states.shoonya?.orderBook || []
-  // );
-
+  const tickData = useSelector((state: any) => state.ticks?.fyers_web[symbol]);
   const stateOrders = useSelector(
     (state: RootState) => state.states.app?.orders || []
-  ).filter((o) => o.status === "OPEN" && o.symbol === symbol);
-  console.log(stateOrders, symbol);
-  const handleUpdateOrder = (order: Order) => {
-    sendMessage("app", {
-      orders: stateOrders.map((i) => (i.orderId === order.orderId ? order : i)),
-    });
-  };
+  ).filter(
+    (o: { status: string; symbol: string }) =>
+      o.status === "OPEN" && o.symbol === symbol
+  );
 
-  // const [localOrders, setLocalOrders] = useState<Order[]>([]);
-
-  // useEffect(() => {
-  //   if (JSON.stringify(stateOrders) !== JSON.stringify(localOrders)) {
-  //     setLocalOrders(
-  //       stateOrders.reduce((acc: Order[], o: any) => {
-  //         if (o.status === "OPEN") {
-  //           acc.push(o);
-  //         }
-  //         return acc;
-  //       }, [])
-  //     );
-  //   }
-  // }, [stateOrders]);
-
-  // useEffect(() => {
-  //   if (JSON.stringify(orders) !== JSON.stringify(localOrders)) {
-  //     setLocalOrders(
-  //       orders.reduce((acc: Order[], o: any) => {
-  //         if (o.status === "OPEN") {
-  //           acc.push({
-  //             ...o,
-  //             price: o.price?.toString() || "0",
-  //             orderId: o.norenordno,
-  //             side: o.trantype === "B" ? 1 : -1,
-  //           });
-  //         }
-  //         return acc;
-  //       }, [])
-  //     );
-  //   }
-  // }, [orders]);
-
+  const [localOrders, setLocalOrders] = useState<Order[]>([]);
   const [draggingOrder, setDraggingOrder] = useState<string | null>(null);
 
-  const handleDragStart = useCallback((orderId: string, y: number) => {
-    setDraggingOrder(orderId);
-  }, []);
+  // Update local orders when stateOrders changes
+  useEffect(() => {
+    if (JSON.stringify(stateOrders) !== JSON.stringify(localOrders)) {
+      setLocalOrders(stateOrders);
+    }
+  }, [JSON.stringify(stateOrders)]);
+
+  const handleUpdateOrder = (order: Order) => {
+    // Only update server state when not dragging
+    if (!draggingOrder) {
+      sendMessage("app", {
+        _db: true,
+        orders: stateOrders.map((i: { orderId: string }) =>
+          i.orderId === order.orderId
+            ? { ...order, tickDataAtCreation: tickData }
+            : i
+        ),
+      });
+    }
+  };
 
   const handleDrag = useCallback(
     (y: number) => {
@@ -92,21 +66,27 @@ export const useOpenOrdersDrawing = ({
 
       const chartCoords = toChartCoords(dimensions.padding.left, y);
       const newPrice = chartCoords.y.toFixed(2);
-
-      const updatedOrder = stateOrders.find((o) => o.orderId === draggingOrder);
-      if (updatedOrder) {
-        handleUpdateOrder({ ...updatedOrder, price: newPrice });
-      }
+      console.log("newPrice", newPrice);
+      // Update only local state while dragging
+      setLocalOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.orderId === draggingOrder
+            ? { ...order, price: newPrice }
+            : order
+        )
+      );
     },
-    [draggingOrder, toChartCoords, dimensions.padding.left, stateOrders]
+    [draggingOrder, toChartCoords, dimensions.padding.left]
   );
 
   const handleDragEnd = useCallback(async () => {
     if (draggingOrder) {
-      const order = stateOrders.find((o) => o.orderId === draggingOrder);
+      const order = localOrders.find(
+        (o: { orderId: string }) => o.orderId === draggingOrder
+      );
       if (order) {
-        const originalOrder = initialOrders?.find(
-          (o) => o.orderId === draggingOrder
+        const originalOrder = stateOrders.find(
+          (o: { orderId: string }) => o.orderId === draggingOrder
         );
         if (originalOrder) {
           const originalPrice = parseFloat(originalOrder.price);
@@ -116,14 +96,35 @@ export const useOpenOrdersDrawing = ({
             ((newPrice - originalPrice) / originalPrice) * 100
           );
 
-          if (priceChangePercent > 0.2) {
-            handleUpdateOrder({ ...order, price: originalOrder.price });
+          // Now update the server state after drag ends
+          if (priceChangePercent < 0.2) {
+            sendMessage("app", {
+              _db: true,
+              orders: stateOrders.map((i: { orderId: string }) =>
+                i.orderId === order.orderId
+                  ? { ...originalOrder, tickDataAtCreation: tickData }
+                  : i
+              ),
+            });
+          } else {
+            sendMessage("app", {
+              _db: true,
+              orders: stateOrders.map((i: { orderId: string }) =>
+                i.orderId === order.orderId
+                  ? { ...order, tickDataAtCreation: tickData }
+                  : i
+              ),
+            });
           }
         }
       }
     }
     setDraggingOrder(null);
-  }, [draggingOrder, stateOrders]);
+  }, [draggingOrder, localOrders, stateOrders, tickData]);
+
+  const handleDragStart = useCallback((orderId: string, y: number) => {
+    setDraggingOrder(orderId);
+  }, []);
 
   const handleQuantityChange = useCallback(
     async (orderId: string, qty: string) => {
@@ -169,7 +170,7 @@ export const useOpenOrdersDrawing = ({
   );
 
   return {
-    orders: stateOrders,
+    orders: localOrders, // Return local orders instead of stateOrders
     handleDragStart,
     handleDrag,
     handleDragEnd,

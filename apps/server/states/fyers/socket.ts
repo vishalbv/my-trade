@@ -2,8 +2,13 @@ import logger from "../../services/logger";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import { sendMessage } from "../../services/webSocket";
 import _fyers from "./index";
-import { fyersDataSocket, fyersOrderSocket } from "fyers-api-v3";
+import {
+  fyersDataSocket,
+  fyersOrderSocket as FyersOrderSocket,
+} from "fyers-api-v3";
 import notify from "../../services/notification";
+import { checkAlertForPriceTouch } from "../alerts/functions";
+import { checkOpenOrders } from "../app/ordersManage";
 
 interface FyersSocketState {
   _subscribed: string[];
@@ -26,6 +31,15 @@ export const setState = (newState: Partial<FyersSocketState>) => {
 
 function onMessage(message: any) {
   // console.log(message, "message");
+
+  checkAlertForPriceTouch({
+    symbol: message.symbol,
+    ltp: message.ltp,
+  });
+  checkOpenOrders({
+    symbol: message.symbol,
+    ltp: message.ltp,
+  });
   try {
     // Format and process the message
     const formattedData = {
@@ -91,7 +105,7 @@ export const startFyersSocket = (accessToken: string) => {
     // Connect to socket
     fyersdata.connect();
 
-    fyersOrders = fyersOrderSocket.getInstance(accessToken);
+    fyersOrders = new FyersOrderSocket(accessToken);
 
     // Set up event handlers
     fyersOrders.on("orders", onOrders);

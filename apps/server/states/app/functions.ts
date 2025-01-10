@@ -71,15 +71,19 @@ import _shoonya from "../shoonya/index";
 //   return await getReportsFromDB();
 // };
 
-export const updateMarketStatus = (setState: any) => {
+export const updateMarketStatus = ({
+  holidays,
+  setState,
+}: {
+  holidays: string[];
+  setState: any;
+}) => {
   let now = moment(moment().format("hh:mm:ss a"), "h:mm:ss a");
 
   let isHoliday =
     now.days() == 0 ||
     now.days() == 6 ||
-    _app
-      .getState()
-      .holidays.some(([i]: string) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
+    holidays.some(([i]: string) => isDatesEqual(moment(i, "DD-MMM-YYYY")));
 
   let times = [
     {

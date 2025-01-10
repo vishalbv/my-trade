@@ -25,7 +25,11 @@ import {
   setChartHistoryForOptions,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
-import { shoonyaToFyersSymbol } from "@repo/utils/helpers";
+import {
+  fetchShoonyaNameByFyersSymbol,
+  getCurrentShoonyaPositionPL,
+  shoonyaToFyersSymbol,
+} from "@repo/utils/helpers";
 
 import { updateFyersToShoonyaMapping } from "../../../store/actions/symbolsActions";
 import { AlertBuySellWindow } from "./AlertBuySellWindow";
@@ -36,6 +40,7 @@ import {
 
 import { Popover, PopoverContent, PopoverTrigger } from "@repo/ui/popover";
 import { INDEX_DETAILS } from "@repo/utils/constants";
+import { PRICECOLOR } from "../../../utils/helpers";
 
 interface Indicator {
   id: string;
@@ -510,9 +515,10 @@ export const ChartContainer = memo(
                 onClick={() => setIsSymbolSearchOpen(true)}
                 className="h-6 px-2 text-sm hover:bg-muted"
               >
-                <span className="mr-1">
-                  {chartState.symbol.split(":")[1]?.replace("-INDEX", "") || ""}
-                </span>
+                <DisplaySymbol
+                  chartState={chartState}
+                  layoutTypeKey={layoutTypeKey}
+                />
                 <span className="text-xs text-muted-foreground">NSE</span>
               </Button>
 
@@ -585,6 +591,7 @@ export const ChartContainer = memo(
                 onClose={() => dispatch(setSelectedDrawing(null))}
               />
             )}
+            <ShowPL chartState={chartState} />
           </div>
         </div>
 
@@ -678,3 +685,60 @@ export const ChartContainer = memo(
     );
   }
 );
+
+const DisplaySymbol = ({
+  chartState,
+  layoutTypeKey,
+}: {
+  chartState: any;
+  layoutTypeKey: LayoutKeyType;
+}) => {
+  return (
+    <span className="mr-1">
+      {chartState.symbolInfo?.strike_price &&
+      layoutTypeKey === "optionsChartLayouts"
+        ? `${chartState.symbolInfo.strike_price} ${chartState.symbolInfo.option_type}`
+        : chartState.symbol.split(":")[1]?.replace("-INDEX", "") || ""}
+    </span>
+  );
+};
+
+const ShowPL = ({ chartState }: { chartState: any }) => {
+  const positions = useSelector(
+    (state: RootState) => state.states.shoonya?.positions || []
+  );
+  const tick = useSelector(
+    (state: RootState) => state.ticks.fyers_web[chartState.symbol]
+  );
+  const hasPosition = positions.find(
+    (i: any) =>
+      i.tsym ===
+      fetchShoonyaNameByFyersSymbol({
+        symbol: chartState.symbol,
+        strike_price: chartState.symbolInfo?.strike_price,
+        option_type: chartState.symbolInfo?.option_type,
+        expiryDate: chartState.symbolInfo?.expiryDate,
+      })?.tsym
+  );
+
+  const pnl =
+    hasPosition && getCurrentShoonyaPositionPL(hasPosition, +tick?.ltp || 0);
+
+  return (
+    <div>
+      {hasPosition && (
+        <div className="flex items-center gap-1 text-sm">
+          <div>{hasPosition?.netqty} qty</div>
+          <div
+            className={cn(
+              "min-w-[80px] text-right font-medium tabular-nums",
+              PRICECOLOR(pnl)
+            )}
+          >
+            {pnl.toFixed(2)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

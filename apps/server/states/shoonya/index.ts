@@ -11,10 +11,11 @@ import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
 import { _shoonyaSocket, startShoonyaSocket } from "./socket";
-import { fetchShoonyaNameByFyersSymbol, positionsFormatter } from "./functions";
+import { positionsFormatter } from "./functions";
 import _symbols from "../symbols/index";
 import { startMoneyManagementInterval } from "./moneyManagement";
 import _app from "../app/index";
+import { fetchShoonyaNameByFyersSymbol } from "@repo/utils/helpers";
 
 let api = new NorenRestApi();
 const secret = "5GY64JV73GK3A676S6GC63463L33I535";
@@ -310,10 +311,16 @@ class Shoonya extends State {
     },
     disableMoneyManage = false
   ) => {
+    const { exch, tsym } = body.fyersSymbol
+      ? fetchShoonyaNameByFyersSymbol(body.fyersSymbol as any) || {}
+      : { exch: null, tsym: null };
+
     try {
       const {
         side,
-        qty = 1,
+        qty = this.getState().positions.find(
+          (position: any) => position.tsym === tsym
+        )?.netqty || 1,
         fyersSymbol,
         shoonyaSymbol,
         $index,
@@ -324,7 +331,7 @@ class Shoonya extends State {
         order_type,
       } = body;
 
-      console.log("Placing order:", fyersSymbol, shoonyaSymbol, $index);
+      console.log("Placing order:", exch, tsym, qty);
       const { testMode } = _app.getState();
       if (testMode) {
         return {
@@ -335,10 +342,6 @@ class Shoonya extends State {
           },
         };
       }
-
-      const { exch, tsym } = fyersSymbol
-        ? fetchShoonyaNameByFyersSymbol(fyersSymbol as any) || {}
-        : { exch: null, tsym: null };
 
       const baseOrderParams = {
         buy_or_sell: side == 1 ? "B" : "S",

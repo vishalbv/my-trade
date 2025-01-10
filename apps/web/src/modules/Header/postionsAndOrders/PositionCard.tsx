@@ -4,6 +4,7 @@ import { DisplayName } from "./components";
 import { Button } from "@repo/ui/button";
 import { Input } from "@repo/ui/input";
 import { PRICECOLOR } from "../../../utils/helpers";
+import { getCurrentShoonyaPositionPL } from "@repo/utils/helpers";
 
 interface PositionCardProps {
   position: any;
@@ -25,17 +26,13 @@ interface PositionCardProps {
   }) => void;
 }
 
-export const getCurrentValue = (i: any, lp: any) => {
-  return +i.rpnl + +i.netqty * (lp - +i.netavgprc) * +i.prcftr;
-};
-
 export const PositionCard: React.FC<PositionCardProps> = ({
   position,
   tick,
   onOrderPlace,
 }) => {
   const { dname, netqty, token, avgprc = 0, exch, tsym } = position;
-  const pnl = getCurrentValue(position, tick?.lp || 0);
+  const pnl = getCurrentShoonyaPositionPL(position, tick?.lp || 0);
   const [inputs, setInputs] = useState<{ price?: string; qty?: number }>({});
 
   const handleInputChange = (values: { price?: string; qty?: number }) => {
@@ -84,7 +81,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({
             <Button
               size="sm"
               variant="outline"
-              className="h-full w-1/2 p-0 text-[10px] hover:bg-green-500/50 hover:text-green-500 hover:border-green-500"
+              className="h-full w-1/2 p-0 text-[10px] bg-green-500/20 hover:bg-green-500/30 hover:text-green-500 hover:border-green-500/50"
               onDoubleClick={() =>
                 onOrderPlace({ position, side: 1, qty: inputs?.qty })
               }
@@ -94,7 +91,7 @@ export const PositionCard: React.FC<PositionCardProps> = ({
             <Button
               size="sm"
               variant="outline"
-              className="h-full w-1/2 p-0 text-[10px] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500"
+              className="h-full w-1/2 p-0 text-[10px] bg-red-500/20 hover:bg-red-500/30 hover:text-red-500 hover:border-red-500/50"
               onDoubleClick={() =>
                 onOrderPlace({ position, side: -1, qty: inputs?.qty })
               }

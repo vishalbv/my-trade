@@ -46,14 +46,6 @@ export const BuySellWindow = ({
 
   const [isVisible, setIsVisible] = useState(false);
 
-  const [orderState, setOrderState] = useState<OrderState>({
-    side: 1,
-    priceType: "MARKET",
-    price: "",
-    qty: "1",
-    symbol: chartState.symbol,
-  });
-  const qtyInputRef = useRef<HTMLInputElement>(null);
   const { lotSize } = chartState.symbolInfo;
 
   const defaultOrderState: OrderState = {
@@ -63,6 +55,9 @@ export const BuySellWindow = ({
     symbol: chartState.symbol,
   };
 
+  const [orderState, setOrderState] = useState<OrderState>(defaultOrderState);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+
   const closeWindow = () => {
     setIsVisible(false);
     setOrderState(defaultOrderState);
@@ -70,39 +65,59 @@ export const BuySellWindow = ({
 
   useEffect(() => {
     if (lotSize) {
-      setOrderState((prev) => ({ ...prev, qty: lotSize.toString() }));
+      setOrderState((prev) => ({ ...prev }));
     }
   }, [lotSize]);
 
+  const handleKeyPress = (e: KeyboardEvent) => {
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLInputElement &&
+      e.key !== "Enter" &&
+      e.key !== "Escape"
+    )
+      return;
+
+    if (e.key.toLowerCase() === "b") {
+      console.log("b", orderState.qty);
+      setOrderState((prev) => {
+        return { ...prev, side: 1, qty: (lotSize * 2).toString() };
+      });
+      setIsVisible(true);
+      setTimeout(() => {
+        qtyInputRef.current?.focus();
+        qtyInputRef.current?.select();
+      }, 0);
+    } else if (e.key.toLowerCase() === "s") {
+      setOrderState((prev) => {
+        return { ...prev, side: -1 };
+      });
+      setIsVisible(true);
+      setTimeout(() => {
+        qtyInputRef.current?.focus();
+        qtyInputRef.current?.select();
+      }, 0);
+    } else if (e.key === "Escape") {
+      closeWindow();
+    } else if (e.key === "Enter" && isVisible) {
+      handleOrder();
+    }
+  };
+
   useEffect(() => {
     if (chartKey !== selectedChartKey) return;
-    const handleKeyPress = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (
-        activeElement instanceof HTMLInputElement &&
-        e.key !== "Enter" &&
-        e.key !== "Escape"
-      )
-        return;
-
-      if (e.key.toLowerCase() === "b") {
-        setOrderState((prev) => ({ ...prev, side: 1 }));
-        setIsVisible(true);
-        setTimeout(() => qtyInputRef.current?.focus(), 0);
-      } else if (e.key.toLowerCase() === "s") {
-        setOrderState((prev) => ({ ...prev, side: -1 }));
-        setIsVisible(true);
-        setTimeout(() => qtyInputRef.current?.focus(), 0);
-      } else if (e.key === "Escape") {
-        closeWindow();
-      } else if (e.key === "Enter" && isVisible) {
-        handleOrder();
-      }
-    };
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [chartKey, isVisible, orderState.priceType, selectedChartKey]);
+  }, [
+    chartKey,
+    isVisible,
+    orderState.priceType,
+    orderState.side,
+    orderState.qty,
+    selectedChartKey,
+    handleKeyPress,
+  ]);
 
   const prevIsVisible = useRef(false);
   useEffect(() => {
@@ -132,8 +147,8 @@ export const BuySellWindow = ({
     }));
   };
 
-  const _placeOrder = () => {
-    placeOrder({
+  const _placeOrder = async () => {
+    await placeOrder({
       broker: "shoonya",
       qty: orderState.qty,
       side: orderState.side,
@@ -154,12 +169,14 @@ export const BuySellWindow = ({
 
   const handleAddOrder = () => {
     sendMessage("app", {
+      _db: true,
       orders: [
         ...orders,
         {
           ...orderState,
           status: "OPEN",
           orderId: "order-" + Date.now().toString(),
+          tickDataAtCreation: tickData,
         },
       ],
     });
@@ -175,25 +192,27 @@ export const BuySellWindow = ({
     closeWindow();
   };
 
-  useEffect(() => {
-    if (isVisible && qtyInputRef.current) {
-      qtyInputRef.current.select();
-    }
-  }, [isVisible]);
+  // useEffect(() => {
+  //   if (isVisible && qtyInputRef.current) {
+  //     qtyInputRef.current.select();
+  //   }
+  // }, [isVisible]);
 
   if (!isVisible) return null;
 
   return (
     <div
       className={cn(
-        "absolute left-16 top-16 bg-background/90 backdrop-blur-sm rounded-md p-2 border border-border z-40 flex items-center gap-2",
-        className
+        "absolute right-16 top-16 bg-background/90 backdrop-blur-sm rounded-md p-1.5 border border-border z-40 flex items-center gap-2 scale-90",
+        className,
+        orderState.side === 1 && "border-green-500/20",
+        orderState.side === -1 && "border-red-500/20"
       )}
     >
       <button
         onClick={toggleSide}
         className={cn(
-          "text-sm font-medium",
+          "text-sm font-medium min-w-[50px] text-center",
           orderState.side === 1 ? "text-green-500" : "text-red-500"
         )}
       >
@@ -203,14 +222,19 @@ export const BuySellWindow = ({
         ref={qtyInputRef}
         type="number"
         value={orderState.qty}
-        onChange={handleQtyChange}
+        onChange={(e) => handleQtyChange(e)}
         className="w-20 h-7 text-sm"
         placeholder="Qty"
         step={lotSize}
         hideArrows
         min={lotSize}
       />
-      <span className="text-sm">
+      <span
+        className="text-sm min-w-[80px] text-center"
+        onClick={() =>
+          setOrderState((prev) => ({ ...prev, priceType: "MARKET", price: "" }))
+        }
+      >
         at {orderState.price || tickData?.ltp || "MARKET"}
       </span>
       <Button

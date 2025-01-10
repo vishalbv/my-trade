@@ -7,6 +7,7 @@ import _shoonya from "../states/shoonya/index";
 import logger from "../services/logger";
 import { _allStates } from "../states/allstates";
 import statesDbService from "../services/statesDb";
+import { updateMarketStatus } from "../states/app/functions";
 
 const DATE_FORMAT = "DD-MM-YYYY";
 
@@ -17,6 +18,15 @@ export const parseDate = (dateString: string) => {
 export const checkLoginSession = async (callback: () => void) => {
   try {
     const appState = await statesDbService.getStateById("app");
+    _app.setState({
+      lastLoginDate: appState?.lastLoginDate,
+      refreshTokenExpiry: appState?.refreshTokenExpiry,
+      holidays: appState?.holidays,
+    });
+    updateMarketStatus({
+      holidays: appState?.holidays,
+      setState: (data: any) => _app.setState({ marketStatus: data }),
+    });
 
     if (appState) {
       const { lastLoginDate, refreshTokenExpiry } = appState;

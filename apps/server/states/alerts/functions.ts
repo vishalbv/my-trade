@@ -14,7 +14,7 @@ export const checkAlerts = () => {
 
   intervalId = setInterval(() => {
     if (_app.getState().marketStatus.activeStatus) {
-      alertFinder();
+      // alertFinder();
     }
   }, 2000);
 
@@ -55,10 +55,43 @@ export const checkAlerts = () => {
     });
   };
 
-  const handleAlertCatch = (alert: any) => {
-    notify.info({ description: "Alert caught priceTouch", speak: true });
-    _alerts.updateAlert(alert.drawingId, alert.id, { notified: true });
-  };
-
   _alerts.setIntervalAndUpdate("checkAlerts", intervalId);
+};
+
+const handleAlertCatch = (alert: any) => {
+  notify.info({ description: "Alert caught priceTouch", speak: true });
+  _alerts.updateAlert(alert.drawingId, alert.id, { notified: true });
+};
+
+export const checkAlertForPriceTouch = (tickData: {
+  symbol: string;
+  ltp: number;
+}) => {
+  const alerts = Object.values(filterCommonKeys(_alerts.getState()))
+    .flat()
+    .filter((alert: any) => alert.type === "priceTouch");
+  const drawings = Object.values(filterCommonKeys(_drawings.getState())).flat();
+
+  alerts.forEach((alert: any) => {
+    if (alert.symbol !== tickData.symbol || alert.notified) return;
+    if (alert.timeframe === "") {
+      const drawing = drawings.find((d: any) => d.id === alert.drawingId);
+
+      if (drawing?.type === "horizontalLine") {
+        const alertPrice = drawing.points[0].y;
+
+        if (
+          alert?.tickDataAtCreation?.ltp > alertPrice &&
+          tickData.ltp <= alertPrice
+        ) {
+          handleAlertCatch(alert);
+        } else if (
+          alert?.tickDataAtCreation?.ltp < alertPrice &&
+          tickData.ltp >= alertPrice
+        ) {
+          handleAlertCatch(alert);
+        }
+      }
+    }
+  });
 };

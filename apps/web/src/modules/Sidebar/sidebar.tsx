@@ -58,6 +58,20 @@ const leftbraItems = [
   },
 ];
 
+const SidebarLabel: React.FC<{ children: React.ReactNode; show: boolean }> = ({
+  children,
+  show,
+}) => (
+  <span
+    className={cn(
+      "transition-all duration-300 origin-left",
+      show ? "scale-100 opacity-100" : "scale-0 opacity-0 w-0 overflow-hidden"
+    )}
+  >
+    {children}
+  </span>
+);
+
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const active = pathname?.split("/")[1] || "";
@@ -135,83 +149,148 @@ const Sidebar: React.FC = () => {
                 <item.icon
                   className={cn("w-5 h-5 mr-3", isLeftNavCollapsed && "mr-0")}
                 />
-                {!isLeftNavCollapsed && item.label}
+                {/* {!isLeftNavCollapsed && item.label} */}
+                <SidebarLabel show={!isLeftNavCollapsed}>
+                  {item.label}
+                </SidebarLabel>
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      {!isLeftNavCollapsed && (
-        <div className="mt-auto space-y-4 pb-4 text-xs [&>div]:h-5">
-          <div className="flex items-center justify-between">
-            <span>SHOONYA</span>
-            <div className="flex items-center">
-              <TooltipProvider>
-                <Tooltip open={showPWDTooltip}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      onClick={() => handleCopy("password")}
-                    >
-                      <Copy className="w-2 h-2" />
-                      PWD
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="center">
-                    <p>Copied!</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+      <div className="mt-auto space-y-4 pb-4 text-xs [&>div]:h-5">
+        <div
+          className={cn(
+            "flex items-center transition-all duration-300",
+            isLeftNavCollapsed ? "justify-center" : "justify-between"
+          )}
+        >
+          <SidebarLabel show={!isLeftNavCollapsed}>SHOONYA</SidebarLabel>
+          <div className="flex items-center gap-1">
+            <TooltipProvider delayDuration={100}>
+              <Tooltip open={isLeftNavCollapsed ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="link"
+                    size={isLeftNavCollapsed ? "icon" : "xs"}
+                    className={cn(isLeftNavCollapsed && "h-5 w-5")}
+                    onClick={() => handleCopy("password")}
+                  >
+                    <Copy
+                      className={cn("w-2 h-2", isLeftNavCollapsed && "w-3 h-3")}
+                    />
+                    {!isLeftNavCollapsed && "PWD"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{isLeftNavCollapsed ? "Password" : "Copied!"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip open={showTOTPTooltip}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      onClick={() => handleCopy("otp")}
-                    >
-                      <Copy className="w-2 h-2" />
-                      TOTP
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="center">
-                    <p>Copied!</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span>DONE FOR THE DAY</span>
-            <Switch className="scale-90" />
-          </div>
-          <div className="flex items-center justify-between">
-            <span>TEST MODE</span>
-            <Switch
-              className="scale-90"
-              onCheckedChange={(value) => {
-                console.log("testMode", value);
-                setAppState({ testMode: value });
-              }}
-              checked={testMode}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span>REFRESH BACKEND</span>
-            <Button
-              variant="primary-hover"
-              size="icon"
-              className="text-red-700 dark:text-orange-300 hover:!text-background"
-              onClick={() => restartServer({})}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip open={isLeftNavCollapsed ? undefined : false}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="link"
+                    size={isLeftNavCollapsed ? "icon" : "xs"}
+                    className={cn(isLeftNavCollapsed && "h-5 w-5")}
+                    onClick={() => handleCopy("otp")}
+                  >
+                    <Copy
+                      className={cn("w-2 h-2", isLeftNavCollapsed && "w-3 h-3")}
+                    />
+                    {!isLeftNavCollapsed && "TOTP"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{isLeftNavCollapsed ? "TOTP" : "Copied!"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
-      )}
+
+        <div
+          className={cn(
+            "flex items-center transition-all duration-300",
+            isLeftNavCollapsed ? "justify-center" : "justify-between"
+          )}
+        >
+          <SidebarLabel show={!isLeftNavCollapsed}>
+            DONE FOR THE DAY
+          </SidebarLabel>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip open={isLeftNavCollapsed ? undefined : false}>
+              <TooltipTrigger asChild>
+                <div>
+                  <Switch className="scale-90" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Done for the day</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        <div
+          className={cn(
+            "flex items-center transition-all duration-300",
+            isLeftNavCollapsed ? "justify-center" : "justify-between"
+          )}
+        >
+          <SidebarLabel show={!isLeftNavCollapsed}>TEST MODE</SidebarLabel>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip open={isLeftNavCollapsed ? undefined : false}>
+              <TooltipTrigger asChild>
+                <div>
+                  <Switch
+                    className="scale-90"
+                    onCheckedChange={(value) =>
+                      setAppState({ testMode: value })
+                    }
+                    checked={testMode}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Test Mode</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        <div
+          className={cn(
+            "flex items-center transition-all duration-300",
+            isLeftNavCollapsed ? "justify-center" : "justify-between"
+          )}
+        >
+          <SidebarLabel show={!isLeftNavCollapsed}>
+            REFRESH BACKEND
+          </SidebarLabel>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip open={isLeftNavCollapsed ? undefined : false}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="primary-hover"
+                  size="icon"
+                  className="text-red-700 dark:text-orange-300 hover:!text-background"
+                  onClick={() => restartServer({})}
+                >
+                  <RefreshCw
+                    className={cn("h-4 w-4", isLeftNavCollapsed && "h-3 w-3")}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Refresh Backend</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
     </aside>
   );
 };

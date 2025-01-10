@@ -931,6 +931,7 @@ export const DrawingCanvas = ({
             onDrag={handleDrag}
             onDragEnd={handleDragEnd}
             isDragging={draggingOrder === order.orderId}
+            lotSize={chartState.symbolInfo?.lotSize || 1}
           />
         );
       })}

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { ChartTheme } from "../types";
 import { cn } from "@repo/utils/ui/helpers";
 import debounce from "lodash/debounce";
+import { Input } from "@repo/ui/input";
 
 interface OrderLabelProps {
   orderId: string;
@@ -32,6 +33,7 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
   onDragEnd,
   isDragging,
   side,
+  lotSize,
 }) => {
   const labelRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -117,7 +119,7 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
       ref={labelRef}
       onMouseDown={handleMouseDown}
       className={cn(
-        "absolute right-0 flex items-center z-[400] w-[250px] select-none touch-none",
+        "absolute right-0 flex items-center z-[150] w-[250px] select-none touch-none",
         isDragging ? "cursor-grabbing" : "cursor-grab"
       )}
       style={{
@@ -167,13 +169,16 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
             borderColor: side === 1 ? theme.upColor : theme.downColor,
           }}
         >
-          <input
-            type="text"
+          <Input
+            type={localQuantity ? "number" : "text"}
             value={localQuantity}
+            placeholder="ALL"
             onChange={handleQuantityChange}
             onClick={(e) => e.target.select()}
+            hideArrows
+            step={lotSize}
             className={cn(
-              "w-10 bg-transparent border-none text-left text-xs cursor-grab h-full focus:outline-none active:outline-none"
+              "w-10 bg-transparent border-none text-left text-xs cursor-grab h-full focus:outline-none active:outline-none focus-visible:outline-none focus-visible:ring-0 p-0 pl-1"
               //   isActive ? "text-background" : "text-text"
             )}
           />
