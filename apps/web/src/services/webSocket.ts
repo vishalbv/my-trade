@@ -7,8 +7,7 @@ import notify, { notifyServerSide } from "./notification";
 let socket: WebSocket | null = null;
 let dispatch: any = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const INITIAL_RECONNECT_DELAY = 1000;
+const RECONNECT_DELAY = 3000;
 
 function connect() {
   socket = new WebSocket("ws://127.0.0.1:2300");
@@ -23,18 +22,11 @@ function connect() {
     console.log("WebSocket Disconnected");
     socket = null;
 
-    // Attempt to reconnect with exponential backoff
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
-      console.log(`Attempting to reconnect in ${delay}ms...`);
-
-      setTimeout(() => {
-        reconnectAttempts++;
-        initializeWebSocket();
-      }, delay);
-    } else {
-      notify.error("Failed to reconnect to WebSocket after multiple attempts");
-    }
+    console.log(`Attempting to reconnect in ${RECONNECT_DELAY}ms...`);
+    setTimeout(() => {
+      reconnectAttempts++;
+      initializeWebSocket();
+    }, RECONNECT_DELAY);
   };
 
   socket.onmessage = (response: MessageEvent<any>) => {
