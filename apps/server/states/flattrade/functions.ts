@@ -11,7 +11,7 @@ export const getShoonyaPL = (positions: any, ticks: any) => {
       positions[0] &&
       positions
         .map((i: any) => {
-          return getCurrentShoonyaPositionPL(i, ticks[i.token]?.lp);
+          return getCurrentShoonyaPositionPL(i, ticks);
         })
         .reduce((a: number, b: number) => +a + +b)
     )?.toFixed(2) || 0;

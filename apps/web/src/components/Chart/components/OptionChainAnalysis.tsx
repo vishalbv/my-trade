@@ -82,6 +82,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
           symbolInfo: {
             ...middleCE,
             expiryDate: selectedMainSymbol.symbolInfo.expiryDate,
+            lotSize: selectedMainSymbol.symbolInfo.lotSize,
           },
         },
         "2": {
@@ -90,6 +91,7 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
           symbolInfo: {
             ...middlePE,
             expiryDate: selectedMainSymbol.symbolInfo.expiryDate,
+            lotSize: selectedMainSymbol.symbolInfo.lotSize,
           },
         },
       })

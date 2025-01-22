@@ -1,6 +1,8 @@
 import moment from "moment";
 import State from "../state.ts";
-import { updateMarketStatus } from "./functions";
+import { subscrbeSymbolsForOrders } from "./functions";
+import { updateMarketStatus } from "./checkMarketStatus";
+
 // import { updateMarketStatus } from "./functions.js";
 // import { INDEX_DETAILS } from "../../utils/constants.js";
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
@@ -16,6 +18,7 @@ class App extends State {
     const _old = this.getState();
     console.log({ _old, _new });
     this.updateState(_new, fromDB);
+    subscrbeSymbolsForOrders(_new.orders);
   };
   isLoggedIn = () => this.getState().access_token;
   isInTestMode = () => this.getState().testMode;

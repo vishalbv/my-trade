@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { sidebarIgnorePaths, STYLES } from "../../utils/constants";
 import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
-import { logout } from "../../store/actions/appActions";
+import { login, logout } from "../../store/actions/appActions";
 import { useDispatch, useSelector } from "react-redux";
 import { refreshScalpingMode } from "../../store/slices/globalChartSlice";
 

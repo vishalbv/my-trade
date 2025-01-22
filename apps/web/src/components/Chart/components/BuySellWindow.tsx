@@ -24,6 +24,7 @@ interface OrderState {
   side: 1 | -1;
   priceType: "LIMIT" | "MARKET";
   price: string;
+  symbolInfo: any;
 }
 
 export const BuySellWindow = ({
@@ -37,7 +38,7 @@ export const BuySellWindow = ({
     (state: RootState) => state.globalChart
   );
   const tickData = useSelector(
-    (state: any) => state.ticks?.fyers_web[chartState.symbolInfo.symbol]
+    (state: any) => state.ticks?.fyers_web[chartState?.symbolInfo?.symbol]
   );
 
   const orders = useSelector(
@@ -46,13 +47,14 @@ export const BuySellWindow = ({
 
   const [isVisible, setIsVisible] = useState(false);
 
-  const { lotSize } = chartState.symbolInfo;
+  const { lotSize } = chartState?.symbolInfo || {};
 
   const defaultOrderState: OrderState = {
     side: 1,
     priceType: "MARKET",
     price: "",
     symbol: chartState.symbol,
+    symbolInfo: chartState.symbolInfo,
   };
 
   const [orderState, setOrderState] = useState<OrderState>(defaultOrderState);
@@ -203,7 +205,7 @@ export const BuySellWindow = ({
   return (
     <div
       className={cn(
-        "absolute right-16 top-16 bg-background/90 backdrop-blur-sm rounded-md p-1.5 border border-border z-40 flex items-center gap-2 scale-90",
+        "absolute right-16 top-16 bg-background/90 backdrop-blur-sm rounded-md p-1.5 border border-border z-[500] flex items-center gap-2 scale-90",
         className,
         orderState.side === 1 && "border-green-500/20",
         orderState.side === -1 && "border-red-500/20"

@@ -95,7 +95,7 @@ class Fyers extends State {
             refresh_token,
           });
           await statesDbService.upsertState("app", {
-            refreshTokenExpiry: moment().add(14, "day").format(DDMMYYYY),
+            refreshTokenExpiry: moment().add(10, "day").format(DDMMYYYY),
           });
         }
       }

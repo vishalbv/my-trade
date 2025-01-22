@@ -1,6 +1,7 @@
 import { sendResponse } from "@repo/utils/server/helpers";
 import _fyers from "../states/fyers/index";
 import _shoonya from "../states/shoonya/index";
+import _flattrade from "../states/flattrade/index";
 
 interface RequestBody {
   broker: string;
@@ -21,6 +22,13 @@ export const declareOrderApis = () => ({
         // };
       } else if (broker === "shoonya") {
         const { data } = await _shoonya.placeOrder(body);
+        return {
+          status: 200,
+          message: "Order placed successfully",
+          data,
+        };
+      } else if (broker === "flattrade") {
+        const { data } = await _flattrade.placeOrder(body);
         return {
           status: 200,
           message: "Order placed successfully",

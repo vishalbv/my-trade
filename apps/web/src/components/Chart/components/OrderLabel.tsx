@@ -119,7 +119,7 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
       ref={labelRef}
       onMouseDown={handleMouseDown}
       className={cn(
-        "absolute right-0 flex items-center z-[150] w-[250px] select-none touch-none",
+        "absolute right-0 flex items-center z-[150] w-full select-none touch-none",
         isDragging ? "cursor-grabbing" : "cursor-grab"
       )}
       style={{

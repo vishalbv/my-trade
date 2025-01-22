@@ -102,15 +102,7 @@ export function TradeManageForm() {
             onChange: (value: number) =>
               setShoonyaMoneyManage({ maxNoOfTrades: value }),
           },
-          {
-            id: "maxBrokerage",
-            label: "Max Brokerage (Daily)",
-            value: moneyManage.maxBrokerage,
-            max: maxIcanSet.maxBrokerage,
-            suffix: "%",
-            onChange: (value: number) =>
-              setShoonyaMoneyManage({ maxBrokerage: value }),
-          },
+
           {
             id: "secureProfit",
             label: "Secure Profit Percentage",

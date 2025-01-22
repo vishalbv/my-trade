@@ -6,6 +6,13 @@ export const shoonyaAuthParams = {
   imei: "machine id",
 };
 
+export const flattradeAuthParams = {
+  userid: "FZ08557",
+  password: "Flat!23456",
+  api_secret: "5e4475c6c17742bfb137cfa6a02e8379",
+  imei: "machine id",
+};
+
 export const fyersAuthParams = {
   app_id: "RI1CI3ISNC-100",
   secret_key: "55UOHBZD4J",

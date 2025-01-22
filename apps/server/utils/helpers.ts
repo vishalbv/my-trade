@@ -7,7 +7,8 @@ import _shoonya from "../states/shoonya/index";
 import logger from "../services/logger";
 import { _allStates } from "../states/allstates";
 import statesDbService from "../services/statesDb";
-import { updateMarketStatus } from "../states/app/functions";
+import { updateMarketStatus } from "../states/app/checkMarketStatus";
+import _flattrade from "../states/flattrade/index";
 
 const DATE_FORMAT = "DD-MM-YYYY";
 
@@ -18,11 +19,7 @@ export const parseDate = (dateString: string) => {
 export const checkLoginSession = async (callback: () => void) => {
   try {
     const appState = await statesDbService.getStateById("app");
-    _app.setState({
-      lastLoginDate: appState?.lastLoginDate,
-      refreshTokenExpiry: appState?.refreshTokenExpiry,
-      holidays: appState?.holidays,
-    });
+
     updateMarketStatus({
       holidays: appState?.holidays,
       setState: (data: any) => _app.setState({ marketStatus: data }),
@@ -36,6 +33,12 @@ export const checkLoginSession = async (callback: () => void) => {
             refreshTokenExpiry: null,
           });
           logoutAll();
+        } else {
+          _app.setState({
+            lastLoginDate: appState?.lastLoginDate,
+            refreshTokenExpiry: appState?.refreshTokenExpiry,
+            holidays: appState?.holidays,
+          });
         }
       }
       if (lastLoginDate && moment().diff(moment(lastLoginDate), "hours") <= 8) {
@@ -68,5 +71,6 @@ export const logoutAll = () => {
   startingFunctionsAtLogout();
   _fyers.logout();
   _shoonya.logout();
+  _flattrade.logout();
   _app.setState({ loggedIn: false });
 };

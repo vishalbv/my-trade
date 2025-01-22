@@ -9,10 +9,11 @@ class NorenRestApi {
   #username = "";
   #accountid = "";
   #webSocket = null;
-
-  constructor() {
-    this.endpoint = API.endpoint;
-    this.debug = API.debug;
+  broker: string;
+  constructor(broker: string) {
+    this.broker = broker;
+    this.endpoint = API[broker].endpoint;
+    this.debug = API[broker].debug;
     this.routes = {
       authorize: "/QuickAuth",
       logout: "/Logout",
@@ -244,7 +245,7 @@ class NorenRestApi {
 
   async startWebsocket(callbacks) {
     this.#webSocket = new WS({
-      url: API.websocket,
+      url: API[this.broker].websocket,
       apikey: this.#susertoken,
     });
 

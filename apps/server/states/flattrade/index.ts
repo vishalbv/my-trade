@@ -10,7 +10,7 @@ import { authenticator } from "otplib";
 
 // import _ticksFyersService from "../../services/ticks-fyers-service.js";
 import logger from "../../services/logger.js";
-import NorenRestApi from "../../services/shoonyaApi/RestApi";
+
 import dbService from "../../services/db";
 import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
@@ -22,15 +22,13 @@ import _app from "../app/index";
 import { fetchShoonyaNameByFyersSymbol } from "@repo/utils/helpers";
 import FlatTradeRestApi from "../../services/flatTradeApi/RestApi";
 
-// let api = new NorenRestApi("shoonya");
-let api = new NorenRestApi("shoonya");
-// const api = new FlatTradeRestApi();
+const api = new FlatTradeRestApi();
 
-const secret = "5GY64JV73GK3A676S6GC63463L33I535";
+const secret = "MELKJBFDWTFGJ46XG2NCC447XEIG44N3";
 
-const initialState = { id: "shoonya" };
+const initialState = { id: "flattrade" };
 
-class Shoonya extends State {
+class FlatTrade extends State {
   constructor() {
     super(initialState);
   }
@@ -113,12 +111,12 @@ class Shoonya extends State {
     }
   };
 
-  initializeShoonya = async () => {
-    console.log("initializing shoonya");
+  initializeFlatTrade = async () => {
+    console.log("initializing flattrade");
     this.getFundInfo();
 
     // Start the socket connection using the existing api instance
-    await startShoonyaSocket(api);
+    // await startShoonyaSocket(api);
     this.getPositions();
     this.getOrderBook();
     this.scripinfo("NSE", "26009");
@@ -140,68 +138,39 @@ class Shoonya extends State {
 
   setAccessToken = (access_token: string | null) => {
     // fyers.setAccessToken(access_token);
-    this.setState({ access_token });
-    checkAllLoginStatus();
-
-    api.setSessionDetails({
-      actid: shoonyaAuthParams.userid,
-      // actid: flattradeAuthParams.userid,
-      susertoken: access_token,
-    });
-
-    if (access_token) {
-      this.initializeShoonya();
-    }
-
+    // this.setState({ access_token });
+    // checkAllLoginStatus();
+    // api.setSessionDetails({
+    //   actid: flattradeAuthParams.userid,
+    //   susertoken: access_token,
+    // });
+    // if (access_token) {
+    //   this.initializeFlatTrade();
+    // }
     // _ticksFyersService.setAccessToken(access_token);
   };
 
   getAccessToken = () => this.getState().access_token;
 
   login = async () => {
-    logger.info("logging to shoonya");
     try {
-      const otp = await authenticator.generate(secret);
-      const res = await api.login({ ...shoonyaAuthParams, twoFA: otp });
+      // const res = await api.login();
 
       if (res.status == 200) {
-        if (res?.data?.stat == "Not_Ok") {
-          throw new Error(res?.data?.emsg || "Login failed");
-        }
-        const access_token = res.data.susertoken;
+        const access_token = res.data.access_token;
         await statesDbService.upsertState(this.getState().id, { access_token });
         this.setAccessToken(access_token);
 
         return { access_token };
       } else {
         logger.error("login failed", res);
-        throw new Error(res?.data?.emsg || "Login failed");
+        throw new Error(res?.message || "Login failed");
       }
     } catch (error: any) {
       logger.error("login failed", error);
       throw new Error(`Failed to login: ${error.message}`);
     }
   };
-
-  // login = async () => {
-  //   try {
-  //     const res = await api.login();
-
-  //     if (res.status == 200) {
-  //       const access_token = res.data.access_token;
-  //       await statesDbService.upsertState(this.getState().id, { access_token });
-  //       this.setAccessToken(access_token);
-  //       console.log("access_token--------", access_token);
-  //       return { access_token };
-  //     } else {
-  //       logger.error("login failed", res);
-  //       throw new Error(res?.message || "Login failed");
-  //     }
-  //   } catch (error: any) {
-  //     logger.error("login failed", error);
-  //     throw new Error(`Failed to login: ${error.message}`);
-  //   }
-  // };
 
   loginDetails = async () => {
     const otp = await authenticator.generate(secret);
@@ -459,6 +428,6 @@ class Shoonya extends State {
   };
 }
 
-const _shoonya = new Shoonya();
+const _flattrade = new FlatTrade();
 
-export default _shoonya;
+export default _flattrade;

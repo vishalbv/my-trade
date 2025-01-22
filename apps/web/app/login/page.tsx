@@ -16,11 +16,11 @@ export default function Login() {
     var auth_code = url.searchParams.get("auth_code");
     const result = await login({ broker: "shoonya" });
     const result2 = await login({ broker: "fyers", auth_code });
+    // const result3 = await login({ broker: "flattrade" });
     console.log(result, result2);
   };
   useEffect(() => {
     loginBorkers();
-    console.log("llllll");
   }, []);
 
   useEffect(() => {

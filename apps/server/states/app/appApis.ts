@@ -9,6 +9,7 @@ import statesDbService from "../../services/statesDb";
 
 import dbService from "../../services/db";
 import { generateReport } from "../../reports";
+import _flattrade from "../flattrade/index";
 
 interface RequestBody {
   broker: string;
@@ -35,6 +36,13 @@ export const declareAppApis = () => ({
           status: 200,
           message: "Pre-login successful",
           data: result,
+        };
+      } else if (broker === "flattrade") {
+        // const result = await _flattrade.preLogin();
+        return {
+          status: 200,
+          message: "Pre-login successful",
+          // data: result,
         };
       } else {
         return { status: 404, message: "Broker not found" };
@@ -71,6 +79,20 @@ export const declareAppApis = () => ({
         };
       } else if (broker === "shoonya") {
         const result = await _shoonya.login();
+        if (_app.getState().loggedIn) {
+          _app.setState({ loggingIn: false });
+          initializeApp();
+          statesDbService.upsertState("app", {
+            lastLoginDate: moment().valueOf(),
+          });
+        }
+        return {
+          status: 200,
+          message: "Login successful",
+          data: result,
+        };
+      } else if (broker === "flattrade") {
+        const result = await _flattrade.login();
         if (_app.getState().loggedIn) {
           _app.setState({ loggingIn: false });
           initializeApp();

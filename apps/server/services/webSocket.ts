@@ -79,7 +79,10 @@ export function initializeWebSocket() {
           apiHandlers[`${req.method} ${routePath}` as keyof typeof apiHandlers];
 
         if (handler) {
-          const body = req.method === "POST" ? await req.json() : undefined;
+          const body =
+            req.method === "POST" || req.method === "PUT"
+              ? await req.json()
+              : undefined;
           const response = await handler({
             body,
             params: id ? { id } : undefined,

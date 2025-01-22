@@ -3,6 +3,7 @@ export const allStates = [
   "app",
   "shoonya",
   "fyers",
+  "flattrade",
   "symbols",
   "drawings",
   "alerts",

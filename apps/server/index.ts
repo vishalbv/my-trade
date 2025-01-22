@@ -2,6 +2,7 @@ import { initializeWebSocket } from "./services/webSocket";
 import { startDbService } from "./services/db";
 import { checkLoginSession } from "./utils/helpers";
 import initializeApp from "./states/app/app-initialize";
+import "./states/fyers/priceHandlers";
 
 try {
   await startDbService();

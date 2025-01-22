@@ -4,19 +4,20 @@ import _app from "./index";
 import { getIndexNameFromOptionSymbol } from "@repo/utils/helpers";
 
 export const checkOpenOrders = (tickData: { symbol: string; ltp: number }) => {
+  console.log(tickData, "tickData");
   const openOrders = _app
     .getState()
     .orders.filter((order: any) => order.status === "OPEN");
   openOrders.forEach((order: any) => {
     if (order.symbol === tickData.symbol) {
       if (
-        order?.tickDataAtCreation?.ltp > tickData.ltp &&
-        tickData.ltp <= order?.tickDataAtCreation?.ltp
+        order?.tickDataAtCreation?.ltp >= order.price &&
+        tickData.ltp <= order.price
       ) {
         handlePlaceOrder(order);
       } else if (
-        order?.tickDataAtCreation?.ltp < tickData.ltp &&
-        tickData.ltp >= order?.tickDataAtCreation?.ltp
+        order?.tickDataAtCreation?.ltp <= order.price &&
+        tickData.ltp >= order.price
       ) {
         handlePlaceOrder(order);
       }
@@ -29,7 +30,7 @@ const handlePlaceOrder = async (order: any) => {
     qty: order.qty,
     side: order.side,
     type: 2,
-    fyersSymbol: order.symbol,
+    fyersSymbol: order.symbolInfo,
     price: 0,
     order_type: "MKT",
     frzqty:

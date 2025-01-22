@@ -68,7 +68,7 @@ export const declareTaskApis = () => ({
     }
   },
 
-  "PUT /api/tasks/:id": async ({
+  "PUT /api/tasks": async ({
     body,
     params,
   }: {
@@ -97,7 +97,7 @@ export const declareTaskApis = () => ({
     }
   },
 
-  "DELETE /api/tasks/:id": async ({ params }: { params: RequestParams }) => {
+  "DELETE /api/tasks": async ({ params }: { params: RequestParams }) => {
     try {
       const taskId = params.id;
       await dbService.deleteDocument("tasks", taskId!);

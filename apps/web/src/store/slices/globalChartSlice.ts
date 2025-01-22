@@ -159,7 +159,15 @@ const globalChartSlice = createSlice({
       } = action.payload;
       if (state[layoutTypeKey][chartKey]) {
         state[layoutTypeKey][chartKey].symbol = symbol;
-        state[layoutTypeKey][chartKey].symbolInfo = symbolInfo;
+        state[layoutTypeKey][chartKey].symbolInfo = {
+          ...(layoutTypeKey == "optionsChartLayouts"
+            ? {
+                expiryDate: state[layoutTypeKey][1]?.symbolInfo?.expiryDate,
+                lotSize: state[layoutTypeKey][1]?.symbolInfo?.lotSize,
+              }
+            : {}),
+          ...symbolInfo,
+        };
         state[layoutTypeKey][chartKey].mainSymbol = mainSymbol;
       }
     },

@@ -584,16 +584,18 @@ export const ChartContainer = memo(
               </DropdownMenu>
             </div>
 
-            {/* Alert Button */}
-            {selectedDrawing?.symbol === chartState.symbol && (
-              <AlertBuySellWindow
-                selectedDrawing={selectedDrawing}
-                onClose={() => dispatch(setSelectedDrawing(null))}
-              />
-            )}
             <ShowPL chartState={chartState} />
           </div>
         </div>
+        {/* Alert Button */}
+        {selectedDrawing?.symbol === chartState.symbol && (
+          <div className="absolute right-0 top-[33px] z-[500]">
+            <AlertBuySellWindow
+              selectedDrawing={selectedDrawing}
+              onClose={() => dispatch(setSelectedDrawing(null))}
+            />
+          </div>
+        )}
 
         {/* Chart Content */}
         {isSymbolSearchOpen && (

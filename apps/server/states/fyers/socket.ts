@@ -7,8 +7,7 @@ import {
   fyersOrderSocket as FyersOrderSocket,
 } from "fyers-api-v3";
 import notify from "../../services/notification";
-import { checkAlertForPriceTouch } from "../alerts/functions";
-import { checkOpenOrders } from "../app/ordersManage";
+import { EventEmitter } from "events";
 
 interface FyersSocketState {
   _subscribed: string[];
@@ -29,33 +28,14 @@ export const setState = (newState: Partial<FyersSocketState>) => {
   $state = { ...$state, ...newState };
 };
 
+export const priceEventEmitter = new EventEmitter();
+
 function onMessage(message: any) {
-  // console.log(message, "message");
-
-  checkAlertForPriceTouch({
+  // Instead of directly calling functions, emit an event
+  priceEventEmitter.emit("priceUpdate", {
     symbol: message.symbol,
     ltp: message.ltp,
   });
-  checkOpenOrders({
-    symbol: message.symbol,
-    ltp: message.ltp,
-  });
-  try {
-    // Format and process the message
-    const formattedData = {
-      [message.symbol]: {
-        ltp: message.ltp,
-        volume: message.volume,
-        lastTradeTime: message.lastTradeTime,
-        // Add other fields as needed
-      },
-    };
-
-    setState(formattedData);
-    sendMessage("ticks_fyers_server", formattedData);
-  } catch (error) {
-    logger.error("Error processing Fyers message:", error);
-  }
 }
 
 function onConnect() {
