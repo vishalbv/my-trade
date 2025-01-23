@@ -17,7 +17,7 @@ export const fetchOptionDetails = async (
       symbol,
       broker: "fyers",
       strikecount,
-    })) || {};
+    })) || ({} as any);
 
   const optionChainData = {
     symbol,
@@ -30,9 +30,9 @@ export const fetchOptionDetails = async (
 
   // Filter CE and PE options
   const ceOptions =
-    res?.optionsChain?.filter((opt) => opt.symbol.endsWith("CE")) || [];
+    res?.optionsChain?.filter((opt: any) => opt.symbol.endsWith("CE")) || [];
   const peOptions =
-    res?.optionsChain?.filter((opt) => opt.symbol.endsWith("PE")) || [];
+    res?.optionsChain?.filter((opt: any) => opt.symbol.endsWith("PE")) || [];
 
   // Get middle options
   const middleCE = ceOptions[Math.floor(ceOptions.length / 2)];

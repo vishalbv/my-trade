@@ -95,6 +95,10 @@ export interface Drawing {
   type: DrawingTool;
   points: Point[];
   visible: boolean;
+  extraStyles?: {
+    [key: string]: any;
+  };
+  isDrawnByApp?: boolean;
 }
 
 export interface Point {
@@ -124,4 +128,6 @@ export interface Alert {
   timeframe: string;
   isEnabled?: boolean;
   drawingId: string;
+  tickDataAtCreation?: OHLCData[];
+  symbol?: string;
 }

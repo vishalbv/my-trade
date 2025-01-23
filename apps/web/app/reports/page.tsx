@@ -24,7 +24,7 @@ export default function ReportsPage() {
     try {
       const data = await getReports({});
 
-      setReports(data);
+      setReports(data as Report[]);
     } catch (error) {
       console.error("Error fetching reports:", error);
     }

@@ -91,7 +91,7 @@ export const OptionsAnalyzerWindow = ({}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const { theme } = useTheme();
-  const currentTheme = themes[theme as keyof typeof themes] || themes.light;
+  const currentTheme = themes[theme as keyof typeof themes]! || themes.light;
 
   useEffect(() => {
     const updateWidth = () => {
@@ -193,8 +193,8 @@ export const OptionsAnalyzerWindow = ({}) => {
     const data = getData();
     if (!data) return [];
 
-    const minLength = Math.min(...data.map((i) => i.data.length), 1100);
-    return data?.map((i) => ({
+    const minLength = Math.min(...data.map((i: any) => i.data.length), 1100);
+    return data?.map((i: any) => ({
       ...i,
       data: i.data.slice(-1 * minLength),
     }));
@@ -206,7 +206,7 @@ export const OptionsAnalyzerWindow = ({}) => {
   const [isSmoothed, setIsSmoothed] = useState(false);
 
   // Process series data with SMA when smoothing is enabled
-  const processedSeries = series.map((s) => ({
+  const processedSeries = series.map((s: any) => ({
     ...s,
     data: isSmoothed ? calculateSMA(s.data, 10) : s.data,
   }));
@@ -318,7 +318,7 @@ const PCRatio = ({ data = [] }) => {
     let totalCallOI = 0;
     let totalPutOI = 0;
 
-    data.forEach((item) => {
+    data.forEach((item: any) => {
       if (item.option_type === "CE") {
         totalCallOI += item.oi;
       } else {
@@ -339,7 +339,8 @@ const PCRatio = ({ data = [] }) => {
           Total Put OI:{" "}
           {formatInLakhs(
             data.reduce(
-              (sum, item) => (item.option_type === "PE" ? sum + item.oi : sum),
+              (sum: any, item: any) =>
+                item.option_type === "PE" ? sum + item.oi : sum,
               0
             )
           )}
@@ -348,7 +349,8 @@ const PCRatio = ({ data = [] }) => {
           Total Call OI:{" "}
           {formatInLakhs(
             data.reduce(
-              (sum, item) => (item.option_type === "CE" ? sum + item.oi : sum),
+              (sum: any, item: any) =>
+                item.option_type === "CE" ? sum + item.oi : sum,
               0
             )
           )}

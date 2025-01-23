@@ -25,6 +25,8 @@ interface OrderState {
   priceType: "LIMIT" | "MARKET";
   price: string;
   symbolInfo: any;
+  symbol: string;
+  qty?: string;
 }
 
 export const BuySellWindow = ({
@@ -81,7 +83,6 @@ export const BuySellWindow = ({
       return;
 
     if (e.key.toLowerCase() === "b") {
-      console.log("b", orderState.qty);
       setOrderState((prev) => {
         return { ...prev, side: 1, qty: (lotSize * 2).toString() };
       });
@@ -163,7 +164,7 @@ export const BuySellWindow = ({
         INDEX_DETAILS[
           getIndexNameFromOptionSymbol({
             symbol: chartState.symbolInfo.symbol,
-          })
+          })!
         ].freezeQty,
     });
     setIsVisible(false);

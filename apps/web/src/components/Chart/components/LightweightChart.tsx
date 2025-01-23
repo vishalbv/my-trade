@@ -7,11 +7,13 @@ import {
   Time,
   DeepPartial,
   ChartOptions,
+  ColorType,
+  LineWidth,
 } from "lightweight-charts";
 import React, { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { themes, CHART_FONT_FAMILY } from "../constants/themes";
-import { formatTimeForChart } from "../utils/chartTransformations";
+
 import { MoveRight } from "lucide-react";
 import { Button } from "@repo/ui/button";
 
@@ -71,6 +73,7 @@ interface LightweightChartProps {
   height?: number;
   series: SeriesData[];
   legendEnabled?: boolean;
+  selectedTransformation?: string;
 }
 
 export const LightweightChart: React.FC<LightweightChartProps> = ({
@@ -102,12 +105,12 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
       chartRef.current = null;
     }
 
-    const currentTheme = themes[theme as keyof typeof themes] || themes.light;
+    const currentTheme = themes[theme as keyof typeof themes]! || themes.light!;
 
     try {
       const chartInstance = createChart(chartContainerRef.current, {
         layout: {
-          background: { type: "solid", color: currentTheme.background },
+          background: { type: ColorType.Solid, color: currentTheme.background },
           textColor: currentTheme.text,
           fontFamily: CHART_FONT_FAMILY,
           fontSize: 11,
@@ -175,11 +178,12 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
       chartRef.current = chartInstance;
       setChart(chartInstance);
 
-      let resizeTimeout: NodeJS.Timeout;
+      let resizeTimeout: ReturnType<typeof setTimeout>;
       const handleResize = (entries: ResizeObserverEntry[]) => {
         if (!chartRef.current) return;
 
-        const { width: newWidth, height: newHeight } = entries[0].contentRect;
+        const { width: newWidth, height: newHeight } = entries[0]
+          ?.contentRect as DOMRect;
 
         // Clear any pending resize
         if (resizeTimeout) {
@@ -198,7 +202,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
 
             // After resize, reset the visible range
             if (series.length > 0) {
-              const lastIndex = series[0].data.length - 1;
+              const lastIndex = series[0]?.data?.length! - 1;
               const startIndex = Math.max(0, lastIndex - 10);
 
               chartRef.current.timeScale().setVisibleLogicalRange({
@@ -267,14 +271,14 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
               precision: 2,
               minMove: 0.01,
             },
-            lineWidth: s.lineWidth || 2,
+            lineWidth: (s.lineWidth || 2) as DeepPartial<LineWidth> | undefined,
             lastValueVisible: true,
             priceLineVisible: s.priceLineVisible ?? false,
             baseLineVisible: false,
             visible: true,
           });
 
-          lineSeries.setData(s.data);
+          lineSeries.setData(s.data as LineData<Time>[]);
           seriesApiRef.current.push(lineSeries);
         } catch (error) {
           console.warn(`Error adding series ${index}:`, error);
@@ -282,8 +286,7 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({
       });
 
       // Set the scale after adding series
-      const lastIndex = series[0].data.length - 1;
-      const startIndex = Math.max(0, lastIndex - 10);
+      const lastIndex = series[0]?.data?.length! - 1;
 
       // Wait for next frame to ensure series are rendered
       //   requestAnimationFrame(() => {

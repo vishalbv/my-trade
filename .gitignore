@@ -42,3 +42,4 @@ bun.lockb
 
 # Log files
 *.log
+packages/ui/**/*.js

@@ -128,7 +128,7 @@ export const useOpenOrdersDrawing = ({
 
   const handleQuantityChange = useCallback(
     async (orderId: string, qty: string) => {
-      const order = stateOrders.find((o) => o.orderId === orderId);
+      const order = stateOrders.find((o: any) => o.orderId === orderId);
       if (order) {
         try {
           // await modifyOrder({
@@ -149,7 +149,7 @@ export const useOpenOrdersDrawing = ({
 
   const handleCancelOrder = useCallback(
     async (orderId: string) => {
-      const order = stateOrders.find((o) => o.orderId === orderId);
+      const order = stateOrders.find((o: any) => o.orderId === orderId);
       if (order) {
         try {
           // await cancelOrder({

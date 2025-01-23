@@ -5,7 +5,7 @@ import { sendMessage } from "../../services/webSocket";
 import { updateDrawings } from "../../utils/DrawingHistory";
 
 export const serverStateUpdateMiddleware: Middleware =
-  (store) => (next) => (action) => {
+  (store) => (next) => (action: any) => {
     const prevState = store.getState() as RootState;
     const result = next(action);
     const currentState = store.getState() as RootState;

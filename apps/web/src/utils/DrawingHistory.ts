@@ -49,7 +49,7 @@ export const initializeHistory = (
   }
 };
 
-export const updateDrawings = ({ symbol, drawings }): void => {
+export const updateDrawings = ({ symbol, drawings }: any): void => {
   const history = getHistory();
   if (!history[symbol]) {
     history[symbol] = {
@@ -68,11 +68,11 @@ export const updateDrawings = ({ symbol, drawings }): void => {
   saveHistory(history);
 };
 
-export const undo = (symbol: string) => (dispatch: Dispatch) => {
+export const undo = (symbol: string) => (dispatch: any) => {
   const history = getHistory();
   if (!history[symbol]) return;
 
-  const currentState = history[symbol];
+  const currentState = history[symbol] as any;
 
   // First, update the UI state immediately
   let newDrawings: Drawing[] = [];
@@ -103,7 +103,7 @@ export const undo = (symbol: string) => (dispatch: Dispatch) => {
   saveHistory(history);
 };
 
-export const redo = (symbol: string) => (dispatch: Dispatch) => {
+export const redo = (symbol: string) => (dispatch: any) => {
   const history = getHistory();
   if (!history[symbol]) return;
 
@@ -114,7 +114,7 @@ export const redo = (symbol: string) => (dispatch: Dispatch) => {
   let newDrawings: Drawing[] = [];
 
   if (currentState.future.length > 0) {
-    newDrawings = [...currentState.future[0]];
+    newDrawings = [...(currentState.future[0] as any)];
   }
 
   // Dispatch UI update first

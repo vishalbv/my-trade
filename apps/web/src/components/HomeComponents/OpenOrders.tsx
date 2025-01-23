@@ -30,7 +30,7 @@ export function OpenOrders() {
 
           <div className="flex-1 overflow-auto">
             {openOrders.length > 0 ? (
-              openOrders.map((order) => (
+              openOrders.map((order: any) => (
                 <OrderCard key={order.norenordno} order={order} />
               ))
             ) : (

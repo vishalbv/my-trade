@@ -32,7 +32,9 @@ export const ChartLayout = memo(
     );
 
     const symbols = useSelector((state: any) =>
-      Object.values(state.globalChart[layoutTypeKey]).map((l: any) => l.symbol)
+      Object.values(state.globalChart[layoutTypeKey as LayoutKeyType]).map(
+        (l: any) => l.symbol
+      )
     );
     const previousSymbols = useRef<string[]>([]);
 

@@ -66,11 +66,7 @@ export const useScalpingMode = () => {
       if (nearbyExpiries?.[0]) {
         const [date, symbol] = nearbyExpiries[0];
 
-        await _fetchOptionDetails(
-          indexNamesTofyersIndexMapping(symbol),
-          date,
-          symbol
-        );
+        await _fetchOptionDetails(indexNamesTofyersIndexMapping(symbol), date);
 
         // dispatch(setSelectedLayout("horizontalThree"));
         setTimeout(() => {
@@ -92,14 +88,15 @@ export const useScalpingMode = () => {
     dispatch(setOptionChainData(optionChainData));
     const indexData = await searchSymbol({
       text:
-        INDEX_DETAILS[mainSymbol].shoonyaSearchName +
+        INDEX_DETAILS[mainSymbol as keyof typeof INDEX_DETAILS]
+          ?.shoonyaSearchName +
         " " +
         middleCE.strike_price,
       exchange: mainLayout.symbol.startsWith("NSE") ? "NFO" : "BFO",
       broker: "shoonya",
     });
 
-    const lotSize = indexData[0]?.ls;
+    const lotSize = Array.isArray(indexData) ? indexData[0]?.ls : undefined;
 
     if (middleCE && middlePE) {
       dispatch(
@@ -137,7 +134,7 @@ export const useScalpingMode = () => {
       const expiryDate = mainLayout.symbol.endsWith("EQ")
         ? ""
         : upcomingExpiryDates[symbol][0].date;
-      _fetchOptionDetails(mainLayout.symbol, expiryDate, mainLayout.mainSymbol);
+      _fetchOptionDetails(mainLayout.symbol, expiryDate);
     }
   }, [mainLayout.symbol, isInitializing]);
 
@@ -145,11 +142,11 @@ export const useScalpingMode = () => {
     const symbol = indexNamesTofyersIndexMapping(mainLayout.symbol, true);
     if (mainLayout.symbol)
       searchSymbol({
-        text: symbol + " " + ceMain.symbolInfo.strike_price,
+        text: symbol + " " + ceMain.symbolInfo?.strike_price,
         exchange: mainLayout.symbol.startsWith("NSE") ? "NFO" : "BFO",
         broker: "shoonya",
       });
-  }, [mainLayout.symbol, ceMain.symbolInfo.strike_price]);
+  }, [mainLayout.symbol, ceMain.symbolInfo?.strike_price]);
 
   return {
     mainLayout,

@@ -38,7 +38,7 @@ interface ChartToolsProps {
   showDrawings: boolean;
   setShowDrawings: (show: boolean) => void;
   layoutTypeKey: string;
-  isLayoutSelectionDisabled: boolean;
+  isLayoutSelectionDisabled?: boolean;
 }
 
 export function ChartTools({

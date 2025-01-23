@@ -42,6 +42,7 @@ interface CanvasChartProps {
     padding: { top: number; right: number; bottom: number; left: number };
   };
   chartKey: string;
+  swingAreas?: any[];
 }
 
 interface MousePosition {
@@ -86,6 +87,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   chartState,
   dimensions,
   chartKey,
+  swingAreas,
 }) => {
   const isRSIEnabled = indicators.some(
     (indicator) => indicator.id === "rsi" && indicator.enabled
@@ -482,7 +484,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
       // Update previous references
       prevTimeframe.current = timeframeConfig.resolution;
-      prevData0.current = data[0];
+      prevData0.current = data[0] || null;
       prevSymbol.current = chartState.symbol; // Add symbol reference
     }
   }, [
@@ -711,6 +713,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
     setMousePosition((prev) => ({ ...prev, visible: false }));
     setXAxisCrosshair((prev) => ({ ...prev, visible: false }));
+    setHoveredCandle(null); // Clear hovered candle info
 
     if (overlayCanvasRef.current) {
       const ctx = overlayCanvasRef.current.getContext("2d");
@@ -1209,10 +1212,18 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             timestamp: candle.timestamp,
             visible: true,
           });
+
+          // Update hoveredCandle state
+
+          console.log(candle);
+          setHoveredCandle(candle);
+        } else {
+          setHoveredCandle(null);
         }
       } else {
         setMousePosition((prev) => ({ ...prev, visible: false }));
         setXAxisCrosshair((prev) => ({ ...prev, visible: false }));
+        setHoveredCandle(null); // Clear hovered candle info
       }
     },
     [
@@ -2742,7 +2753,7 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
         chartState={chartState}
         selectedDrawing={selectedDrawing}
         disableHandleInteraction={!!dragState?.mode}
-        setHideCrosshair={setHideCrosshair}
+        // setHideCrosshair={setHideCrosshair}
         chartKey={chartKey}
       />
     );
@@ -2757,6 +2768,38 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     if (isCleanClick && mousePosition.visible) {
       setCurrentClickPrice(mousePosition.price);
     }
+  };
+
+  // Add this state near other state declarations
+  const [hoveredCandle, setHoveredCandle] = useState<any | null>(null);
+
+  // Add this function to format the candle info
+  const formatCandleInfo = (candle: any) => {
+    // Calculate percentage change
+    const priceChange = candle.close - candle.open;
+    const percentageChange = (priceChange / candle.open) * 100;
+    const isPositive = priceChange >= 0;
+
+    // Format the percentage with sign and 2 decimal places
+    const percentageStr = `${isPositive ? "+" : ""}${percentageChange.toFixed(2)}%`;
+
+    return {
+      text: `O: ${candle.open.toFixed(2)} H: ${candle.high.toFixed(2)} L: ${candle.low.toFixed(2)} C: ${candle.close.toFixed(2)} ${percentageStr}`,
+      isPositive,
+    };
+  };
+
+  const FormatCandleInfo = ({ candle }: { candle: any }) => {
+    const { text, isPositive } = formatCandleInfo(candle);
+    return (
+      <div
+        style={{
+          color: isPositive ? currentTheme?.upColor : currentTheme?.downColor,
+        }}
+      >
+        {text}
+      </div>
+    );
   };
 
   // Then in the return statement, replace the DrawingCanvas component with:
@@ -2975,6 +3018,27 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
           rsiHeight={isRSIEnabled ? rsiHeight : 0}
           chartKey={chartKey}
         />
+      )}
+
+      {hoveredCandle && hoveredCandle.display !== false && (
+        <div
+          style={{
+            position: "absolute",
+            top: "0px",
+            left: "0px",
+
+            padding: "8px 12px",
+            borderRadius: "4px",
+            zIndex: 154,
+            fontSize: "11px",
+            fontFamily: currentTheme?.fontFamily,
+
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <FormatCandleInfo candle={hoveredCandle} />
+        </div>
       )}
     </div>
   );

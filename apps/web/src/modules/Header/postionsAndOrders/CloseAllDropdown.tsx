@@ -13,7 +13,7 @@ const DROPDOWN_ITEMS = [
 export const CloseAllDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const clickTimeout = useRef<NodeJS.Timeout>();
+  const clickTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -23,7 +23,7 @@ export function MarketHolidays() {
 
   // Filter future dates and get next 5 holidays
   const nextHolidays = holidays
-    .filter((holiday) => {
+    .filter((holiday: any) => {
       const [day, month, year] = holiday[0].split("-");
       const holidayDate = new Date(`${year}-${month}-${day}`);
       const today = new Date();
@@ -31,7 +31,7 @@ export function MarketHolidays() {
       return holidayDate >= today;
     })
     .slice(0, 5)
-    .map((holiday, index) => ({
+    .map((holiday: any, index: any) => ({
       date: holiday[0],
       reason: holiday[1],
       isTomorrow: index === 0 && isTomorrow(holiday[0]),
@@ -45,7 +45,7 @@ export function MarketHolidays() {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {nextHolidays.map((holiday, index) => (
+          {nextHolidays.map((holiday: any, index: any) => (
             <div key={index} className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">
                 {holiday.reason}

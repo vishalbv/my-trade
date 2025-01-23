@@ -70,8 +70,8 @@ export const OptionChainAnalysis: React.FC<OptionChainAnalysisProps> = ({
 
   const onStrikeClick = (indexes: number[]) => {
     const [peIndex, ceIndex] = [...indexes].sort((a, b) => a - b);
-    const middleCE = processedData[ceIndex]?.ce;
-    const middlePE = processedData[peIndex]?.pe;
+    const middleCE = processedData[ceIndex as any]?.ce!;
+    const middlePE = processedData[peIndex as any]?.pe!;
 
     dispatch(
       updateChartLayout({

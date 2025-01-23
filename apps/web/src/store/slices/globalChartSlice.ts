@@ -14,6 +14,7 @@ interface ChartState {
   symbol: string;
   timeframe: string;
   symbolInfo?: any;
+  mainSymbol?: string;
 }
 
 interface OptionChainData {
@@ -30,6 +31,7 @@ interface ChartLayoutUpdate {
         symbol: string;
         timeframe: string;
         symbolInfo: any;
+        mainSymbol?: string;
       }
     | LayoutKeyType;
 }

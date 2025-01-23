@@ -139,9 +139,9 @@ const PLHeatmap = ({ reports }: PLHeatmapProps) => {
           // Stop after we've filled in all days of the month
           break;
         }
-        grid[day][week] = {
+        grid[day]![week] = {
           day: currentDay,
-          ...processedData.groupedByMonth[monthIndex]?.[currentDay],
+          ...(processedData.groupedByMonth[monthIndex]?.[currentDay] || {}),
         };
         currentDay++;
       }

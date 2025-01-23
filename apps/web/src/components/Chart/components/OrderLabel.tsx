@@ -18,6 +18,7 @@ interface OrderLabelProps {
   onDragEnd?: () => void;
   isDragging?: boolean;
   side: 1 | -1;
+  lotSize: number;
 }
 
 export const OrderLabel: React.FC<OrderLabelProps> = ({
@@ -174,7 +175,9 @@ export const OrderLabel: React.FC<OrderLabelProps> = ({
             value={localQuantity}
             placeholder="ALL"
             onChange={handleQuantityChange}
-            onClick={(e) => e.target.select()}
+            onClick={(e: React.MouseEvent<HTMLInputElement>) =>
+              (e.target as HTMLInputElement).select()
+            }
             hideArrows
             step={lotSize}
             className={cn(

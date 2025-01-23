@@ -32,7 +32,7 @@ export const findNearbyExpiries = (
   const allExpiries: [string, string][] = []; // [date, symbol]
 
   Object.entries(upcomingExpiryDates).forEach(([symbol, expiries]) => {
-    const { date, expiry } = expiries[0];
+    const { date, expiry } = expiries[0] as any;
     if (moment(date, "DD-MM-YYYY").isSameOrAfter(moment().startOf("day"))) {
       allExpiries.push([date, symbol]);
     }

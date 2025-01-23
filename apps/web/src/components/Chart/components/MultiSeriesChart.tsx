@@ -142,7 +142,7 @@ export const MultiSeriesChart: React.FC<MultiSeriesChartProps> = ({
     window.addEventListener("resize", handleResize);
 
     // Handle tooltip
-    let tooltipSubscription: (() => void) | undefined;
+    let tooltipSubscription: any;
 
     if (showTooltip) {
       tooltipSubscription = chartInstance.subscribeCrosshairMove((param) => {

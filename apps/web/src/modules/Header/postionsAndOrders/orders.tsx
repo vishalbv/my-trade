@@ -21,7 +21,7 @@ export const Orders: React.FC = () => {
   const filteredOrders =
     filter === "COMPLETE"
       ? orderBook
-      : orderBook.filter((order) => order.status === filter);
+      : orderBook.filter((order: any) => order.status === filter);
 
   return (
     <div className="flex-1 max-h-[200px] overflow-auto">
@@ -37,7 +37,7 @@ export const Orders: React.FC = () => {
 
         <div className="flex-1 overflow-auto">
           {filteredOrders.length > 0 ? (
-            filteredOrders.map((order) => (
+            filteredOrders.map((order: any) => (
               <OrderCard key={order.norenordno} order={order} />
             ))
           ) : (

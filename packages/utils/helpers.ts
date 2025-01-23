@@ -118,7 +118,7 @@ export const getIndexNameFromOptionSymbol = ({
       ? "NIFTY-BANK"
       : symbol.includes("NIFTY")
         ? "NIFTY-50"
-        : "";
+        : "NIFTY-50";
 };
 
 export const getCurrentShoonyaPositionPL = (i: any, lp: any) => {
@@ -179,7 +179,7 @@ export const fetchShoonyaNameByFyersSymbol = (fyersSymbol: {
 
     return {
       exch: "NFO",
-      tsym: `${baseSymbol}${day}${monthNames[month]}${year.slice(-2)}${fyersSymbol.option_type[0]}${fyersSymbol.strike_price}`,
+      tsym: `${baseSymbol}${day}${monthNames[month!]}${year!.slice(-2)}${fyersSymbol.option_type[0]}${fyersSymbol.strike_price}`,
     };
   }
 };

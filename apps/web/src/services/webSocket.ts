@@ -10,7 +10,7 @@ let reconnectAttempts = 0;
 const RECONNECT_DELAY = 3000;
 
 function connect() {
-  socket = new WebSocket("ws://127.0.0.1:2300");
+  socket = new WebSocket("ws://my-trade-server.zeabur.app");
 
   socket.onopen = () => {
     console.log("WebSocket Connected");

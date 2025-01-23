@@ -27,7 +27,6 @@ export type AlertType =
   | "priceTouch";
 
 interface AlertBuySellWindowProps {
-  symbol: string;
   selectedDrawing: { drawing: Drawing; symbol: string };
   onClose: () => void;
 }
@@ -150,7 +149,10 @@ export const AlertBuySellWindow = ({
     );
   };
 
-  const alertTypeOptions = drawingTypeToAlertMapping[drawing.type] || [];
+  const alertTypeOptions =
+    drawingTypeToAlertMapping[
+      drawing.type as keyof typeof drawingTypeToAlertMapping
+    ] || [];
 
   return (
     <Popover>

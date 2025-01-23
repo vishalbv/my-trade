@@ -74,7 +74,7 @@ const drawingHistorySlice = createSlice({
     },
     undo: (state, action: PayloadAction<string>) => {
       const symbol = action.payload;
-      const symbolHistory = state.history[symbol];
+      const symbolHistory = state.history[symbol] as any;
 
       if (symbolHistory && symbolHistory.past.length > 0) {
         const previous = symbolHistory.past[symbolHistory.past.length - 1];
@@ -89,7 +89,7 @@ const drawingHistorySlice = createSlice({
     },
     redo: (state, action: PayloadAction<string>) => {
       const symbol = action.payload;
-      const symbolHistory = state.history[symbol];
+      const symbolHistory = state.history[symbol] as any;
 
       if (symbolHistory && symbolHistory.future.length > 0) {
         const next = symbolHistory.future[0];

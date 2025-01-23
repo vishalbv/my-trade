@@ -61,7 +61,7 @@ export const transformPercentageChangeData = (
       };
     }
 
-    const previousClose = data[index - 1].close;
+    const previousClose = data[index - 1]?.close || 0;
     const percentageChange =
       ((item.close - previousClose) / previousClose) * 100;
 

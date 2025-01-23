@@ -145,7 +145,18 @@ class Fyers extends State {
       if (response.s === "ok") {
         return {
           message: response.message || "Historical data retrieved successfully",
-          data: response,
+          data: response.candles
+            ? {
+                ...response,
+                candles: Array.from(
+                  new Map(
+                    response.candles.map(
+                      (candle: any) => [candle[0], candle] // use date as key
+                    )
+                  ).values()
+                ),
+              } // Get unique values
+            : response,
         };
       }
       throw new Error(

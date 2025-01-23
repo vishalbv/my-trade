@@ -4,7 +4,7 @@ import { Bell, Menu, LogOut, Zap, RefreshCcw } from "lucide-react";
 import { Button } from "@repo/ui/button";
 import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 import { usePathname, useRouter } from "next/navigation";
-import { sidebarIgnorePaths, STYLES } from "../../utils/constants";
+import { STYLES } from "../../utils/constants";
 import { cn } from "@repo/utils/ui/helpers";
 import { useTheme } from "next-themes";
 import { login, logout } from "../../store/actions/appActions";
@@ -142,10 +142,10 @@ const Header: React.FC = () => {
               <div className="text-center max-w-2xl">
                 <p>
                   <span className="text-sm text-muted-foreground italic">
-                    "{currentQuote.quote}"
+                    "{currentQuote?.quote}"
                   </span>
                   <span className="text-xs text-muted-foreground mt-1 ml-2">
-                    — {currentQuote.author}
+                    — {currentQuote?.author}
                   </span>
                 </p>
               </div>

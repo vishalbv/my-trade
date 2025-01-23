@@ -175,6 +175,7 @@ export default function GlobalChart() {
       <div className="flex h-full">
         <div className="flex flex-col items-center py-2 border-r border-border">
           <ChartTools
+            layoutTypeKey="globalChartLayouts"
             indicators={indicators}
             setIndicators={(newIndicators) =>
               dispatch(setIndicators(newIndicators))
@@ -192,6 +193,7 @@ export default function GlobalChart() {
 
         <div className="flex-1 min-h-0 relative">
           <ChartLayout
+            layoutTypeKey="globalChartLayouts"
             layout={selectedLayout}
             timeframeConfigs={timeframeConfigs}
             indicators={indicators}

@@ -56,6 +56,9 @@ interface DrawingCanvasProps {
   chartState: {
     symbol: string;
     timeframe: string;
+    symbolInfo: {
+      lotSize: number;
+    };
   };
   selectedDrawing?: {
     symbol: string;
@@ -273,7 +276,7 @@ export const DrawingCanvas = ({
     } = checkDrawingInteraction(
       x,
       y,
-      localDrawings,
+      localDrawings.filter((d) => !d.isDrawnByApp),
       isPointNearby,
       isPointNearLine,
       toCanvasCoords,
@@ -855,15 +858,15 @@ export const DrawingCanvas = ({
             e.preventDefault();
             if (e.shiftKey) {
               // Redo
-              dispatch(redo(chartState.symbol));
+              dispatch(redo(chartState.symbol) as any);
             } else {
               // Undo
-              dispatch(undo(chartState.symbol));
+              dispatch(undo(chartState.symbol) as any);
             }
           } else if (e.key === "y") {
             // Redo
             e.preventDefault();
-            dispatch(redo(chartState.symbol));
+            dispatch(redo(chartState.symbol) as any);
           }
         }
 

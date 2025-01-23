@@ -23,14 +23,14 @@ export const OrderBlock = () => {
   const filteredOrders =
     filter === "COMPLETE"
       ? orderBook
-      : orderBook.filter((order) => order.status === filter);
+      : orderBook.filter((order: any) => order.status === filter);
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-2 py-1 border-b border-border">
         <span className="text-sm font-medium">
-          Orders ({orderBook.filter((i) => i.status === "COMPLETE").length || 0}
-          )
+          Orders (
+          {orderBook.filter((i: any) => i.status === "COMPLETE").length || 0})
         </span>
         <div className="flex gap-1">
           {statuses.map((status) => (
@@ -48,7 +48,7 @@ export const OrderBlock = () => {
       </div>
 
       <div className="flex-1 overflow-auto space-y-2 p-2">
-        {filteredOrders.map((order) => (
+        {filteredOrders.map((order: any) => (
           <OrderCard key={order.norenordno} order={order} />
         ))}
       </div>
