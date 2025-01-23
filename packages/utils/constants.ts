@@ -1,7 +1,9 @@
 export const DB_URL =
   "mongodb+srv://vishal:26KuhIZvAkxLPMvD@cluster0.z9fziyu.mongodb.net/test?retryWrites=true&w=majority";
-// export const API_URL = "http://127.0.0.1:2300/api/";
-export const API_URL = "https://my-trade-server.zeabur.app/api/";
+
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:2300/api/";
+export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:2300";
 
 export const REDIRECT_URL = "http://127.0.0.1:2301/login/";
 
