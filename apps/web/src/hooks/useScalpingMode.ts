@@ -68,7 +68,6 @@ export const useScalpingMode = () => {
 
         await _fetchOptionDetails(indexNamesTofyersIndexMapping(symbol), date);
 
-        // dispatch(setSelectedLayout("horizontalThree"));
         setTimeout(() => {
           setIsInitializing(false);
           lastRefreshTime.current = refreshScalpingMode;

@@ -663,7 +663,9 @@ export const ChartContainer = memo(
       <div
         className={cn(
           "flex flex-col h-full relative",
-          selectedChartKey === chartKey && selectedLayout !== "single"
+          selectedChartKey === chartKey &&
+            (selectedLayout !== "single" ||
+              layoutTypeKey === "optionsChartLayouts")
             ? "border-blue-500 border dark:border-0.5"
             : "border-transparent border dark:border-0.5",
           chartFullScreenId === chartKey

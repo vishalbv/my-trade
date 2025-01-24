@@ -1,3 +1,4 @@
+import { WS_URL } from "@repo/utils/constants";
 import { setStatesByID, setStatesByIDAndKey } from "../store/slices/stateSlice";
 import { updateShoonyaServerTick } from "../store/slices/ticksSlice";
 
@@ -10,7 +11,7 @@ let reconnectAttempts = 0;
 const RECONNECT_DELAY = 3000;
 
 function connect() {
-  socket = new WebSocket("wss://my-trade-server.zeabur.app");
+  socket = new WebSocket(WS_URL);
 
   socket.onopen = () => {
     console.log("WebSocket Connected");
