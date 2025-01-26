@@ -88,7 +88,8 @@ export type DrawingTool =
   | "fibonacci"
   | "rect"
   | "shortPosition"
-  | "longPosition";
+  | "longPosition"
+  | "circle";
 
 export interface Drawing {
   id: string;

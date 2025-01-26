@@ -482,7 +482,8 @@ export const DrawingCanvas = ({
     if (
       drawingInProgress?.type === "trendline" ||
       drawingInProgress?.type === "fibonacci" ||
-      drawingInProgress?.type === "rect"
+      drawingInProgress?.type === "rect" ||
+      drawingInProgress?.type === "circle"
     ) {
       if (drawingInProgress.type === "rect" && drawingInProgress.points[0]) {
         // For rectangle, create all 4 points dynamically while dragging
@@ -495,6 +496,15 @@ export const DrawingCanvas = ({
         setDrawingInProgress({
           ...drawingInProgress,
           points,
+          currentPoint: chartCoords,
+        });
+      } else if (
+        drawingInProgress.type === "circle" &&
+        drawingInProgress.points[0]
+      ) {
+        setDrawingInProgress({
+          ...drawingInProgress,
+          points: [drawingInProgress.points[0], chartCoords],
           currentPoint: chartCoords,
         });
       } else {
@@ -616,7 +626,8 @@ export const DrawingCanvas = ({
     if (
       selectedTool === "trendline" ||
       selectedTool === "fibonacci" ||
-      selectedTool === "rect"
+      selectedTool === "rect" ||
+      selectedTool === "circle"
     ) {
       if (!drawingInProgress) {
         setDrawingInProgress({
@@ -738,6 +749,8 @@ export const DrawingCanvas = ({
             hoveredLine === drawing.id ||
             hoveredPoint?.drawingId === drawing.id,
           isSelected: selectedDrawing?.drawing?.id === drawing.id,
+          viewState,
+          drawing,
         };
 
         const drawMethod =
@@ -984,13 +997,20 @@ const createDrawingPoints = (
   startPoint: Point,
   endPoint: Point
 ): Point[] => {
-  if (type === "rect") {
-    return [
-      startPoint, // Top-left
-      { x: endPoint.x, y: startPoint.y }, // Top-right
-      endPoint, // Bottom-right
-      { x: startPoint.x, y: endPoint.y }, // Bottom-left
-    ];
+  switch (type) {
+    case "rect":
+      return [
+        startPoint, // Top-left
+        { x: endPoint.x, y: startPoint.y }, // Top-right
+        endPoint, // Bottom-right
+        { x: startPoint.x, y: endPoint.y }, // Bottom-left
+      ];
+    case "circle":
+      return [
+        startPoint, // Center point
+        endPoint, // Radius point
+      ];
+    default:
+      return [startPoint, endPoint]; // For trendline and fibonacci
   }
-  return [startPoint, endPoint]; // For trendline and fibonacci
 };

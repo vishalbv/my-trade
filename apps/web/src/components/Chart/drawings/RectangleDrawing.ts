@@ -18,6 +18,13 @@ interface DrawRectangleProps {
     pointIndex: number;
     originalPoint: Point;
   } | null;
+  drawing?: {
+    extraStyles?: {
+      fill?: string;
+      stroke?: string;
+      strokeWidth?: number;
+    };
+  };
 }
 
 export const handleRectanglePointDragging = (
@@ -81,6 +88,7 @@ export const drawRectangle = ({
   POINT_BORDER_WIDTH,
   isSelected,
   draggingPoint,
+  drawing,
 }: DrawRectangleProps) => {
   if (points.length < 4) return;
 
@@ -106,11 +114,22 @@ export const drawRectangle = ({
   // Calculate rectangle dimensions
   const chartRightEdge = dimensions.width - dimensions.padding.right;
 
+  // Get styles from extraStyles or use defaults
+  const fillStyle = isHighlighted
+    ? "rgba(41, 98, 255, 0.15)"
+    : drawing?.extraStyles?.fill || "rgba(41, 98, 255, 0.1)";
+
+  const strokeStyle = isHighlighted
+    ? "#2962FF99"
+    : drawing?.extraStyles?.stroke || "#2962FF55";
+
+  const strokeWidth = isHighlighted
+    ? 1.4
+    : drawing?.extraStyles?.strokeWidth || 1;
+
   // Draw rectangle area
   ctx.beginPath();
-  ctx.fillStyle = isHighlighted
-    ? "rgba(41, 98, 255, 0.15)" // More opacity when highlighted
-    : "rgba(41, 98, 255, 0.1)";
+  ctx.fillStyle = fillStyle;
   ctx.moveTo(tl.x, tl.y);
   ctx.lineTo(chartRightEdge, tl.y);
   ctx.lineTo(chartRightEdge, bl.y);
@@ -119,8 +138,8 @@ export const drawRectangle = ({
   ctx.fill();
 
   // Draw rectangle border
-  ctx.strokeStyle = isHighlighted ? "#2962FF99" : "#2962FF55";
-  ctx.lineWidth = isHighlighted ? 1.4 : 1;
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = strokeWidth;
 
   // Draw horizontal lines
   ctx.beginPath();

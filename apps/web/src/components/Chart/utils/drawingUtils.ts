@@ -4,6 +4,7 @@ import { drawTrendLine } from "../drawings/TrendLineDrawing";
 import { drawFibonacci } from "../drawings/FibonacciDrawing";
 import { drawPosition } from "../drawings/PositionDrawing";
 import { drawRectangle } from "../drawings/RectangleDrawing";
+import { drawCircle } from "../drawings/CircleDrawing";
 
 export const checkDrawingInteraction = (
   x: number,
@@ -25,7 +26,42 @@ export const checkDrawingInteraction = (
   let hoveredLine = null;
 
   for (const drawing of drawings) {
-    if (drawing.type === "fibonacci" && drawing.points.length === 2) {
+    if (drawing.type === "circle" && drawing.points.length === 2) {
+      // Check points first
+      for (let i = 0; i < drawing.points.length; i++) {
+        const point = drawing.points[i];
+        if (point && isPointNearby(x, y, point)) {
+          hoveredPoint = { drawingId: drawing.id, pointIndex: i };
+          hoveredLine = null;
+          foundPoint = true;
+          break;
+        }
+      }
+
+      // If no point is hovered, check if mouse is near the circle's circumference
+      if (!foundPoint) {
+        const [centerPoint, radiusPoint] = drawing.points;
+        const center = toCanvasCoords(centerPoint!);
+        const radiusCoord = toCanvasCoords(radiusPoint!);
+
+        // Calculate radius and distance from mouse to center
+        const radius = Math.sqrt(
+          Math.pow(radiusCoord.x - center.x, 2) +
+            Math.pow(radiusCoord.y - center.y, 2)
+        );
+        const distanceFromCenter = Math.sqrt(
+          Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2)
+        );
+
+        // Check if mouse is near the circle's circumference (within 5px)
+        if (Math.abs(distanceFromCenter - radius) <= 5) {
+          hoveredLine = drawing.id;
+          hoveredPoint = null;
+          foundLine = true;
+          break;
+        }
+      }
+    } else if (drawing.type === "fibonacci" && drawing.points.length === 2) {
       const [point1, point2] = drawing.points as [Point, Point];
 
       // First check points
@@ -217,6 +253,16 @@ export const drawingMethods = {
       ...props,
       type: "shortPosition",
       isHovered: isSelected || props.isHovered,
+    });
+  },
+  circle: (props: any) => {
+    const isSelected = props.selectedDrawing?.drawing?.id === props.drawingId;
+    const isHovered = props.hoveredLine === props.drawingId;
+    const showPoints = !props.draggingPoint && (isSelected || isHovered);
+    return drawCircle({
+      ...props,
+      isHovered: isSelected || isHovered,
+      showPoints,
     });
   },
 };
