@@ -116,7 +116,7 @@ export const useScalpingMode = () => {
           },
         })
       );
-      lastMainSymbol.current = symbol;
+      lastMainSymbol.current = symbol as any;
     }
     return null;
   };
