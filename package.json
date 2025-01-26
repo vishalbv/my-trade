@@ -4,7 +4,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "prod": "dotenv -e .env.production.local turbo prod",
+    "prod": "turbo prod",
+    "prod:local": "dotenv -e .env.production.local turbo prod",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
