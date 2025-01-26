@@ -12,8 +12,6 @@ import { ChartLayout } from "../Chart/components/ChartLayout";
 import { ChartTools } from "../Chart/components/ChartTools";
 import { layoutOptions, timeframeConfigs } from "./globalChartUtils";
 import { useScalpingMode } from "../../hooks/useScalpingMode";
-import { searchSymbol } from "../../store/actions/appActions";
-import { useEffect } from "react";
 
 export default function OptionGlobalChart() {
   const dispatch = useDispatch();

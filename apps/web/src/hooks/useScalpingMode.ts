@@ -57,7 +57,7 @@ export const useScalpingMode = () => {
   //     }
   //   }, [initialsetup]);
 
-  const lastRefreshTime = useRef(null);
+  const lastMainSymbol = useRef(null);
 
   useEffect(() => {
     const setLayout = async () => {
@@ -68,10 +68,7 @@ export const useScalpingMode = () => {
 
         await _fetchOptionDetails(indexNamesTofyersIndexMapping(symbol), date);
 
-        setTimeout(() => {
-          setIsInitializing(false);
-          lastRefreshTime.current = refreshScalpingMode;
-        }, 200);
+        setIsInitializing(false);
       }
     };
     setLayout();
@@ -119,6 +116,7 @@ export const useScalpingMode = () => {
           },
         })
       );
+      lastMainSymbol.current = symbol;
     }
     return null;
   };
@@ -126,8 +124,9 @@ export const useScalpingMode = () => {
   useEffect(() => {
     if (
       mainLayout.symbol &&
+      lastMainSymbol.current &&
       !isInitializing &&
-      lastRefreshTime.current == refreshScalpingMode
+      lastMainSymbol.current !== mainLayout.symbol
     ) {
       const symbol = indexNamesTofyersIndexMapping(mainLayout.symbol, true);
       const expiryDate = mainLayout.symbol.endsWith("EQ")
@@ -136,16 +135,6 @@ export const useScalpingMode = () => {
       _fetchOptionDetails(mainLayout.symbol, expiryDate);
     }
   }, [mainLayout.symbol, isInitializing]);
-
-  useEffect(() => {
-    const symbol = indexNamesTofyersIndexMapping(mainLayout.symbol, true);
-    if (mainLayout.symbol)
-      searchSymbol({
-        text: symbol + " " + ceMain.symbolInfo?.strike_price,
-        exchange: mainLayout.symbol.startsWith("NSE") ? "NFO" : "BFO",
-        broker: "shoonya",
-      });
-  }, [mainLayout.symbol, ceMain.symbolInfo?.strike_price]);
 
   return {
     mainLayout,
