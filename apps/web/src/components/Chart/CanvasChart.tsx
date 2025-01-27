@@ -430,8 +430,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
       const initialVisibleBars = Math.floor(chartWidth / 10);
       const visibleDataBars = Math.floor(initialVisibleBars * 0.7);
 
-      console.log(initialVisibleBars, "llll", chartWidth, dimensions.width);
-
       const chartHeight =
         dimensions.height -
         dimensions.padding.top -
