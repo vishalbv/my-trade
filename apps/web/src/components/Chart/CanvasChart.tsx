@@ -1215,7 +1215,6 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
 
           // Update hoveredCandle state
 
-          console.log(candle);
           setHoveredCandle(candle);
         } else {
           setHoveredCandle(null);

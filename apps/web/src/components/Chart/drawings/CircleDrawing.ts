@@ -70,7 +70,6 @@ export const drawCircle = ({
     }
 
     const candleWidth = chartWidth / viewState.visibleBars;
-    console.log(candleWidth, "candleWidth");
 
     // Ensure we have a positive radius
 

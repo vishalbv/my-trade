@@ -18,6 +18,9 @@ class Alerts extends State {
   startingFunctionsAtInitialize = () => {
     checkAlerts();
   };
+  startingFunctionsAtLogout = () => {
+    this.clearIntervalAndUpdate("checkAlerts");
+  };
 
   updateAlert = (drawingId: any, alertId: any, data: any) => {
     const alertsOfDrawing = cloneDeep(this.getState()[drawingId]);
