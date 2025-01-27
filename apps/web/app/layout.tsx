@@ -4,7 +4,6 @@ import "./globals.scss";
 import { Provider } from "../src/components/providers";
 import NoSsrWrapper from "./no-ssr-wrapper";
 import LayoutBody from "./layoutBody";
-import { Suspense } from "react";
 import ErrorBoundary from "../src/components/ErrorBoundary";
 
 const oleoScript = Oleo_Script({
@@ -39,15 +38,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${oleoScript.variable} ${lato.variable} ${sura.variable} font-sans font-lato text-foreground animated-bg-dark`}
+        suppressHydrationWarning
       >
         <ErrorBoundary>
-          <Suspense fallback={<div>Loading...</div>}>
-            <NoSsrWrapper>
-              <Provider theme={{ attribute: "class" }}>
-                <LayoutBody>{children}</LayoutBody>
-              </Provider>
-            </NoSsrWrapper>
-          </Suspense>
+          <NoSsrWrapper>
+            <Provider theme={{ attribute: "class" }}>
+              <LayoutBody>{children}</LayoutBody>
+            </Provider>
+          </NoSsrWrapper>
         </ErrorBoundary>
       </body>
     </html>

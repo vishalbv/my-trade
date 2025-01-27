@@ -1,11 +1,12 @@
 "use client";
 import dynamic from "next/dynamic";
-import React, { Suspense } from "react";
+import React from "react";
 
-const NoSSRWrapper = (props: { children: React.ReactNode }) => (
-  <Suspense fallback={<div>Loading...</div>}>{props.children}</Suspense>
-);
+const NoSSRWrapper = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
+};
 
 export default dynamic(() => Promise.resolve(NoSSRWrapper), {
   ssr: false,
+  loading: () => <div>Loading...</div>,
 });
