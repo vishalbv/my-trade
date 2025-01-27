@@ -418,17 +418,19 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   useEffect(() => {
     if (!dimensions.width || !data.length) return;
 
-    // if (
-    //   (timeframeConfig.resolution !== prevTimeframe.current ||
-    //     chartState.symbol !== prevSymbol.current) &&
-    //   data[0] &&
-    //   data[0] !== prevData0.current
-    // ) {
-    if (true) {
+    if (
+      (timeframeConfig.resolution !== prevTimeframe.current ||
+        chartState.symbol !== prevSymbol.current) &&
+      data[0] &&
+      data[0] !== prevData0.current
+    ) {
+      // if (true) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
       const visibleDataBars = Math.floor(initialVisibleBars * 0.7);
+
+      console.log(initialVisibleBars, "llll", chartWidth, dimensions.width);
 
       const chartHeight =
         dimensions.height -
