@@ -418,13 +418,13 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   useEffect(() => {
     if (!dimensions.width || !data.length) return;
 
-    if (
-      (timeframeConfig.resolution !== prevTimeframe.current ||
-        chartState.symbol !== prevSymbol.current) &&
-      data[0] &&
-      data[0] !== prevData0.current
-    ) {
-      // if (true) {
+    // if (
+    //   (timeframeConfig.resolution !== prevTimeframe.current ||
+    //     chartState.symbol !== prevSymbol.current) &&
+    //   data[0] &&
+    //   data[0] !== prevData0.current
+    // ) {
+    if (true) {
       const chartWidth =
         dimensions.width - dimensions.padding.left - dimensions.padding.right;
       const initialVisibleBars = Math.floor(chartWidth / 10);
@@ -1873,21 +1873,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
   // Add new ref for x-axis canvas
   const xAxisCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Add separate handler for x-axis canvas
-  const handleXAxisMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-      setXAxisDragState({
-        startX: e.clientX,
-        startScaleX: viewState.scaleX,
-      });
-      e.currentTarget.style.cursor = "ew-resize";
-    },
-    [viewState.scaleX]
-  );
-
-  const handleXAxisMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Add new global handlers for x-axis dragging
+  const handleGlobalXAxisMouseMove = useCallback(
+    (e: MouseEvent) => {
       if (!xAxisDragState) return;
 
       const dx = e.clientX - xAxisDragState.startX;
@@ -1925,23 +1913,52 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     [xAxisDragState, dimensions, combinedData.length]
   );
 
-  const handleXAxisMouseUp = useCallback(
+  const handleGlobalXAxisMouseUp = useCallback(() => {
+    setXAxisDragState(null);
+  }, []);
+
+  // Update handleXAxisMouseDown
+  const handleXAxisMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      setXAxisDragState(null);
-      e.currentTarget.style.cursor = "default";
+      e.preventDefault();
+      setXAxisDragState({
+        startX: e.clientX,
+        startScaleX: viewState.scaleX,
+      });
+      e.currentTarget.style.cursor = "ew-resize";
+
+      // Add global event listeners
+      window.addEventListener("mousemove", handleGlobalXAxisMouseMove);
+      window.addEventListener("mouseup", handleGlobalXAxisMouseUp);
     },
-    []
+    [viewState.scaleX, handleGlobalXAxisMouseMove, handleGlobalXAxisMouseUp]
   );
 
-  const handleXAxisMouseLeave = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (xAxisDragState) {
-        setXAxisDragState(null);
-        e.currentTarget.style.cursor = "default";
-      }
-    },
-    [xAxisDragState]
-  );
+  // Update useEffect to clean up x-axis event listeners
+  useEffect(() => {
+    if (xAxisDragState) {
+      window.addEventListener("mousemove", handleGlobalXAxisMouseMove);
+      window.addEventListener("mouseup", handleGlobalXAxisMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalXAxisMouseMove);
+      window.removeEventListener("mouseup", handleGlobalXAxisMouseUp);
+    };
+  }, [xAxisDragState, handleGlobalXAxisMouseMove, handleGlobalXAxisMouseUp]);
+
+  // Remove or simplify these handlers since we're using global events
+  const handleXAxisMouseMove = useCallback(() => {
+    // Empty since we're handling this globally now
+  }, []);
+
+  const handleXAxisMouseUp = useCallback(() => {
+    // Empty since we're handling this globally now
+  }, []);
+
+  const handleXAxisMouseLeave = useCallback(() => {
+    // Empty since we're handling this globally now
+  }, []);
 
   // Update the shouldShowLabelAtIndex function with more granular intervals
   const shouldShowLabelAtIndex = useCallback(
@@ -2988,14 +3005,9 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
             left: 0,
             pointerEvents: "auto",
             cursor: xAxisDragState ? "ew-resize" : "default",
-            //   imageRendering: "pixelated",
-
             zIndex: 2,
           }}
           onMouseDown={handleXAxisMouseDown}
-          onMouseMove={handleXAxisMouseMove}
-          onMouseUp={handleXAxisMouseUp}
-          onMouseLeave={handleXAxisMouseLeave}
           onDoubleClick={handleXAxisDoubleClick}
         />
       </div>
