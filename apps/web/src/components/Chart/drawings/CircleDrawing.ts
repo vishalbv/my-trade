@@ -62,10 +62,10 @@ export const drawCircle = ({
       !viewState.visibleBars ||
       viewState.visibleBars <= 0
     ) {
-      console.warn("Invalid dimensions for circle drawing:", {
-        chartWidth,
-        visibleBars: viewState.visibleBars,
-      });
+      // console.warn("Invalid dimensions for circle drawing:", {
+      //   chartWidth,
+      //   visibleBars: viewState.visibleBars,
+      // });
       return;
     }
 
@@ -95,7 +95,7 @@ export const drawCircle = ({
     !isFinite(center.y) ||
     !isFinite(radius)
   ) {
-    console.warn("Invalid circle parameters:", { center, radius });
+    // console.warn("Invalid circle parameters:", { center, radius });
     return;
   }
 
