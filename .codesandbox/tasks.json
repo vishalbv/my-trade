@@ -1,23 +1,6 @@
 {
   // These tasks will run in order when initializing your CodeSandbox project.
-  "setupTasks": [
-    {
-      "command": "curl -fsSL https://bun.sh/install | bash",
-      "name": "Install Dependencies"
-    },
-    {
-      "command": "export BUN_INSTALL=\"$HOME/.bun\"",
-      "name": "# add to ~/.zshrc export BUN_INSTALL=\"$HOME/.bun\" export PATH=\"$BUN_INSTALL/bin:$PATH\""
-    },
-    {
-      "command": "export PATH=\"$BUN_INSTALL/bin:$PATH\"",
-      "name": "export PATH=\"$BUN_INSTALL/bin:$PATH\""
-    },
-    {
-      "command": "bun install",
-      "name": "b"
-    }
-  ],
+  "setupTasks": [],
 
   // These tasks can be run from CodeSandbox. Running one will open a log in the app.
   "tasks": {
@@ -27,7 +10,7 @@
     },
     "dev": {
       "name": "dev",
-      "command": "bun run dev",
+      "command": "curl -fsSL https://bun.sh/install | bash && echo 'export BUN_INSTALL=\"$HOME/.bun\"' >> ~/.zshrc && echo 'export PATH=\"$BUN_INSTALL/bin:$PATH\"' >> ~/.zshrc && export BUN_INSTALL=\"$HOME/.bun\" && export PATH=\"$BUN_INSTALL/bin:$PATH\" && bun install && bun run prod",
       "runAtStart": true
     },
     "prod": {
