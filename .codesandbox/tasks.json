@@ -6,8 +6,12 @@
       "name": "Install Dependencies"
     },
     {
-      "command": "# add to ~/.zshrc export BUN_INSTALL=\"$HOME/.bun\" export PATH=\"$BUN_INSTALL/bin:$PATH\"",
+      "command": "export BUN_INSTALL=\"$HOME/.bun\"",
       "name": "# add to ~/.zshrc export BUN_INSTALL=\"$HOME/.bun\" export PATH=\"$BUN_INSTALL/bin:$PATH\""
+    },
+    {
+      "command": "export PATH=\"$BUN_INSTALL/bin:$PATH\"",
+      "name": "export PATH=\"$BUN_INSTALL/bin:$PATH\""
     },
     {
       "command": "bun install",
@@ -19,8 +23,7 @@
   "tasks": {
     "build": {
       "name": "build",
-      "command": "npm run build",
-      "runAtStart": false
+      "command": "npm run build"
     },
     "dev": {
       "name": "dev",
@@ -29,23 +32,19 @@
     },
     "prod": {
       "name": "prod",
-      "command": "npm run prod",
-      "runAtStart": false
+      "command": "npm run prod"
     },
     "prod:local": {
       "name": "prod:local",
-      "command": "npm run prod:local",
-      "runAtStart": false
+      "command": "npm run prod:local"
     },
     "lint": {
       "name": "lint",
-      "command": "npm run lint",
-      "runAtStart": false
+      "command": "npm run lint"
     },
     "format": {
       "name": "format",
-      "command": "npm run format",
-      "runAtStart": false
+      "command": "npm run format"
     }
   }
 }
