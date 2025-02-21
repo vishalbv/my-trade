@@ -23,14 +23,14 @@ export const declareAppApis = () => ({
     try {
       if (broker === "fyers") {
         const fyersState = await statesDbService.getStateById("fyers");
-        if (fyersState?.refresh_token) {
-          _fyers.setState(fyersState);
-          return {
-            status: 200,
-            message: "Already logging in",
-            data: { autoLogin: true },
-          };
-        }
+        // if (fyersState?.refresh_token) {
+        //   _fyers.setState(fyersState);
+        //   return {
+        //     status: 200,
+        //     message: "Already logging in",
+        //     data: { autoLogin: true },
+        //   };
+        // }
         const result = await _fyers.preLogin();
         return {
           status: 200,

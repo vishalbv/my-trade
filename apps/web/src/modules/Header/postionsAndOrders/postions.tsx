@@ -24,7 +24,7 @@ export const Positions: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 max-h-[200px] overflow-auto">
+    <div className="flex-1 overflow-auto">
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-2 px-2 h-8 text-xs font-medium text-muted-foreground border-b border-border bg-muted/50">
           <div className="min-w-[150px] flex-1">Instrument</div>

@@ -19,6 +19,7 @@ import { checkAllLoginStatus } from "../../utils/helpers";
 import statesDbService from "../../services/statesDb";
 import { INDEX_DETAILS } from "@repo/utils/constants";
 import _fyers from "../fyers/index";
+import telegramService from "../../services/TelegramService";
 
 // import { checkAllLoginStatus } from "./functions.js";
 // import fetch from "node-fetch";
@@ -73,7 +74,7 @@ import _fyers from "../fyers/index";
 // //       _app.setState({ expirySymbols });
 // //     });
 // //   return "success";
-// // };
+// };
 
 // const setOptionsNamesUpdated = async () => {
 //   logger("new shoonya expiry symbols fetching strated");
@@ -335,24 +336,84 @@ const setUpcomingExpiryDates = async () => {
 const initializeApp = async () => {
   logger.info("initializing project state");
 
-  // NOTIFY.info("Server Restared and initializing Backend State");
-  await initializeStateFromDB();
-  await checkAllLoginStatus();
+  try {
+    // Initialize Telegram service first
+    await telegramService.reinitialize();
 
-  // await _ticksShoonyaService.startSocket();
-  if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
-    try {
-      // await setOptionsNames();
-      //   await setOptionsNamesUpdated();
-      await setUpcomingExpiryDates();
-    } catch (e) {
-      logger.info("error in setOptionsNamesUpdated", e);
+    // Send a test message
+    const testResult = await telegramService.sendMessage(
+      "🔄 Bot test message - please reply with /start"
+    );
+    if (!testResult) {
+      logger.error("Failed to send test message to Telegram");
     }
 
-    await updateDbAtInitOfDay();
+    await telegramService.sendInfo("Server started and initializing...");
+
+    await initializeStateFromDB();
+
+    // Store the initial login state
+    const wasLoggedIn = _app.getState().loggedIn;
+
+    await checkAllLoginStatus();
+
+    // Check if login state changed
+    const isNowLoggedIn = _app.getState().loggedIn;
+    if (wasLoggedIn !== isNowLoggedIn) {
+      if (isNowLoggedIn) {
+        logger.info("App logged in, reinitializing Telegram service");
+        await telegramService.reinitialize();
+        await telegramService.sendInfo("App logged in successfully");
+      } else {
+        logger.info("App logged out, stopping Telegram service");
+        telegramService.stopPolling();
+        await telegramService.sendInfo("App logged out");
+      }
+    }
+
+    if (!isDatesEqual(_app.getState().dataUpdatedTime)) {
+      try {
+        await setUpcomingExpiryDates();
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : "Unknown error";
+        logger.info("error in setOptionsNamesUpdated", errorMessage);
+        await telegramService.sendError(
+          `Error during initialization: ${errorMessage}`
+        );
+      }
+
+      await updateDbAtInitOfDay();
+    }
+    await startingFunctionsAtInitialize();
+
+    await telegramService.sendSuccess("Server initialization completed");
+
+    logger.info("initializing project state completed");
+  } catch (error) {
+    logger.error("Error during app initialization:", error);
+    await telegramService.sendError("Failed to initialize server properly");
   }
-  await startingFunctionsAtInitialize();
-  logger.info("initializing project state completed");
 };
+
+// Also remove the bot status check from TelegramService.ts
+// And add it here instead
+const checkBotStatus = async () => {
+  try {
+    const testMessage = await telegramService.sendMessage("Bot status check");
+    return testMessage;
+  } catch (error) {
+    logger.error("Bot status check failed:", error);
+    return false;
+  }
+};
+
+// Run the check during initialization
+checkBotStatus().then((isWorking) => {
+  if (isWorking) {
+    logger.info("Telegram bot is working correctly");
+  } else {
+    logger.error("Telegram bot is not working");
+  }
+});
 
 export default initializeApp;

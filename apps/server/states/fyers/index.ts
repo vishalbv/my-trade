@@ -70,7 +70,7 @@ class Fyers extends State {
 
     try {
       let response;
-      if (this.getState().refresh_token) {
+      if (this.getState().refresh_token && false) {
         response = await validateRefreshToken({
           appIdHash: fyersAuthParams.appIdHash,
           refreshToken: this.getState().refresh_token,
