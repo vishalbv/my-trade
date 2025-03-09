@@ -105,7 +105,12 @@ export const globalChartLocalStorageMiddleware: Middleware =
 
 const initialState: GlobalChartState = {
   selectedLayout: "single" as LayoutType,
-  indicators: [{ id: "rsi", label: "RSI", enabled: true }],
+  indicators: [
+    { id: "rsi", label: "RSI", enabled: true },
+    { id: "swing", label: "Swing Areas", enabled: true },
+    { id: "threeCandle", label: "Three Candle Pattern", enabled: true },
+    { id: "rbKnox", label: "RB Knox Divergence", enabled: true },
+  ],
   selectedTool: "cursor" as DrawingTool,
   showDrawings: true,
   selectedChartKey: "0",

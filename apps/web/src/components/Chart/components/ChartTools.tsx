@@ -14,6 +14,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { setChartFullScreenId } from "../../../store/slices/globalChartSlice";
 import { RootState } from "../../../store/store";
 
+const INDICATORS = [
+  { id: "rsi", label: "RSI" },
+  { id: "swing", label: "Swing Areas" },
+  { id: "threeCandle", label: "Three Candle Pattern" },
+  { id: "rbKnox", label: "RB Knox Divergence" },
+];
+
 interface Indicator {
   id: string;
   label: string;
@@ -78,40 +85,45 @@ export function ChartTools({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" className="w-[200px]">
-          {indicators.map((indicator) => (
-            <DropdownMenuItem
-              key={indicator.id}
-              className="flex items-center justify-between"
-              onSelect={(e) => {
-                e.preventDefault();
-                setIndicators(
-                  indicators.map((ind) =>
-                    ind.id === indicator.id
-                      ? { ...ind, enabled: !ind.enabled }
-                      : ind
-                  )
-                );
-              }}
-            >
-              <span>{indicator.label}</span>
-              <div className="flex items-center h-4 w-4 rounded-sm border border-primary">
-                {indicator.enabled && (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-3 w-3"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </div>
-            </DropdownMenuItem>
-          ))}
+          {INDICATORS.map((indicator) => {
+            const indicatorData = indicators.find(
+              (ind) => ind.id === indicator.id
+            );
+            return (
+              <DropdownMenuItem
+                key={indicator.id}
+                className="flex items-center justify-between"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setIndicators(
+                    INDICATORS.map((ind) =>
+                      ind.id === indicator.id
+                        ? { ...ind, enabled: !indicatorData?.enabled }
+                        : indicators.find((i) => i.id === ind.id)
+                    )
+                  );
+                }}
+              >
+                <span>{indicator.label}</span>
+                <div className="flex items-center h-4 w-4 rounded-sm border border-primary">
+                  {indicatorData?.enabled && (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3 w-3"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 

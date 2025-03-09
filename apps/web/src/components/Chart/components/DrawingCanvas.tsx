@@ -116,6 +116,7 @@ export const DrawingCanvas = ({
   const drawingHistory = useSelector(
     (state: RootState) => state.drawingHistory.history[chartState.symbol]
   );
+  console.log(drawings);
 
   // Update local drawings when props change
   useEffect(() => {

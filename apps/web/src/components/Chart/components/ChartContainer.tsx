@@ -23,6 +23,7 @@ import {
   setSelectedDrawing,
   LayoutKeyType,
   setChartHistoryForOptions,
+  setIndicators,
 } from "../../../store/slices/globalChartSlice";
 import { DEFAULT_CHART_LAYOUT } from "../../../utils/constants";
 import {
@@ -43,6 +44,7 @@ import { INDEX_DETAILS } from "@repo/utils/constants";
 import { PRICECOLOR } from "../../../utils/helpers";
 import { calculateSwingAreas } from "../patterns/SwingPattern";
 import { findThreeCandlePattern } from "../patterns/ThreeCandlePattern";
+import { calculateRBKnoxDivergence } from "../patterns/RBKnoxDivergence";
 
 interface Indicator {
   id: string;
@@ -394,14 +396,39 @@ export const ChartContainer = memo(
 
     // Calculate swing areas as drawings
     const swingDrawings = useMemo(() => {
-      return calculateSwingAreas(chartData.slice(0, -30));
-    }, [chartData]);
+      const swingEnabled = indicators.find((i) => i.id === "swing")?.enabled;
+      return swingEnabled ? calculateSwingAreas(chartData.slice(0, -30)) : [];
+    }, [chartData, indicators]);
 
     // Update the allDrawings useMemo to include pattern drawings
     const allDrawings = useMemo(() => {
-      const patternDrawings = findThreeCandlePattern(chartData.slice(0, -1));
-      return [...symbolDrawings, ...swingDrawings, ...patternDrawings];
-    }, [symbolDrawings, swingDrawings, chartData]);
+      const threeCandleEnabled = indicators.find(
+        (i) => i.id === "threeCandle"
+      )?.enabled;
+      const rbKnoxEnabled = indicators.find((i) => i.id === "rbKnox")?.enabled;
+
+      const patternDrawings = threeCandleEnabled
+        ? findThreeCandlePattern(chartData.slice(0, -1))
+        : [];
+      const rbKnoxDrawings = rbKnoxEnabled
+        ? calculateRBKnoxDivergence(chartData.slice(0, -30))
+        : [];
+
+      return [
+        ...symbolDrawings,
+        ...swingDrawings,
+        ...patternDrawings,
+        ...rbKnoxDrawings,
+      ];
+    }, [symbolDrawings, swingDrawings, chartData, indicators]);
+
+    // Add indicator toggle menu in the chart header
+    const toggleIndicator = (indicatorId: string) => {
+      const updatedIndicators = indicators.map((ind) =>
+        ind.id === indicatorId ? { ...ind, enabled: !ind.enabled } : ind
+      );
+      dispatch(setIndicators(updatedIndicators));
+    };
 
     return (
       <div
@@ -535,6 +562,37 @@ export const ChartContainer = memo(
                       )}
                     >
                       <span>{option.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Separator orientation="vertical" className="mx-1 h-4" />
+
+              {/* Add Indicators Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-6 px-2 text-sm hover:bg-muted"
+                  >
+                    Indicators
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[180px]">
+                  {indicators.map((indicator) => (
+                    <DropdownMenuItem
+                      key={indicator.id}
+                      onClick={() => toggleIndicator(indicator.id)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{indicator.label}</span>
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded-sm border",
+                          indicator.enabled ? "bg-primary" : "bg-background"
+                        )}
+                      />
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

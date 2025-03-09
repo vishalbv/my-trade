@@ -52,30 +52,30 @@ class TelegramService {
   }
 
   private async initialize() {
-    try {
-      // First delete any existing webhook
-      await this.deleteWebhook();
-      // Then start polling
-      await this.startPolling();
-      logger.info("Telegram bot initialized successfully");
-    } catch (error) {
-      logger.error("Failed to initialize Telegram bot:", error);
-      this.handleReconnect();
-    }
+    // try {
+    //   // First delete any existing webhook
+    //   await this.deleteWebhook();
+    //   // Then start polling
+    //   await this.startPolling();
+    //   logger.info("Telegram bot initialized successfully");
+    // } catch (error) {
+    //   logger.error("Failed to initialize Telegram bot:", error);
+    //   this.handleReconnect();
+    // }
   }
 
   private async handleReconnect() {
-    if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
-      this.reconnectAttempts++;
-      logger.info(
-        `Attempting to reconnect (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`
-      );
-      setTimeout(() => this.initialize(), this.RECONNECT_DELAY);
-    } else {
-      logger.error(
-        "Max reconnection attempts reached. Telegram bot is offline."
-      );
-    }
+    // if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+    //   this.reconnectAttempts++;
+    //   logger.info(
+    //     `Attempting to reconnect (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`
+    //   );
+    //   setTimeout(() => this.initialize(), this.RECONNECT_DELAY);
+    // } else {
+    //   logger.error(
+    //     "Max reconnection attempts reached. Telegram bot is offline."
+    //   );
+    // }
   }
 
   private async startPolling() {
@@ -451,15 +451,6 @@ Price: ${tradeInfo.price}${tradeInfo.pnl ? `\nP&L: ${tradeInfo.pnl}` : ""}`;
 
 // Create and export a singleton instance
 const telegramService = new TelegramService();
-
-// Add this to test the service is working
-telegramService.checkBotStatus().then((isWorking) => {
-  if (isWorking) {
-    logger.info("Telegram bot is working correctly");
-  } else {
-    logger.error("Telegram bot is not working");
-  }
-});
 
 // Handle graceful shutdown
 process.on("SIGINT", async () => {
