@@ -3,6 +3,24 @@ import axios from "axios";
 import sha256 from "crypto-js/sha256";
 import { API } from "./config.js";
 import WS from "./WebSocket.js";
+import fs from "fs";
+import path from "path";
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(process.cwd(), "logs");
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir);
+}
+
+// Create a write stream for the log file
+const logFile = path.join(logsDir, "shoonya-api.log");
+const logStream = fs.createWriteStream(logFile, { flags: "a" });
+
+// Helper function to write logs
+const writeLog = (message) => {
+  const timestamp = new Date().toISOString();
+  logStream.write(`${timestamp} - ${message}\n`);
+};
 
 class NorenRestApi {
   #susertoken = "";
@@ -46,8 +64,8 @@ class NorenRestApi {
       this.#susertoken ? `&jKey=${this.#susertoken}` : ""
     }`;
 
-    console.log("Request URL:", url);
-    console.log("Request Payload:", payload);
+    writeLog(`Request URL: ${url}`);
+    writeLog(`Request Payload: ${payload}`);
 
     try {
       const response = await axios.post(url, payload, {
@@ -59,23 +77,27 @@ class NorenRestApi {
         httpsAgent: new (require("https").Agent)({
           rejectUnauthorized: false,
         }),
-        timeout: 10000, // 10 second timeout
+        timeout: 10000,
         validateStatus: function (status) {
-          return status >= 200 && status < 500; // Accept all status codes less than 500
+          return status >= 200 && status < 500;
         },
       });
 
-      console.log("Response Status:", response.status);
-      console.log("Response Headers:", response.headers);
+      writeLog(`Response Status: ${response.status}`);
+      writeLog(`Response Headers: ${JSON.stringify(response.headers)}`);
+      writeLog(`Response Data: ${JSON.stringify(response.data)}`);
 
       return response;
     } catch (error) {
-      console.error("Post Request Error:", {
-        url,
-        route,
-        error: error.message,
-        stack: error.stack,
-      });
+      writeLog(`Error in ${route}: ${error.message}`);
+      writeLog(`Error Stack: ${error.stack}`);
+      if (error.response) {
+        writeLog(`Error Response Status: ${error.response.status}`);
+        writeLog(`Error Response Data: ${JSON.stringify(error.response.data)}`);
+        writeLog(
+          `Error Response Headers: ${JSON.stringify(error.response.headers)}`
+        );
+      }
       throw error;
     }
   }
@@ -116,6 +138,9 @@ class NorenRestApi {
 
   async searchscrip(exchange, searchtext) {
     try {
+      writeLog(
+        `SearchScrip called with exchange: ${exchange}, searchtext: ${searchtext}`
+      );
       const values = {
         uid: this.#username,
         exch: exchange,
@@ -123,24 +148,24 @@ class NorenRestApi {
       };
       const response = await this.#postRequest("searchscrip", values);
 
-      // Log the full response for debugging
-      console.log("SearchScrip Response:", response);
+      writeLog(`SearchScrip Response: ${JSON.stringify(response.data)}`);
 
-      // Check if response exists and has data
       if (!response || !response.data) {
+        writeLog("Invalid response from Shoonya API");
         throw new Error("Invalid response from Shoonya API");
       }
 
       return response;
     } catch (error) {
-      console.error("SearchScrip Error:", error);
-      // If it's an axios error, log more details
+      writeLog(`SearchScrip Error: ${error.message}`);
       if (error.response) {
-        console.error("Error Response:", {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers,
-        });
+        writeLog(
+          `Error Response: ${JSON.stringify({
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers,
+          })}`
+        );
       }
       throw error;
     }
