@@ -46,12 +46,38 @@ class NorenRestApi {
       this.#susertoken ? `&jKey=${this.#susertoken}` : ""
     }`;
 
-    console.log("payload", payload, url);
-    return axios.post(url, payload, {
-      httpsAgent: new (require("https").Agent)({
-        rejectUnauthorized: false,
-      }),
-    });
+    console.log("Request URL:", url);
+    console.log("Request Payload:", payload);
+
+    try {
+      const response = await axios.post(url, payload, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          "User-Agent": "Mozilla/5.0",
+        },
+        httpsAgent: new (require("https").Agent)({
+          rejectUnauthorized: false,
+        }),
+        timeout: 10000, // 10 second timeout
+        validateStatus: function (status) {
+          return status >= 200 && status < 500; // Accept all status codes less than 500
+        },
+      });
+
+      console.log("Response Status:", response.status);
+      console.log("Response Headers:", response.headers);
+
+      return response;
+    } catch (error) {
+      console.error("Post Request Error:", {
+        url,
+        route,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 
   setSessionDetails(response) {
@@ -89,12 +115,35 @@ class NorenRestApi {
   }
 
   async searchscrip(exchange, searchtext) {
-    const values = {
-      uid: this.#username,
-      exch: exchange,
-      stext: searchtext,
-    };
-    return this.#postRequest("searchscrip", values);
+    try {
+      const values = {
+        uid: this.#username,
+        exch: exchange,
+        stext: searchtext,
+      };
+      const response = await this.#postRequest("searchscrip", values);
+
+      // Log the full response for debugging
+      console.log("SearchScrip Response:", response);
+
+      // Check if response exists and has data
+      if (!response || !response.data) {
+        throw new Error("Invalid response from Shoonya API");
+      }
+
+      return response;
+    } catch (error) {
+      console.error("SearchScrip Error:", error);
+      // If it's an axios error, log more details
+      if (error.response) {
+        console.error("Error Response:", {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+      throw error;
+    }
   }
 
   async scripinfo(exchange, token) {
