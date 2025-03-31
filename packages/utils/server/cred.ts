@@ -1,6 +1,6 @@
 export const shoonyaAuthParams = {
   userid: "FA37210",
-  password: "Shoonya@23",
+  password: "Shoonya@234",
   vendor_code: "FA37210_U",
   api_secret: "APILi23112021ASBNMDK789KJH",
   imei: "machine id",

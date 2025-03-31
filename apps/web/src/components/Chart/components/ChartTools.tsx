@@ -99,7 +99,10 @@ export function ChartTools({
                     INDICATORS.map((ind) =>
                       ind.id === indicator.id
                         ? { ...ind, enabled: !indicatorData?.enabled }
-                        : indicators.find((i) => i.id === ind.id)
+                        : indicators.find((i) => i.id === ind.id) || {
+                            ...ind,
+                            enabled: false,
+                          }
                     )
                   );
                 }}
