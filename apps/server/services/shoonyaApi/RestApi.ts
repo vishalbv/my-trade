@@ -47,7 +47,11 @@ class NorenRestApi {
     }`;
 
     console.log("payload", payload, url);
-    return axios.post(url, payload);
+    return axios.post(url, payload, {
+      httpsAgent: new (require("https").Agent)({
+        rejectUnauthorized: false,
+      }),
+    });
   }
 
   setSessionDetails(response) {
