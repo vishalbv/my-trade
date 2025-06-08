@@ -31,7 +31,7 @@ export const positionsFormatter = ({ positions, currentState }: any) => {
           let { maxProfitTillNow, noOfTrades } = currentState;
 
           return {
-            // tillLastTrade: _data,
+            tillLastTrade: _data,
             maxProfitTillNow:
               _data > maxProfitTillNow ? _data : maxProfitTillNow,
             noOfTrades: maxProfitTillNow == _data ? noOfTrades : noOfTrades + 1,

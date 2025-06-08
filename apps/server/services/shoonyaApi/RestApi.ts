@@ -68,19 +68,29 @@ class NorenRestApi {
     writeLog(`Request Payload: ${payload}`);
 
     try {
+      const httpsAgent = new (require("https").Agent)({
+        rejectUnauthorized: false,
+        keepAlive: true,
+        timeout: 10000,
+        ciphers: "ALL",
+      });
+
       const response = await axios.post(url, payload, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
           "User-Agent": "Mozilla/5.0",
+          Connection: "keep-alive",
         },
-        httpsAgent: new (require("https").Agent)({
-          rejectUnauthorized: false,
-        }),
+        httpsAgent,
         timeout: 10000,
+        maxRedirects: 5,
         validateStatus: function (status) {
           return status >= 200 && status < 500;
         },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        decompress: true,
       });
 
       writeLog(`Response Status: ${response.status}`);
@@ -97,6 +107,12 @@ class NorenRestApi {
         writeLog(
           `Error Response Headers: ${JSON.stringify(error.response.headers)}`
         );
+      }
+      if (error.code === "ECONNABORTED") {
+        writeLog("Request timeout");
+      }
+      if (error.code === "ETIMEDOUT") {
+        writeLog("Connection timeout");
       }
       throw error;
     }
@@ -340,6 +356,26 @@ class NorenRestApi {
   subscribe(instrument, feedtype) {
     if (!this.#webSocket) throw new Error("WebSocket not connected");
     this.#webSocket.send(JSON.stringify({ t: "t", k: instrument }));
+  }
+
+  async testConnection() {
+    try {
+      writeLog("Testing API connection...");
+      const response = await axios.get(this.endpoint, {
+        httpsAgent: new (require("https").Agent)({
+          rejectUnauthorized: false,
+          keepAlive: true,
+          timeout: 10000,
+          ciphers: "ALL",
+        }),
+        timeout: 10000,
+      });
+      writeLog(`API Connection Test Response: ${response.status}`);
+      return response.status === 200;
+    } catch (error) {
+      writeLog(`API Connection Test Failed: ${error.message}`);
+      return false;
+    }
   }
 }
 

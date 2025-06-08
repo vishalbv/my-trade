@@ -27,7 +27,10 @@ export function PLSummary() {
           <p
             className={`text-xl font-bold ${pl >= 0 ? "text-green-500" : "text-red-500"}`}
           >
-            {((pl / fundInfo?.openBalance) * 100).toFixed(2)}%
+            {pl && fundInfo?.openBalance
+              ? ((pl / fundInfo?.openBalance) * 100).toFixed(2)
+              : "0.00"}
+            %
           </p>
         </div>
       </div>

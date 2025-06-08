@@ -45,6 +45,7 @@ import { PRICECOLOR } from "../../../utils/helpers";
 import { calculateSwingAreas } from "../patterns/SwingPattern";
 import { findThreeCandlePattern } from "../patterns/ThreeCandlePattern";
 import { calculateRBKnoxDivergence } from "../patterns/RBKnoxDivergence";
+import { useStrategyDrawings } from "../../../modules/BTCScreen/hooks/useStrategyDrawings";
 
 interface Indicator {
   id: string;
@@ -386,6 +387,9 @@ export const ChartContainer = memo(
       setIsSymbolScrollOpen(false);
     };
 
+    // const { drawings: strategyDrawings, clearDrawings } =
+    //   useStrategyDrawings(chartData);
+
     useEffect(() => {
       const options = getFilteredOptions();
       const currentIndex = options.findIndex(
@@ -419,9 +423,11 @@ export const ChartContainer = memo(
         ...swingDrawings,
         ...patternDrawings,
         ...rbKnoxDrawings,
+        // ...strategyDrawings,
       ];
     }, [symbolDrawings, swingDrawings, chartData, indicators]);
 
+    console.log("allDrawings", allDrawings, chartData, "chartData");
     // Add indicator toggle menu in the chart header
     const toggleIndicator = (indicatorId: string) => {
       const updatedIndicators = indicators.map((ind) =>

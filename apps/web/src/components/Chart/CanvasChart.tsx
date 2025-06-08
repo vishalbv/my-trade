@@ -93,6 +93,8 @@ const CanvasChart: React.FC<CanvasChartProps> = ({
     (indicator) => indicator.id === "rsi" && indicator.enabled
   );
 
+  console.log("chartState", chartState, data);
+
   // Update the state declarations
   const [rsiHeight, setRsiHeight] = useState<number>(100);
   const [isDraggingRSI, setIsDraggingRSI] = useState(false);

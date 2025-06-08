@@ -56,6 +56,11 @@ const leftbraItems = [
     href: "/global-chart",
     icon: LineChart,
   },
+  {
+    label: "BTCUSD",
+    href: "/btcusd",
+    icon: LineChart,
+  },
 ];
 
 const SidebarLabel: React.FC<{ children: React.ReactNode; show: boolean }> = ({

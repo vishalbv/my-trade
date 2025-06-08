@@ -1,0 +1,13 @@
+{
+  "name": "delta-exchange-client",
+  "version": "1.0.0",
+  "description": "Delta Exchange API client",
+  "type": "module",
+  "main": "delta-client.js",
+  "scripts": {
+    "start": "node delta-client.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7"
+  }
+}
